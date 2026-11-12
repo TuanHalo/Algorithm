@@ -1,0 +1,172 @@
+---
+import { getCollection, type CollectionEntry } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import ComplexityBadge from '../../../components/ComplexityBadge.astro';
+import AlgoVisualizer from '../../../components/AlgoVisualizer.astro';
+import DiagramEmbed from '../../../components/DiagramEmbed.astro';
+import { getTopicBySlug } from '../../../utils/topics';
+import { withBase } from '../../../utils/url';
+
+export async function getStaticPaths() {
+  const lessons = await getCollection('learn');
+  return lessons.map((lesson) => {
+    const lessonSlug = lesson.slug.split('/').pop() ?? lesson.slug;
+    return {
+      params: {
+        topic: lesson.data.topic,
+        slug: lessonSlug,
+      },
+      props: { lesson },
+    };
+  });
+}
+
+interface Props {
+  lesson: CollectionEntry<'learn'>;
+}
+
+const { lesson } = Astro.props;
+const { Content } = await lesson.render();
+const topicMeta = getTopicBySlug(lesson.data.topic);
+
+const topicLessons = (await getCollection('learn'))
+  .filter((entry) => entry.data.topic === lesson.data.topic)
+  .sort((a, b) => a.data.order - b.data.order);
+
+const currentIdx = topicLessons.findIndex((entry) => entry.slug === lesson.slug);
+const prevLesson = currentIdx > 0 ? topicLessons[currentIdx - 1] : undefined;
+const nextLesson = currentIdx >= 0 && currentIdx < topicLessons.length - 1 ? topicLessons[currentIdx + 1] : undefined;
+
+const getSlug = (entry: CollectionEntry<'learn'>): string =>
+  entry.slug.split('/').pop() ?? entry.slug;
+---
+
+<BaseLayout title={lesson.data.title}>
+  <div class="container lesson-container">
+    <nav class="breadcrumb">
+      <a href={withBase('/learn/')}>📚 Learn</a>
+      <span>/</span>
+      <a href={withBase(`/learn/${lesson.data.topic}/`)}>
+        {topicMeta ? `${topicMeta.icon} ${topicMeta.name}` : lesson.data.topic}
+      </a>
+      <span>/</span>
+      <span>{lesson.data.title}</span>
+    </nav>
+
+    <!-- Lesson Header -->
+    <header class="clay-section lesson-header" style={`--topic-color: ${topicMeta?.color ?? 'var(--color-sorting)'}`}>
+      <div class="lesson-header__meta">
+        <span class="clay-badge">#{lesson.data.order}</span>
+        <span class="clay-badge">{lesson.data.difficulty}</span>
+      </div>
+      <h1 class="lesson-header__title">{lesson.data.title}</h1>
+      <div class="lesson-header__footer">
+        <ComplexityBadge
+          time={lesson.data.timeComplexity}
+          space={lesson.data.spaceComplexity}
+        />
+        <div class="lesson-header__tags">
+          {lesson.data.tags.map((tag) => (
+            <span class="clay-badge clay-badge--complexity">{tag}</span>
+          ))}
+        </div>
+      </div>
+    </header>
+
+    <!-- Interactive Visualizer -->
+    {lesson.data.visualizer && (
+      <section class="lesson-visual">
+        <AlgoVisualizer
+          src={lesson.data.visualizer}
+          title={`${lesson.data.title} — Interactive Step-by-Step`}
+        />
+      </section>
+    )}
+
+    <!-- Lesson Content -->
+    <article class="clay-section markdown-body">
+      <Content />
+    </article>
+
+    <!-- Archify Diagram -->
+    {lesson.data.diagram && (
+      <section class="lesson-diagram">
+        <DiagramEmbed
+          src={lesson.data.diagram}
+          title={`${lesson.data.title} — Visual Flow`}
+        />
+      </section>
+    )}
+
+    <!-- Prev / Next Navigation -->
+    <nav class="lesson-nav">
+      {prevLesson ? (
+        <a href={withBase(`/learn/${lesson.data.topic}/${getSlug(prevLesson)}/`)} class="clay-btn">
+          ← {prevLesson.data.title}
+        </a>
+      ) : <span />}
+      {nextLesson ? (
+        <a href={withBase(`/learn/${lesson.data.topic}/${getSlug(nextLesson)}/`)} class="clay-btn clay-btn--primary">
+          {nextLesson.data.title} →
+        </a>
+      ) : (
+        <a href={withBase(`/learn/${lesson.data.topic}/`)} class="clay-btn">
+          Back to {topicMeta?.name ?? lesson.data.topic}
+        </a>
+      )}
+    </nav>
+  </div>
+</BaseLayout>
+
+<style>
+  .lesson-container {
+    max-width: 920px;
+  }
+
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: var(--space-lg);
+    flex-wrap: wrap;
+  }
+
+  .lesson-header {
+    border-top: 4px solid var(--topic-color);
+  }
+
+  .lesson-header__meta {
+    display: flex;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+  }
+
+  .lesson-header__title {
+    margin-bottom: var(--space-md);
+  }
+
+  .lesson-header__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+  }
+
+  .lesson-header__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+
+  .lesson-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--space-xl);
+    gap: var(--space-md);
+  }
+</style>
+

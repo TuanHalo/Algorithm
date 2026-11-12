@@ -1,0 +1,87 @@
+---
+import { withBase } from '../utils/url';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'Interactive algorithm learning platform and problem-solving journal.' } = Astro.props;
+const pathname = Astro.url.pathname;
+const learnUrl = withBase('/learn/');
+const problemsUrl = withBase('/problems/');
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href={withBase('/favicon.svg')} />
+    <title>{title} | Algorithm Hub</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+  </head>
+  <body>
+    <nav class="clay-nav">
+      <div class="clay-nav__inner">
+        <a href={withBase('/')} class="clay-nav__logo">
+          🧮 Algorithm Hub
+        </a>
+        <ul class="clay-nav__links">
+          <li>
+            <a
+              href={learnUrl}
+              class:list={['clay-nav__link', { 'clay-nav__link--active': pathname.startsWith(learnUrl) }]}
+            >
+              📚 Learn
+            </a>
+          </li>
+          <li>
+            <a
+              href={problemsUrl}
+              class:list={['clay-nav__link', { 'clay-nav__link--active': pathname.startsWith(problemsUrl) }]}
+            >
+              📝 Problems
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <main class="main-content">
+      <slot />
+    </main>
+
+    <footer class="clay-footer">
+      <div class="container">
+        <p>Built with 💛 using <a href="https://astro.build" target="_blank" rel="noopener">Astro</a> — Claymorphism Design</p>
+      </div>
+    </footer>
+  </body>
+</html>
+
+<style is:global>
+  @import '../styles/global.css';
+  @import '../styles/clay-theme.css';
+</style>
+
+<style>
+  .main-content {
+    margin-top: var(--nav-height);
+    padding: var(--space-2xl) 0;
+    min-height: calc(100vh - var(--nav-height) - 80px);
+  }
+
+  .clay-footer {
+    text-align: center;
+    padding: var(--space-xl) 0;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  .clay-footer a {
+    color: var(--text-secondary);
+    text-decoration: underline;
+  }
+</style>

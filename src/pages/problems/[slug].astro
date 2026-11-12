@@ -1,0 +1,148 @@
+---
+import { getCollection, type CollectionEntry } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ComplexityBadge from '../../components/ComplexityBadge.astro';
+import DiagramEmbed from '../../components/DiagramEmbed.astro';
+import { withBase } from '../../utils/url';
+
+export async function getStaticPaths() {
+  const problems = await getCollection('problems');
+  return problems.map((problem) => ({
+    params: { slug: problem.slug },
+    props: { problem },
+  }));
+}
+
+interface Props {
+  problem: CollectionEntry<'problems'>;
+}
+
+const { problem } = Astro.props;
+const { Content } = await problem.render();
+
+const platformEmoji: Record<string, string> = {
+  leetcode: '🟠',
+  hackerrank: '🟢',
+  codeforces: '🔵',
+  other: '🟣',
+};
+---
+
+<BaseLayout title={problem.data.title}>
+  <div class="container problem-container">
+    <nav class="breadcrumb">
+      <a href={withBase('/problems/')}>📝 Problem Journal</a>
+      <span>/</span>
+      <span>{problem.data.title}</span>
+    </nav>
+
+    <header class="clay-section problem-header">
+      <div class="problem-header__top">
+        <div class="problem-header__badges">
+          <span class="clay-badge">
+            {platformEmoji[problem.data.platform]} {problem.data.platform}
+          </span>
+          <span class={`clay-badge clay-badge--${problem.data.difficulty}`}>
+            {problem.data.difficulty}
+          </span>
+          <span class="clay-badge">📅 {problem.data.dateCompleted}</span>
+        </div>
+        <a
+          href={problem.data.problemUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="clay-btn clay-btn--small clay-btn--primary"
+        >
+          🔗 Open Problem ↗
+        </a>
+      </div>
+
+      <h1 class="problem-header__title">{problem.data.title}</h1>
+
+      <div class="problem-header__footer">
+        <ComplexityBadge
+          time={problem.data.timeComplexity}
+          space={problem.data.spaceComplexity}
+        />
+        <div class="problem-header__topics">
+          {problem.data.topics.map((topic) => (
+            <span class="clay-badge clay-badge--complexity">{topic}</span>
+          ))}
+        </div>
+      </div>
+    </header>
+
+    <article class="clay-section markdown-body">
+      <Content />
+    </article>
+
+    {problem.data.diagram && (
+      <section class="problem-diagram">
+        <DiagramEmbed
+          src={problem.data.diagram}
+          title={`${problem.data.title} — Visual Walkthrough`}
+        />
+      </section>
+    )}
+
+    <nav class="problem-nav">
+      <a href={withBase('/problems/')} class="clay-btn">
+        ← All Problems
+      </a>
+    </nav>
+  </div>
+</BaseLayout>
+
+<style>
+  .problem-container {
+    max-width: 920px;
+  }
+
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: var(--space-lg);
+  }
+
+  .problem-header__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+  }
+
+  .problem-header__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    text-transform: capitalize;
+  }
+
+  .problem-header__title {
+    margin-bottom: var(--space-md);
+  }
+
+  .problem-header__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+  }
+
+  .problem-header__topics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+
+  .problem-nav {
+    margin-top: var(--space-xl);
+  }
+</style>
+

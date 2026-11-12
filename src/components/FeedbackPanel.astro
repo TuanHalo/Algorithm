@@ -1,0 +1,65 @@
+---
+interface Props {
+  strengths: readonly string[];
+  improvements: readonly string[];
+  edgeCases: readonly string[];
+  alternatives: readonly string[];
+}
+
+const { strengths, improvements, edgeCases, alternatives } = Astro.props;
+---
+
+<div class="clay-feedback">
+  <h3 class="clay-feedback__title">🤖 AI Feedback</h3>
+
+  {strengths.length > 0 && (
+    <div class="clay-feedback__section">
+      <div class="clay-feedback__label">✅ Strengths</div>
+      <div class="clay-feedback__content">
+        <ul>
+          {strengths.map((s) => <li>{s}</li>)}
+        </ul>
+      </div>
+    </div>
+  )}
+
+  {improvements.length > 0 && (
+    <div class="clay-feedback__section">
+      <div class="clay-feedback__label">🔧 Improvements</div>
+      <div class="clay-feedback__content">
+        <ul>
+          {improvements.map((s) => <li>{s}</li>)}
+        </ul>
+      </div>
+    </div>
+  )}
+
+  {edgeCases.length > 0 && (
+    <div class="clay-feedback__section">
+      <div class="clay-feedback__label">🧪 Edge Cases to Consider</div>
+      <div class="clay-feedback__content">
+        <ul>
+          {edgeCases.map((s) => <li>{s}</li>)}
+        </ul>
+      </div>
+    </div>
+  )}
+
+  {alternatives.length > 0 && (
+    <div class="clay-feedback__section">
+      <div class="clay-feedback__label">🔄 Alternative Approaches</div>
+      <div class="clay-feedback__content">
+        <ul>
+          {alternatives.map((s) => <li>{s}</li>)}
+        </ul>
+      </div>
+    </div>
+  )}
+</div>
+
+<style>
+  .clay-feedback__title {
+    font-size: 1.2rem;
+    margin-bottom: var(--space-lg);
+  }
+</style>

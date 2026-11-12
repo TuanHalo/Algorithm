@@ -1,0 +1,35 @@
+---
+import { withBase } from '../utils/url';
+
+interface Props {
+  src: string;
+  title?: string;
+  height?: string;
+}
+
+const { src, title, height = '640px' } = Astro.props;
+const resolvedSrc = withBase(src);
+---
+
+<div class="clay-embed visualizer-embed">
+  {title && (
+    <div class="clay-embed__title">
+      🎬 {title}
+      <span class="visualizer-hint">Enter input and press Play to simulate</span>
+    </div>
+  )}
+  <iframe src={resolvedSrc} style={`height: ${height}`} loading="lazy" title={title || 'Algorithm Visualizer'}></iframe>
+</div>
+
+<style>
+  .visualizer-embed {
+    border: 2px solid rgba(168, 230, 207, 0.5);
+  }
+
+  .visualizer-hint {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-left: var(--space-sm);
+  }
+</style>

@@ -1,0 +1,17 @@
+---
+import { withBase } from '../utils/url';
+
+interface Props {
+  src: string;
+  title?: string;
+  height?: string;
+}
+
+const { src, title, height = '520px' } = Astro.props;
+const resolvedSrc = withBase(src);
+---
+
+<div class="clay-embed">
+  {title && <div class="clay-embed__title">📊 {title}</div>}
+  <iframe src={resolvedSrc} style={`height: ${height}`} loading="lazy" title={title || 'Interactive diagram'}></iframe>
+</div>

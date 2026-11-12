@@ -1,0 +1,57 @@
+---
+import { withBase } from '../utils/url';
+
+interface Props {
+  name: string;
+  icon: string;
+  color: string;
+  slug: string;
+  count: number;
+  description: string;
+}
+
+const { name, icon, color, slug, count, description } = Astro.props;
+---
+
+<a href={withBase(`/learn/${slug}/`)} class="clay-card topic-card" style={`--topic-color: ${color}`}>
+  <div class="topic-card__icon">{icon}</div>
+  <h3 class="topic-card__name">{name}</h3>
+  <p class="topic-card__desc">{description}</p>
+  <span class="clay-badge">{count} {count === 1 ? 'lesson' : 'lessons'}</span>
+</a>
+
+<style>
+  .topic-card {
+    text-decoration: none;
+    display: block;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .topic-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--topic-color);
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+  }
+
+  .topic-card__icon {
+    font-size: 2.5rem;
+    margin-bottom: var(--space-sm);
+  }
+
+  .topic-card__name {
+    font-size: 1.1rem;
+    margin-bottom: var(--space-xs);
+  }
+
+  .topic-card__desc {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: var(--space-md);
+  }
+</style>

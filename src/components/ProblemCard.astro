@@ -1,0 +1,99 @@
+---
+import { withBase } from '../utils/url';
+import type { PlatformName, ProblemDifficulty } from '../types/content';
+
+interface Props {
+  title: string;
+  platform: PlatformName;
+  difficulty: ProblemDifficulty;
+  topics: readonly string[];
+  slug: string;
+  dateCompleted: string;
+  timeComplexity?: string;
+  spaceComplexity?: string;
+}
+
+const {
+  title,
+  platform,
+  difficulty,
+  topics,
+  slug,
+  dateCompleted,
+  timeComplexity,
+  spaceComplexity,
+} = Astro.props;
+
+const platformEmoji: Record<PlatformName, string> = {
+  leetcode: '🟠',
+  hackerrank: '🟢',
+  codeforces: '🔵',
+  other: '🟣',
+};
+
+const difficultyLabel: Record<ProblemDifficulty, string> = {
+  easy: '🟢 Easy',
+  medium: '🟡 Medium',
+  hard: '🔴 Hard',
+};
+---
+
+<a
+  href={withBase(`/problems/${slug}/`)}
+  class="clay-card problem-card"
+  data-platform={platform}
+  data-difficulty={difficulty}
+  data-topics={topics.join(',')}
+>
+  <div class="problem-card__header">
+    <span class="problem-card__platform">{platformEmoji[platform]} {platform}</span>
+    <span class={`clay-badge clay-badge--${difficulty}`}>{difficultyLabel[difficulty]}</span>
+  </div>
+  <h3 class="problem-card__title">{title}</h3>
+  <div class="problem-card__tags">
+    {topics.map((topic) => (
+      <span class="clay-badge clay-badge--complexity">{topic}</span>
+    ))}
+    {timeComplexity && <span class="clay-badge">⏱️ {timeComplexity}</span>}
+    {spaceComplexity && <span class="clay-badge">💾 {spaceComplexity}</span>}
+  </div>
+  <time class="problem-card__date">{dateCompleted}</time>
+</a>
+
+<style>
+  .problem-card {
+    text-decoration: none;
+    display: block;
+  }
+
+  .problem-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-sm);
+  }
+
+  .problem-card__platform {
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: capitalize;
+    color: var(--text-muted);
+  }
+
+  .problem-card__title {
+    font-size: 1.15rem;
+    margin-bottom: var(--space-sm);
+  }
+
+  .problem-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-sm);
+  }
+
+  .problem-card__date {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+</style>
