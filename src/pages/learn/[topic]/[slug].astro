@@ -57,7 +57,7 @@ const getSlug = (entry: CollectionEntry<'learn'>): string =>
     <header class="clay-section lesson-header" style={`--topic-color: ${topicMeta?.color ?? 'var(--color-sorting)'}`}>
       <div class="lesson-header__meta">
         <span class="clay-badge">#{lesson.data.order}</span>
-        <span class="clay-badge">{lesson.data.difficulty}</span>
+        <span class={`clay-badge clay-badge--${lesson.data.difficulty}`}>{lesson.data.difficulty}</span>
       </div>
       <h1 class="lesson-header__title">{lesson.data.title}</h1>
       <div class="lesson-header__footer">

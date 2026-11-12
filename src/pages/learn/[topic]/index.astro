@@ -49,7 +49,7 @@ const lessons = allLessons
             <a href={withBase(`/learn/${topic.slug}/${lessonSlug}/`)} class="clay-card lesson-card">
               <div class="lesson-card__top">
                 <span class="clay-badge">#{lesson.data.order}</span>
-                <span class="clay-badge">{lesson.data.difficulty}</span>
+                <span class={`clay-badge clay-badge--${lesson.data.difficulty}`}>{lesson.data.difficulty}</span>
               </div>
               <h2 class="lesson-card__title">{lesson.data.title}</h2>
               <ComplexityBadge
