@@ -65,6 +65,7 @@
   --text-secondary: #5a5a5a;
   --text-muted: #8a8a8a;
   --text-inverse: #ffffff;
+  --color-link-hover: #1b6b50;
 
   /* Difficulty Colors */
   --color-easy: #4caf50;
@@ -142,7 +143,7 @@ a {
 }
 
 a:hover {
-  color: var(--color-sorting);
+  color: var(--color-link-hover);
 }
 
 code {
