@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Insertion Sort Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-bar {
+        flex: 1;
+        max-width: 56px;
+        height: 170px;
+      }
+
+      .vis-bar__value {
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+      }
+
+      .vis-bar--key .vis-bar__rect {
+        background: var(--vis-pivot);
+        box-shadow: 0 0 12px rgba(205, 180, 219, 0.8);
+      }
+
+      .vis-bar__badge {
+        position: absolute;
+        top: -18px;
+        font-family: var(--font-code);
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 1px 4px;
+        border-radius: 4px;
+        background: var(--vis-pivot);
+        color: #3d2b4d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .vis-preset-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <!-- Input Controls -->
+      <div class="vis-input">
+        <input
+          id="array-input"
+          class="vis-input__field"
+          type="text"
+          value="12, 11, 13, 5, 6"
+          placeholder="Enter numbers separated by commas, e.g. 12, 11, 13, 5, 6"
+          aria-label="Array numbers"
+        />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">▶ Load &amp; Run</button>
+        <button id="btn-random" class="vis-btn" type="button">🎲 Random</button>
+      </div>
+
+      <div class="vis-presets" style="margin-bottom: 0.75rem;">
+        <span class="vis-preset-label">Try presets:</span>
+        <button class="vis-btn" type="button" data-preset="1, 2, 3, 4, 5, 6">Best case (already sorted O(n))</button>
+        <button class="vis-btn" type="button" data-preset="6, 5, 4, 3, 2, 1">Worst case (reversed)</button>
+        <button class="vis-btn" type="button" data-preset="12, 11, 13, 5, 6">Mixed</button>
+      </div>
+
+      <!-- Playback Controls -->
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button" title="Jump to start">⏮ Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button" title="Previous step">◀ Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button" title="Play animation">▶ Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" title="Pause animation" style="display: none;">⏸ Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button" title="Next step">Next ▶</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed">
+          <span>Speed</span>
+          <input class="vis-speed-slider" type="range" min="1" max="10" value="6" />
+        </label>
+      </div>
+
+      <!-- Legend -->
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-default);"></span> Unsorted</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> Key to Insert</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Comparing</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Shifting Right</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-sorted);"></span> Sorted Subarray</span>
+      </div>
+
+      <!-- Bar Chart Canvas -->
+      <div id="vis-canvas" class="vis-canvas" aria-live="polite"></div>
+
+      <!-- Step Description -->
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">
+        Enter numbers above and click <strong>Play</strong> or <strong>Next</strong> to step through Insertion Sort.
+      </div>
+
+      <!-- Highlighted Python Code -->
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def insertion_sort(arr: list[int]) -> list[int]:',
+        '    # Start from index 1 (arr[0] is trivially sorted)',
+        '    for i in range(1, len(arr)):',
+        '        key = arr[i]',
+        '        j = i - 1',
+        '        # Shift larger elements right to make space for key',
+        '        while j >= 0 and arr[j] > key:',
+        '            arr[j + 1] = arr[j]',
+        '            j -= 1',
+        '        # Drop key into its opened sorted slot',
+        '        arr[j + 1] = key',
+        '    return arr',
+      ];
+
+      const canvasEl = document.getElementById('vis-canvas');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+      const inputEl = document.getElementById('array-input');
+
+      function renderCodePanel() {
+        codeEl.innerHTML = PYTHON_LINES.map((line, index) => {
+          return `<span class="vis-code__line" data-line="${index}"><span class="vis-code__line-number">${index + 1}</span>${line}</span>`;
+        }).join('');
+      }
+
+      function highlightCodeLine(lineIndex) {
+        codeEl.querySelectorAll('.vis-code__line').forEach((el, idx) => {
+          el.classList.toggle('vis-code__line--active', idx === lineIndex);
+        });
+      }
+
+      function renderStep(step) {
+        const arr = step.array;
+        const maxVal = Math.max(...arr.map((v) => Math.abs(v)), 1);
+        const comparing = new Set(step.comparing || []);
+        const shifting = new Set(step.shifting || []);
+        const sorted = new Set(step.sorted || []);
+        const keyIdx = step.keyIdx !== undefined ? step.keyIdx : -1;
+        const keyVal = step.keyVal !== undefined ? step.keyVal : null;
+
+        canvasEl.innerHTML = arr.map((val, idx) => {
+          let stateClass = '';
+          let badgeHtml = '';
+
+          if (idx === keyIdx) {
+            stateClass = 'vis-bar--key';
+            badgeHtml = `<span class="vis-bar__badge">KEY</span>`;
+          } else if (shifting.has(idx)) {
+            stateClass = 'vis-bar--swapping';
+          } else if (comparing.has(idx)) {
+            stateClass = 'vis-bar--comparing';
+          } else if (sorted.has(idx)) {
+            stateClass = 'vis-bar--sorted';
+          }
+
+          const barHeight = Math.max(24, Math.round((Math.abs(val) / maxVal) * 125));
+          return `
+            <div class="vis-bar ${stateClass}">
+              ${badgeHtml}
+              <span class="vis-bar__value">${val}</span>
+              <div class="vis-bar__rect" style="height: ${barHeight}px"></div>
+              <span class="vis-bar__label">[${idx}]</span>
+            </div>
+          `;
+        }).join('');
+
+        infoEl.innerHTML = step.description;
+      }
+
+      const engine = new VisualizerEngine({
+        render: renderStep,
+        highlightCode: highlightCodeLine,
+        defaultSpeed: 450,
+      });
+
+      function parseInputArray() {
+        const raw = inputEl.value
+          .split(',')
+          .map((s) => Number(s.trim()))
+          .filter((n) => Number.isFinite(n));
+        if (raw.length < 2) {
+          return [12, 11, 13, 5, 6];
+        }
+        return raw.slice(0, 12);
+      }
+
+      function buildInsertionSortSteps(initial) {
+        engine.reset();
+        const arr = [...initial];
+        const n = arr.length;
+
+        // Base step: index 0 is trivially sorted
+        engine.recordStep({
+          array: [...arr],
+          sorted: [0],
+          description: `Starting Insertion Sort. Subarray <code>[0..0]</code> (value <strong>${arr[0]}</strong>) is already trivially sorted.`,
+          codeLine: 1,
+        });
+
+        for (let i = 1; i < n; i++) {
+          const key = arr[i];
+          let sortedSoFar = Array.from({ length: i }, (_, k) => k);
+
+          // Step: Pick key
+          engine.recordStep({
+            array: [...arr],
+            keyIdx: i,
+            keyVal: key,
+            sorted: [...sortedSoFar],
+            description: `Pass ${i}: Pick <strong>key = ${key}</strong> at index [${i}]. We will insert it into sorted prefix <code>[0..${i - 1}]</code>.`,
+            codeLine: 3,
+          });
+
+          let j = i - 1;
+
+          while (j >= 0) {
+            // Comparison step
+            engine.recordStep({
+              array: [...arr],
+              keyIdx: j + 1,
+              keyVal: key,
+              comparing: [j],
+              sorted: sortedSoFar.filter((k) => k !== j + 1),
+              description: `Comparing sorted item <strong>${arr[j]}</strong> at [${j}] with key <strong>${key}</strong>: is ${arr[j]} &gt; ${key}?`,
+              codeLine: 6,
+            });
+
+            if (arr[j] > key) {
+              arr[j + 1] = arr[j];
+
+              // Shift step
+              engine.recordStep({
+                array: [...arr],
+                keyIdx: j,
+                keyVal: key,
+                shifting: [j + 1],
+                sorted: sortedSoFar.filter((k) => k !== j && k !== j + 1),
+                description: `Yes! Shift <strong>${arr[j + 1]}</strong> right into slot [${j + 1}] to make room for key.`,
+                codeLine: 7,
+              });
+
+              j -= 1;
+            } else {
+              engine.recordStep({
+                array: [...arr],
+                keyIdx: j + 1,
+                keyVal: key,
+                sorted: sortedSoFar.filter((k) => k !== j + 1),
+                description: `No (${arr[j]} &le; ${key}). Correct insertion spot found at index [${j + 1}].`,
+                codeLine: 6,
+              });
+              break;
+            }
+          }
+
+          arr[j + 1] = key;
+          const newSorted = Array.from({ length: i + 1 }, (_, k) => k);
+
+          engine.recordStep({
+            array: [...arr],
+            keyIdx: j + 1,
+            keyVal: key,
+            sorted: newSorted.filter((k) => k !== j + 1),
+            description: `Inserted key <strong>${key}</strong> into its sorted slot [${j + 1}].`,
+            codeLine: 10,
+          });
+
+          engine.recordStep({
+            array: [...arr],
+            sorted: [...newSorted],
+            description: `Prefix <code>[0..${i}]</code> is now completely sorted: <strong>[${arr.slice(0, i + 1).join(', ')}]</strong>.`,
+            codeLine: 2,
+          });
+        }
+
+        const allSorted = arr.map((_, idx) => idx);
+        engine.recordStep({
+          array: [...arr],
+          sorted: allSorted,
+          description: `✅ Done! The whole array is sorted: <strong>[${arr.join(', ')}]</strong>.`,
+          codeLine: 11,
+        });
+
+        engine.goToStep(0);
+      }
+
+      renderCodePanel();
+      engine.bindControls();
+
+      document.getElementById('btn-apply').addEventListener('click', () => {
+        const nums = parseInputArray();
+        inputEl.value = nums.join(', ');
+        buildInsertionSortSteps(nums);
+        engine.play();
+      });
+
+      document.getElementById('btn-random').addEventListener('click', () => {
+        const length = 6;
+        const nums = Array.from({ length }, () => Math.floor(Math.random() * 49) + 2);
+        inputEl.value = nums.join(', ');
+        buildInsertionSortSteps(nums);
+      });
+
+      document.querySelectorAll('[data-preset]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.preset;
+          buildInsertionSortSteps(parseInputArray());
+        });
+      });
+
+      buildInsertionSortSteps(parseInputArray());
+    </script>
+  </body>
+</html>
+
