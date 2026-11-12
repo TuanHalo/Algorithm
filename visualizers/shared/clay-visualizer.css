@@ -1,0 +1,296 @@
+/* ============================================
+   Algorithm Hub — Visualizer Claymorphism Styles
+   Shared across all interactive visualizers
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-code: 'JetBrains Mono', monospace;
+  --bg-page: #f0e6d3;
+  --bg-card: rgba(255, 255, 255, 0.6);
+  --shadow-clay: 8px 8px 16px rgba(0,0,0,0.15), inset 2px 2px 4px rgba(255,255,255,0.8), inset -2px -2px 4px rgba(0,0,0,0.05);
+  --shadow-clay-subtle: 4px 4px 8px rgba(0,0,0,0.1), inset 1px 1px 2px rgba(255,255,255,0.6), inset -1px -1px 2px rgba(0,0,0,0.03);
+  --shadow-clay-pressed: 4px 4px 8px rgba(0,0,0,0.12), inset 3px 3px 6px rgba(255,255,255,0.7), inset -3px -3px 6px rgba(0,0,0,0.08);
+  --border-clay: 1px solid rgba(255,255,255,0.5);
+  --border-radius: 20px;
+  --border-radius-sm: 12px;
+  --border-radius-xs: 8px;
+  --text-primary: #2d2d2d;
+  --text-secondary: #5a5a5a;
+  --text-muted: #8a8a8a;
+
+  /* Visualization Colors */
+  --vis-default: #c8dbbe;
+  --vis-active: #a8e6cf;
+  --vis-comparing: #ffc8a2;
+  --vis-swapping: #ffaaa5;
+  --vis-sorted: #a8d8ea;
+  --vis-pivot: #cdb4db;
+  --vis-highlight: #ffd3b6;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-page);
+  color: var(--text-primary);
+  padding: 1rem;
+  min-height: 100vh;
+}
+
+/* --- Visualizer Container --- */
+.visualizer {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.visualizer__title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+/* --- Input Section --- */
+.vis-input {
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
+  border: var(--border-clay);
+  box-shadow: var(--shadow-clay);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.vis-input__field {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem 1rem;
+  border: var(--border-clay);
+  border-radius: var(--border-radius-sm);
+  background: rgba(255,255,255,0.5);
+  font-family: var(--font-code);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  outline: none;
+  box-shadow: var(--shadow-clay-pressed);
+}
+
+.vis-input__field:focus {
+  box-shadow: var(--shadow-clay-subtle);
+  background: rgba(255,255,255,0.7);
+}
+
+.vis-input__field::placeholder {
+  color: var(--text-muted);
+}
+
+/* --- Controls --- */
+.vis-controls {
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
+  border: var(--border-clay);
+  box-shadow: var(--shadow-clay);
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.vis-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  background: var(--bg-card);
+  border-radius: var(--border-radius-xs);
+  border: var(--border-clay);
+  box-shadow: var(--shadow-clay-subtle);
+  padding: 0.4rem 0.8rem;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+}
+
+.vis-btn:hover {
+  box-shadow: var(--shadow-clay);
+  transform: translateY(-1px);
+}
+
+.vis-btn:active {
+  box-shadow: var(--shadow-clay-pressed);
+  transform: translateY(0);
+}
+
+.vis-btn--primary {
+  background: var(--vis-active);
+}
+
+.vis-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.vis-speed {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.vis-speed input[type="range"] {
+  width: 80px;
+  accent-color: var(--vis-active);
+}
+
+.vis-step-counter {
+  font-family: var(--font-code);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-left: 0.5rem;
+}
+
+/* --- Canvas Area (bar chart, nodes, etc.) --- */
+.vis-canvas {
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
+  border: var(--border-clay);
+  box-shadow: var(--shadow-clay);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  min-height: 200px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  position: relative;
+}
+
+/* --- Bar Element (for sorting) --- */
+.vis-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  transition: all 300ms ease;
+  position: relative;
+}
+
+.vis-bar__rect {
+  border-radius: var(--border-radius-xs) var(--border-radius-xs) 0 0;
+  background: var(--vis-default);
+  box-shadow: var(--shadow-clay-subtle);
+  transition: all 300ms ease;
+  width: 100%;
+  min-width: 20px;
+}
+
+.vis-bar__label {
+  font-family: var(--font-code);
+  font-size: 0.7rem;
+  font-weight: 500;
+  margin-top: 4px;
+  color: var(--text-secondary);
+}
+
+.vis-bar--active .vis-bar__rect { background: var(--vis-active); }
+.vis-bar--comparing .vis-bar__rect { background: var(--vis-comparing); }
+.vis-bar--swapping .vis-bar__rect { background: var(--vis-swapping); }
+.vis-bar--sorted .vis-bar__rect { background: var(--vis-sorted); }
+.vis-bar--pivot .vis-bar__rect { background: var(--vis-pivot); }
+
+/* --- Code Panel --- */
+.vis-code {
+  background: rgba(45, 45, 45, 0.92);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-clay);
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+.vis-code__line {
+  display: block;
+  padding: 2px 8px;
+  font-family: var(--font-code);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.7);
+  border-radius: 4px;
+  white-space: pre;
+  transition: all 200ms ease;
+}
+
+.vis-code__line--active {
+  background: rgba(168, 230, 207, 0.25);
+  color: #ffffff;
+}
+
+.vis-code__line-number {
+  display: inline-block;
+  width: 2ch;
+  text-align: right;
+  margin-right: 1rem;
+  color: rgba(255,255,255,0.3);
+  user-select: none;
+}
+
+/* --- Info / Status Bar --- */
+.vis-info {
+  background: var(--bg-card);
+  border-radius: var(--border-radius-sm);
+  border: var(--border-clay);
+  box-shadow: var(--shadow-clay-subtle);
+  padding: 0.6rem 1rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* --- Legend --- */
+.vis-legend {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.vis-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.vis-legend__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  box-shadow: var(--shadow-clay-subtle);
+}
+
+/* --- Responsive --- */
+@media (max-width: 600px) {
+  body { padding: 0.5rem; }
+  .vis-input, .vis-controls { flex-direction: column; align-items: stretch; }
+  .vis-speed { margin-left: 0; justify-content: center; }
+  .vis-canvas { padding: 1rem; min-height: 150px; }
+}
+
