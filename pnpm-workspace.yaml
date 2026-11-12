@@ -1,0 +1,4 @@
+packages:
+  - '.'
+overrides:
+  prettier: 3.9.10
