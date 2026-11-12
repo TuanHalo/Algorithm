@@ -1,0 +1,157 @@
+---
+import type { GetStaticPaths } from 'astro';
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import ComplexityBadge from '../../../components/ComplexityBadge.astro';
+import { TOPICS } from '../../../utils/topics';
+import type { TopicConfig } from '../../../types/content';
+import { withBase } from '../../../utils/url';
+
+export const getStaticPaths: GetStaticPaths = () => {
+  return TOPICS.map((topic) => ({
+    params: { topic: topic.slug },
+    props: { topic },
+  }));
+};
+
+interface Props {
+  topic: TopicConfig;
+}
+
+const { topic } = Astro.props;
+const allLessons = await getCollection('learn');
+const lessons = allLessons
+  .filter((entry) => entry.data.topic === topic.slug)
+  .sort((a, b) => a.data.order - b.data.order);
+---
+
+<BaseLayout title={topic.name} description={topic.description}>
+  <div class="container">
+    <nav class="breadcrumb">
+      <a href={withBase('/learn/')}>📚 Learn</a>
+      <span>/</span>
+      <span>{topic.icon} {topic.name}</span>
+    </nav>
+
+    <header class="clay-section topic-hero" style={`--topic-color: ${topic.color}`}>
+      <div class="topic-hero__title">
+        <span class="topic-hero__icon">{topic.icon}</span>
+        <h1>{topic.name}</h1>
+      </div>
+      <p>{topic.description}</p>
+    </header>
+
+    {lessons.length > 0 ? (
+      <div class="lesson-grid">
+        {lessons.map((lesson) => {
+          const lessonSlug = lesson.slug.split('/').pop() ?? lesson.slug;
+          return (
+            <a href={withBase(`/learn/${topic.slug}/${lessonSlug}/`)} class="clay-card lesson-card">
+              <div class="lesson-card__top">
+                <span class="clay-badge">#{lesson.data.order}</span>
+                <span class="clay-badge">{lesson.data.difficulty}</span>
+              </div>
+              <h2 class="lesson-card__title">{lesson.data.title}</h2>
+              <ComplexityBadge
+                time={lesson.data.timeComplexity}
+                space={lesson.data.spaceComplexity}
+              />
+              <div class="lesson-card__tags">
+                {lesson.data.tags.map((tag) => (
+                  <span class="clay-badge clay-badge--complexity">{tag}</span>
+                ))}
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    ) : (
+      <div class="clay-card empty-state">
+        <div class="empty-state__icon">🛠️</div>
+        <h2>Lessons Coming Soon!</h2>
+        <p>Planned topics for {topic.name}:</p>
+        <div class="planned-list">
+          {topic.previewAlgorithms.map((algo) => (
+            <span class="clay-badge">{algo}</span>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: var(--space-lg);
+  }
+
+  .topic-hero {
+    border-top: 4px solid var(--topic-color);
+  }
+
+  .topic-hero__title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-sm);
+  }
+
+  .topic-hero__icon {
+    font-size: 2.25rem;
+  }
+
+  .topic-hero p {
+    margin-bottom: 0;
+  }
+
+  .lesson-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--space-xl);
+  }
+
+  .lesson-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .lesson-card__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .lesson-card__title {
+    font-size: 1.35rem;
+  }
+
+  .lesson-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: var(--space-3xl);
+  }
+
+  .empty-state__icon {
+    font-size: 3rem;
+    margin-bottom: var(--space-md);
+  }
+
+  .planned-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+  }
+</style>

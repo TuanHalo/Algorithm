@@ -1,0 +1,196 @@
+/* ============================================
+   Algorithm Hub — Global Design Tokens
+   Claymorphism Design System
+   ============================================ */
+
+/* --- Font Import --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* --- Design Tokens --- */
+:root {
+  /* Typography */
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-code: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Page Background */
+  --bg-page: #f0e6d3;
+  --bg-page-alt: #e8dcc8;
+
+  /* Card Surfaces */
+  --bg-card: rgba(255, 255, 255, 0.6);
+  --bg-card-hover: rgba(255, 255, 255, 0.75);
+  --bg-card-active: rgba(255, 255, 255, 0.85);
+
+  /* Clay Shadows */
+  --shadow-clay:
+    8px 8px 16px rgba(0, 0, 0, 0.15),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.8),
+    inset -2px -2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-clay-hover:
+    10px 10px 20px rgba(0, 0, 0, 0.18),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.9),
+    inset -2px -2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-clay-pressed:
+    4px 4px 8px rgba(0, 0, 0, 0.12),
+    inset 3px 3px 6px rgba(255, 255, 255, 0.7),
+    inset -3px -3px 6px rgba(0, 0, 0, 0.08);
+  --shadow-clay-subtle:
+    4px 4px 8px rgba(0, 0, 0, 0.1),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.6),
+    inset -1px -1px 2px rgba(0, 0, 0, 0.03);
+
+  /* Borders */
+  --border-clay: 1px solid rgba(255, 255, 255, 0.5);
+  --border-radius: 20px;
+  --border-radius-sm: 12px;
+  --border-radius-xs: 8px;
+
+  /* Backdrop */
+  --backdrop-blur: blur(10px);
+
+  /* Topic Colors */
+  --color-sorting: #a8e6cf;
+  --color-searching: #a8d8ea;
+  --color-graph: #cdb4db;
+  --color-dp: #ffc8a2;
+  --color-tree: #ffd3b6;
+  --color-stack-queue: #ffaaa5;
+  --color-hashing: #b5c7ed;
+  --color-greedy: #c1e1c1;
+  --color-backtracking: #bae1ff;
+  --color-linked-list: #f0b6d0;
+
+  /* Text Colors */
+  --text-primary: #2d2d2d;
+  --text-secondary: #5a5a5a;
+  --text-muted: #8a8a8a;
+  --text-inverse: #ffffff;
+
+  /* Difficulty Colors */
+  --color-easy: #4caf50;
+  --color-medium: #ff9800;
+  --color-hard: #f44336;
+
+  /* Platform Colors */
+  --color-leetcode: #ffa116;
+  --color-hackerrank: #2ec866;
+
+  /* Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 400ms ease;
+
+  /* Layout */
+  --max-width: 1200px;
+  --nav-height: 70px;
+}
+
+/* --- Reset & Base --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background: var(--bg-page);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Typography --- */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 1.875rem; }
+h3 { font-size: 1.5rem; }
+h4 { font-size: 1.25rem; }
+
+p {
+  margin-bottom: var(--space-md);
+  color: var(--text-secondary);
+}
+
+a {
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-sorting);
+}
+
+code {
+  font-family: var(--font-code);
+  font-size: 0.9em;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 0.15em 0.4em;
+  border-radius: var(--border-radius-xs);
+}
+
+pre {
+  font-family: var(--font-code);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+
+/* --- Utility Classes --- */
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}

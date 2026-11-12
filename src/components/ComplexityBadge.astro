@@ -1,0 +1,25 @@
+---
+interface Props {
+  time: string;
+  space: string;
+}
+
+const { time, space } = Astro.props;
+---
+
+<div class="complexity-badges">
+  <span class="clay-badge clay-badge--complexity" title="Time Complexity">
+    ⏱️ Time: {time}
+  </span>
+  <span class="clay-badge clay-badge--complexity" title="Space Complexity">
+    💾 Space: {space}
+  </span>
+</div>
+
+<style>
+  .complexity-badges {
+    display: flex;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+  }
+</style>

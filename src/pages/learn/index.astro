@@ -1,0 +1,154 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getTopicsWithCounts } from '../../utils/topics';
+import { withBase } from '../../utils/url';
+
+const lessons = await getCollection('learn');
+const topics = getTopicsWithCounts(lessons);
+
+const lessonsByTopic = new Map<string, typeof lessons>();
+for (const lesson of lessons) {
+  const existing = lessonsByTopic.get(lesson.data.topic) ?? [];
+  existing.push(lesson);
+  lessonsByTopic.set(lesson.data.topic, existing);
+}
+for (const list of lessonsByTopic.values()) {
+  list.sort((a, b) => a.data.order - b.data.order);
+}
+---
+
+<BaseLayout title="Learn Algorithms" description="Interactive algorithm lessons organized by topic with step-by-step visualizations.">
+  <div class="container">
+    <header class="page-header">
+      <h1>📚 Learn Algorithms</h1>
+      <p>Pick a topic and dive in. Each lesson includes interactive visualizations, clean Python code, and friendly explanations.</p>
+    </header>
+
+    <div class="topics-list">
+      {topics.map((topic) => {
+        const topicLessons = lessonsByTopic.get(topic.slug) ?? [];
+        return (
+          <div class="clay-card topic-row" style={`--topic-color: ${topic.color}`}>
+            <div class="topic-row__header">
+              <span class="topic-row__icon">{topic.icon}</span>
+              <div class="topic-row__info">
+                <div class="topic-row__title-line">
+                  <a href={withBase(`/learn/${topic.slug}/`)} class="topic-row__name-link">
+                    <h2 class="topic-row__name">{topic.name}</h2>
+                  </a>
+                  <span class="clay-badge">{topic.lessonCount} {topic.lessonCount === 1 ? 'lesson' : 'lessons'}</span>
+                </div>
+                <p class="topic-row__desc">{topic.description}</p>
+              </div>
+            </div>
+            <div class="topic-row__algorithms">
+              {topicLessons.length > 0 ? (
+                topicLessons.map((lesson) => {
+                  const lessonSlug = lesson.slug.split('/').pop() ?? lesson.slug;
+                  return (
+                    <a
+                      href={withBase(`/learn/${topic.slug}/${lessonSlug}/`)}
+                      class="clay-btn clay-btn--small clay-btn--primary"
+                    >
+                      ✨ {lesson.data.title}
+                    </a>
+                  );
+                })
+              ) : (
+                <>
+                  {topic.previewAlgorithms.map((algo) => (
+                    <span class="clay-badge">{algo}</span>
+                  ))}
+                  <span class="clay-badge clay-badge--complexity">Coming soon</span>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .page-header {
+    margin-bottom: var(--space-2xl);
+  }
+
+  .page-header h1 {
+    margin-bottom: var(--space-sm);
+  }
+
+  .page-header p {
+    font-size: 1.1rem;
+    max-width: 600px;
+  }
+
+  .topics-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+
+  .topic-row {
+    position: relative;
+    padding-left: calc(var(--space-lg) + 4px);
+  }
+
+  .topic-row::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--topic-color);
+    border-radius: var(--border-radius) 0 0 var(--border-radius);
+  }
+
+  .topic-row__header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+  }
+
+  .topic-row__info {
+    flex: 1;
+  }
+
+  .topic-row__title-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-xs);
+  }
+
+  .topic-row__name-link:hover .topic-row__name {
+    text-decoration: underline;
+  }
+
+  .topic-row__icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+  }
+
+  .topic-row__name {
+    font-size: 1.3rem;
+  }
+
+  .topic-row__desc {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0;
+  }
+
+  .topic-row__algorithms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+</style>

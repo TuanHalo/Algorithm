@@ -1,0 +1,171 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProblemCard from '../../components/ProblemCard.astro';
+
+const problems = (await getCollection('problems')).sort((a, b) =>
+  b.data.dateCompleted.localeCompare(a.data.dateCompleted),
+);
+---
+
+<BaseLayout title="Problem Journal" description="Solutions to LeetCode, HackerRank, and other problems with AI feedback and visual explanations.">
+  <div class="container">
+    <header class="page-header">
+      <h1>📝 Problem Journal</h1>
+      <p>My solved problems with AI feedback, complexity analysis, and visual walkthroughs.</p>
+    </header>
+
+    <!-- Filters -->
+    <div class="filters clay-card" id="problem-filters">
+      <div class="filters__group" data-filter-group="platform">
+        <span class="filters__label">Platform:</span>
+        <button class="clay-btn clay-btn--small active" data-filter-value="all">All</button>
+        <button class="clay-btn clay-btn--small" data-filter-value="leetcode">LeetCode</button>
+        <button class="clay-btn clay-btn--small" data-filter-value="hackerrank">HackerRank</button>
+        <button class="clay-btn clay-btn--small" data-filter-value="codeforces">Codeforces</button>
+      </div>
+      <div class="filters__group" data-filter-group="difficulty">
+        <span class="filters__label">Difficulty:</span>
+        <button class="clay-btn clay-btn--small active" data-filter-value="all">All</button>
+        <button class="clay-btn clay-btn--small" data-filter-value="easy">Easy</button>
+        <button class="clay-btn clay-btn--small" data-filter-value="medium">Medium</button>
+        <button class="clay-btn clay-btn--small" data-filter-value="hard">Hard</button>
+      </div>
+    </div>
+
+    {problems.length > 0 ? (
+      <>
+        <div class="problem-grid" id="problem-list">
+          {problems.map((problem) => (
+            <ProblemCard
+              title={problem.data.title}
+              platform={problem.data.platform}
+              difficulty={problem.data.difficulty}
+              topics={problem.data.topics}
+              slug={problem.slug}
+              dateCompleted={problem.data.dateCompleted}
+              timeComplexity={problem.data.timeComplexity}
+              spaceComplexity={problem.data.spaceComplexity}
+            />
+          ))}
+        </div>
+        <div class="clay-card empty-state" id="empty-filter-state" hidden>
+          <div class="empty-state__icon">🔍</div>
+          <h3>No matching problems</h3>
+          <p>Try clearing a filter to see more solved problems.</p>
+        </div>
+      </>
+    ) : (
+      <div class="clay-card empty-state">
+        <div class="empty-state__icon">🚀</div>
+        <h3>No problems solved yet</h3>
+        <p>Complete a problem on LeetCode or HackerRank, then bring your solution here for feedback!</p>
+      </div>
+    )}
+  </div>
+</BaseLayout>
+
+<script>
+  const filtersContainer = document.getElementById('problem-filters');
+  const problemList = document.getElementById('problem-list');
+  const emptyFilterState = document.getElementById('empty-filter-state');
+
+  if (filtersContainer && problemList) {
+    let selectedPlatform = 'all';
+    let selectedDifficulty = 'all';
+
+    const applyFilters = (): void => {
+      const cards = problemList.querySelectorAll<HTMLElement>('.problem-card');
+      let visibleCount = 0;
+
+      cards.forEach((card) => {
+        const matchPlatform = selectedPlatform === 'all' || card.dataset.platform === selectedPlatform;
+        const matchDifficulty = selectedDifficulty === 'all' || card.dataset.difficulty === selectedDifficulty;
+        const visible = matchPlatform && matchDifficulty;
+        card.style.display = visible ? 'block' : 'none';
+        if (visible) visibleCount += 1;
+      });
+
+      if (emptyFilterState) {
+        emptyFilterState.hidden = visibleCount > 0;
+      }
+    };
+
+    filtersContainer.addEventListener('click', (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLButtonElement)) return;
+      const value = target.dataset.filterValue;
+      const group = target.closest<HTMLElement>('[data-filter-group]')?.dataset.filterGroup;
+      if (!value || !group) return;
+
+      const groupEl = target.closest('[data-filter-group]');
+      groupEl?.querySelectorAll('button').forEach((btn) => btn.classList.remove('active'));
+      target.classList.add('active');
+
+      if (group === 'platform') selectedPlatform = value;
+      if (group === 'difficulty') selectedDifficulty = value;
+      applyFilters();
+    });
+  }
+</script>
+
+<style>
+  .page-header {
+    margin-bottom: var(--space-2xl);
+  }
+
+  .page-header h1 {
+    margin-bottom: var(--space-sm);
+  }
+
+  .page-header p {
+    font-size: 1.1rem;
+    max-width: 600px;
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-xl);
+    padding: var(--space-md) var(--space-lg);
+  }
+
+  .filters__group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+
+  .filters__label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  .filters .clay-btn.active {
+    background: var(--color-sorting);
+    box-shadow: var(--shadow-clay-pressed);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: var(--space-3xl);
+  }
+
+  .empty-state__icon {
+    font-size: 3rem;
+    margin-bottom: var(--space-md);
+  }
+
+  .empty-state h3 {
+    margin-bottom: var(--space-sm);
+  }
+
+  .empty-state p {
+    color: var(--text-muted);
+    max-width: 400px;
+    margin: 0 auto;
+  }
+</style>

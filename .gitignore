@@ -1,0 +1,28 @@
+# build output
+dist/
+.astro/
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log*
+pnpm-debug.log*
+
+# environment variables
+.env
+.env.production
+
+# macOS
+.DS_Store
+
+# Archify workspace and receipts
+.archify/
+*.browser-check.json
+*.delivery.json
+*.finalize-summary.json
+*.finalize.json
+
+# IDE
+.vscode/
+.idea/
