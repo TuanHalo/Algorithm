@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Selection Sort Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-bar {
+        flex: 1;
+        max-width: 56px;
+        height: 170px;
+      }
+
+      .vis-bar__value {
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+      }
+
+      .vis-bar--min .vis-bar__rect {
+        background: var(--vis-pivot);
+        box-shadow: 0 0 10px rgba(205, 180, 219, 0.7);
+      }
+
+      .vis-bar__badge {
+        position: absolute;
+        top: -18px;
+        font-family: var(--font-code);
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 1px 4px;
+        border-radius: 4px;
+        background: var(--vis-pivot);
+        color: #3d2b4d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .vis-preset-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <!-- Input Controls -->
+      <div class="vis-input">
+        <input
+          id="array-input"
+          class="vis-input__field"
+          type="text"
+          value="29, 10, 14, 37, 13"
+          placeholder="Enter numbers separated by commas, e.g. 29, 10, 14, 37, 13"
+          aria-label="Array numbers"
+        />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">▶ Load &amp; Run</button>
+        <button id="btn-random" class="vis-btn" type="button">🎲 Random</button>
+      </div>
+
+      <div class="vis-presets" style="margin-bottom: 0.75rem;">
+        <span class="vis-preset-label">Try presets:</span>
+        <button class="vis-btn" type="button" data-preset="10, 14, 25, 30, 42, 50">Best case (already sorted)</button>
+        <button class="vis-btn" type="button" data-preset="50, 42, 30, 25, 14, 10">Worst case (reversed)</button>
+        <button class="vis-btn" type="button" data-preset="29, 10, 14, 37, 13">Mixed</button>
+      </div>
+
+      <!-- Playback Controls -->
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button" title="Jump to start">⏮ Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button" title="Previous step">◀ Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button" title="Play animation">▶ Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" title="Pause animation" style="display: none;">⏸ Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button" title="Next step">Next ▶</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed">
+          <span>Speed</span>
+          <input class="vis-speed-slider" type="range" min="1" max="10" value="6" />
+        </label>
+      </div>
+
+      <!-- Legend -->
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-default);"></span> Unsorted</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> Current Min</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Scanning</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Swapping</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-sorted);"></span> Sorted</span>
+      </div>
+
+      <!-- Bar Chart Canvas -->
+      <div id="vis-canvas" class="vis-canvas" aria-live="polite"></div>
+
+      <!-- Step Description -->
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">
+        Enter numbers above and click <strong>Play</strong> or <strong>Next</strong> to step through Selection Sort.
+      </div>
+
+      <!-- Highlighted Python Code -->
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def selection_sort(arr: list[int]) -> list[int]:',
+        '    n = len(arr)',
+        '    for i in range(n):',
+        '        # Assume current position holds the minimum',
+        '        min_idx = i',
+        '        for j in range(i + 1, n):',
+        '            # Look for smaller value in the unsorted rest',
+        '            if arr[j] < arr[min_idx]:',
+        '                min_idx = j',
+        '        # Place minimum into its sorted position',
+        '        if min_idx != i:',
+        '            arr[i], arr[min_idx] = arr[min_idx], arr[i]',
+        '    return arr',
+      ];
+
+      const canvasEl = document.getElementById('vis-canvas');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+      const inputEl = document.getElementById('array-input');
+
+      function renderCodePanel() {
+        codeEl.innerHTML = PYTHON_LINES.map((line, index) => {
+          return `<span class="vis-code__line" data-line="${index}"><span class="vis-code__line-number">${index + 1}</span>${line}</span>`;
+        }).join('');
+      }
+
+      function highlightCodeLine(lineIndex) {
+        codeEl.querySelectorAll('.vis-code__line').forEach((el, idx) => {
+          el.classList.toggle('vis-code__line--active', idx === lineIndex);
+        });
+      }
+
+      function renderStep(step) {
+        const arr = step.array;
+        const maxVal = Math.max(...arr.map((v) => Math.abs(v)), 1);
+        const comparing = new Set(step.comparing || []);
+        const swapping = new Set(step.swapping || []);
+        const sorted = new Set(step.sorted || []);
+        const minIdx = step.minIdx !== undefined ? step.minIdx : -1;
+        const currentI = step.currentI !== undefined ? step.currentI : -1;
+
+        canvasEl.innerHTML = arr.map((val, idx) => {
+          let stateClass = '';
+          let badgeHtml = '';
+
+          if (swapping.has(idx)) {
+            stateClass = 'vis-bar--swapping';
+          } else if (sorted.has(idx)) {
+            stateClass = 'vis-bar--sorted';
+          } else if (idx === minIdx) {
+            stateClass = 'vis-bar--min';
+            badgeHtml = '<span class="vis-bar__badge">MIN</span>';
+          } else if (comparing.has(idx)) {
+            stateClass = 'vis-bar--comparing';
+          } else if (idx === currentI) {
+            stateClass = 'vis-bar--active';
+          }
+
+          const barHeight = Math.max(24, Math.round((Math.abs(val) / maxVal) * 125));
+          return `
+            <div class="vis-bar ${stateClass}">
+              ${badgeHtml}
+              <span class="vis-bar__value">${val}</span>
+              <div class="vis-bar__rect" style="height: ${barHeight}px"></div>
+              <span class="vis-bar__label">[${idx}]</span>
+            </div>
+          `;
+        }).join('');
+
+        infoEl.innerHTML = step.description;
+      }
+
+      const engine = new VisualizerEngine({
+        render: renderStep,
+        highlightCode: highlightCodeLine,
+        defaultSpeed: 450,
+      });
+
+      function parseInputArray() {
+        const raw = inputEl.value
+          .split(',')
+          .map((s) => Number(s.trim()))
+          .filter((n) => Number.isFinite(n));
+        if (raw.length < 2) {
+          return [29, 10, 14, 37, 13];
+        }
+        return raw.slice(0, 12);
+      }
+
+      function buildSelectionSortSteps(initial) {
+        engine.reset();
+        const arr = [...initial];
+        const n = arr.length;
+        const sortedIndices = [];
+
+        engine.recordStep({
+          array: [...arr],
+          sorted: [],
+          description: `Ready to start Selection Sort on array of ${n} elements.`,
+          codeLine: 0,
+        });
+
+        for (let i = 0; i < n; i++) {
+          let minIdx = i;
+
+          engine.recordStep({
+            array: [...arr],
+            currentI: i,
+            minIdx: i,
+            sorted: [...sortedIndices],
+            description: `Pass ${i + 1}: Target slot is index [${i}]. Assume <strong>${arr[i]}</strong> is the initial minimum.`,
+            codeLine: 4,
+          });
+
+          for (let j = i + 1; j < n; j++) {
+            engine.recordStep({
+              array: [...arr],
+              currentI: i,
+              minIdx: minIdx,
+              comparing: [j],
+              sorted: [...sortedIndices],
+              description: `Scanning index [${j}]: Is <strong>${arr[j]}</strong> smaller than current minimum <strong>${arr[minIdx]}</strong>?`,
+              codeLine: 7,
+            });
+
+            if (arr[j] < arr[minIdx]) {
+              minIdx = j;
+              engine.recordStep({
+                array: [...arr],
+                currentI: i,
+                minIdx: minIdx,
+                sorted: [...sortedIndices],
+                description: `Found smaller element! New minimum candidate is <strong>${arr[minIdx]}</strong> at index [${minIdx}].`,
+                codeLine: 8,
+              });
+            }
+          }
+
+          if (minIdx !== i) {
+            const valI = arr[i];
+            const valMin = arr[minIdx];
+
+            engine.recordStep({
+              array: [...arr],
+              currentI: i,
+              minIdx: minIdx,
+              swapping: [i, minIdx],
+              sorted: [...sortedIndices],
+              description: `Smallest remaining is <strong>${valMin}</strong> at [${minIdx}]. Swapping with <strong>${valI}</strong> at index [${i}].`,
+              codeLine: 10,
+            });
+
+            [arr[i], arr[minIdx]] = [arr[minIdx], arr[i]];
+
+            engine.recordStep({
+              array: [...arr],
+              swapping: [i, minIdx],
+              sorted: [...sortedIndices],
+              description: `Swapped! <strong>${arr[i]}</strong> is now at position [${i}].`,
+              codeLine: 11,
+            });
+          } else {
+            engine.recordStep({
+              array: [...arr],
+              currentI: i,
+              sorted: [...sortedIndices],
+              description: `<strong>${arr[i]}</strong> was already the smallest remaining element. No swap needed!`,
+              codeLine: 10,
+            });
+          }
+
+          sortedIndices.push(i);
+
+          engine.recordStep({
+            array: [...arr],
+            sorted: [...sortedIndices],
+            description: `End of pass ${i + 1}: Index [${i}] (value <strong>${arr[i]}</strong>) is locked in sorted order.`,
+            codeLine: 2,
+          });
+        }
+
+        const allSorted = arr.map((_, idx) => idx);
+        engine.recordStep({
+          array: [...arr],
+          sorted: allSorted,
+          description: `✅ Done! Sorted array: <strong>[${arr.join(', ')}]</strong>. Required at most ${n} swaps.`,
+          codeLine: 12,
+        });
+
+        engine.goToStep(0);
+      }
+
+      renderCodePanel();
+      engine.bindControls();
+
+      document.getElementById('btn-apply').addEventListener('click', () => {
+        const nums = parseInputArray();
+        inputEl.value = nums.join(', ');
+        buildSelectionSortSteps(nums);
+        engine.play();
+      });
+
+      document.getElementById('btn-random').addEventListener('click', () => {
+        const length = 6;
+        const nums = Array.from({ length }, () => Math.floor(Math.random() * 49) + 2);
+        inputEl.value = nums.join(', ');
+        buildSelectionSortSteps(nums);
+      });
+
+      document.querySelectorAll('[data-preset]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.preset;
+          buildSelectionSortSteps(parseInputArray());
+        });
+      });
+
+      buildSelectionSortSteps(parseInputArray());
+    </script>
+  </body>
+</html>
+
