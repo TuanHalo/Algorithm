@@ -11,6 +11,7 @@
   box-shadow: var(--shadow-clay);
   backdrop-filter: var(--backdrop-blur);
   padding: var(--space-lg);
+  color: var(--text-primary);
   transition:
     box-shadow var(--transition-normal),
     background var(--transition-normal),
@@ -21,6 +22,13 @@
   background: var(--bg-card-hover);
   box-shadow: var(--shadow-clay-hover);
   transform: translateY(-2px);
+  color: var(--text-primary);
+}
+
+a.clay-card,
+a.clay-card:hover {
+  color: var(--text-primary);
+  text-decoration: none;
 }
 
 .clay-card:active {
@@ -44,6 +52,7 @@
   font-weight: 500;
   color: var(--text-primary);
   cursor: pointer;
+  text-decoration: none;
   transition:
     box-shadow var(--transition-fast),
     background var(--transition-fast),
@@ -54,6 +63,14 @@
   background: var(--bg-card-hover);
   box-shadow: var(--shadow-clay);
   transform: translateY(-1px);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+a.clay-btn,
+a.clay-btn:hover {
+  color: var(--text-primary);
+  text-decoration: none;
 }
 
 .clay-btn:active {
@@ -134,12 +151,16 @@
   font-family: var(--font-code);
   font-size: 0.75rem;
   font-weight: 500;
+  color: var(--text-primary);
   white-space: nowrap;
 }
 
-.clay-badge--easy { background: rgba(76, 175, 80, 0.2); color: #2e7d32; }
-.clay-badge--medium { background: rgba(255, 152, 0, 0.2); color: #e65100; }
-.clay-badge--hard { background: rgba(244, 67, 54, 0.2); color: #c62828; }
+.clay-badge--easy,
+.clay-badge--beginner { background: rgba(76, 175, 80, 0.2); color: #2e7d32; }
+.clay-badge--medium,
+.clay-badge--intermediate { background: rgba(255, 152, 0, 0.2); color: #e65100; }
+.clay-badge--hard,
+.clay-badge--advanced { background: rgba(244, 67, 54, 0.2); color: #c62828; }
 .clay-badge--complexity { background: rgba(0, 0, 0, 0.06); color: var(--text-secondary); }
 
 /* --- Clay Section --- */
@@ -226,6 +247,15 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: transform var(--transition-fast), color var(--transition-fast);
+}
+
+.clay-nav__logo:hover {
+  color: var(--text-primary);
+  transform: scale(1.02);
+  text-decoration: none;
 }
 
 .clay-nav__links {
