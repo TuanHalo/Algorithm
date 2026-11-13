@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quick Sort Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-bar {
+        flex: 1;
+        max-width: 54px;
+        height: 170px;
+      }
+
+      .vis-bar__value {
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+      }
+
+      .vis-bar--pivot .vis-bar__rect {
+        background: var(--vis-pivot);
+        box-shadow: 0 0 12px rgba(205, 180, 219, 0.9);
+      }
+
+      .vis-bar--boundary .vis-bar__rect {
+        border-bottom: 4px solid #7c3aed;
+      }
+
+      .vis-bar__badge {
+        position: absolute;
+        top: -18px;
+        font-family: var(--font-code);
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 1px 4px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .vis-bar__badge--pivot {
+        background: var(--vis-pivot);
+        color: #3d2b4d;
+      }
+
+      .vis-bar__badge--boundary {
+        background: #7c3aed;
+        color: #ffffff;
+      }
+
+      .vis-bar__badge--scan {
+        background: var(--vis-comparing);
+        color: #431407;
+      }
+
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .vis-preset-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <!-- Input Controls -->
+      <div class="vis-input">
+        <input
+          id="array-input"
+          class="vis-input__field"
+          type="text"
+          value="24, 9, 29, 14, 19, 27"
+          placeholder="Enter numbers separated by commas, e.g. 24, 9, 29, 14, 19, 27"
+          aria-label="Array numbers"
+        />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">▶ Load &amp; Run</button>
+        <button id="btn-random" class="vis-btn" type="button">🎲 Random</button>
+      </div>
+
+      <div class="vis-presets" style="margin-bottom: 0.75rem;">
+        <span class="vis-preset-label">Try presets:</span>
+        <button class="vis-btn" type="button" data-preset="10, 80, 30, 90, 40, 50, 70">Balanced case</button>
+        <button class="vis-btn" type="button" data-preset="10, 20, 30, 40, 50, 60">Worst case (sorted, O(n²))</button>
+        <button class="vis-btn" type="button" data-preset="24, 9, 29, 14, 19, 27">Mixed</button>
+      </div>
+
+      <!-- Playback Controls -->
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button" title="Jump to start">⏮ Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button" title="Previous step">◀ Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button" title="Play animation">▶ Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" title="Pause animation" style="display: none;">⏸ Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button" title="Next step">Next ▶</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed">
+          <span>Speed</span>
+          <input class="vis-speed-slider" type="range" min="1" max="10" value="6" />
+        </label>
+      </div>
+
+      <!-- Legend -->
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-default);"></span> Unsorted</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> Pivot</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Scan Pointer j</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Swapping</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-sorted);"></span> In Final Position</span>
+      </div>
+
+      <!-- Bar Chart Canvas -->
+      <div id="vis-canvas" class="vis-canvas" aria-live="polite"></div>
+
+      <!-- Step Description -->
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">
+        Enter numbers above and click <strong>Play</strong> or <strong>Next</strong> to step through Quick Sort.
+      </div>
+
+      <!-- Highlighted Python Code -->
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def quick_sort(arr: list[int], low: int = 0, high: int = None):',
+        '    if low < high:',
+        '        # Partition array and get pivot final index',
+        '        pivot_idx = partition(arr, low, high)',
+        '        # Recursively sort left and right partitions',
+        '        quick_sort(arr, low, pivot_idx - 1)',
+        '        quick_sort(arr, pivot_idx + 1, high)',
+        '    return arr',
+        '',
+        'def partition(arr: list[int], low: int, high: int) -> int:',
+        '    pivot = arr[high]  # Last element is pivot',
+        '    i = low - 1        # Boundary for elements <= pivot',
+        '    for j in range(low, high):',
+        '        if arr[j] <= pivot:',
+        '            i += 1',
+        '            arr[i], arr[j] = arr[j], arr[i]',
+        '    # Place pivot at boundary + 1',
+        '    arr[i + 1], arr[high] = arr[high], arr[i + 1]',
+        '    return i + 1',
+      ];
+
+      const canvasEl = document.getElementById('vis-canvas');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+      const inputEl = document.getElementById('array-input');
+
+      function renderCodePanel() {
+        codeEl.innerHTML = PYTHON_LINES.map((line, index) => {
+          return `<span class="vis-code__line" data-line="${index}"><span class="vis-code__line-number">${index + 1}</span>${line}</span>`;
+        }).join('');
+      }
+
+      function highlightCodeLine(lineIndex) {
+        codeEl.querySelectorAll('.vis-code__line').forEach((el, idx) => {
+          el.classList.toggle('vis-code__line--active', idx === lineIndex);
+        });
+      }
+
+      function renderStep(step) {
+        const arr = step.array;
+        const maxVal = Math.max(...arr.map((v) => Math.abs(v)), 1);
+        const comparing = new Set(step.comparing || []);
+        const swapping = new Set(step.swapping || []);
+        const sorted = new Set(step.sorted || []);
+        const pivotIdx = step.pivotIdx !== undefined ? step.pivotIdx : -1;
+        const boundaryIdx = step.boundaryIdx !== undefined ? step.boundaryIdx : -1;
+
+        canvasEl.innerHTML = arr.map((val, idx) => {
+          let stateClass = '';
+          let badgeHtml = '';
+
+          if (swapping.has(idx)) {
+            stateClass = 'vis-bar--swapping';
+          } else if (sorted.has(idx)) {
+            stateClass = 'vis-bar--sorted';
+          } else if (idx === pivotIdx) {
+            stateClass = 'vis-bar--pivot';
+            badgeHtml = `<span class="vis-bar__badge vis-bar__badge--pivot">PIVOT</span>`;
+          } else if (comparing.has(idx)) {
+            stateClass = 'vis-bar--comparing';
+            badgeHtml = `<span class="vis-bar__badge vis-bar__badge--scan">j</span>`;
+          } else if (idx === boundaryIdx && boundaryIdx >= 0) {
+            stateClass = 'vis-bar--boundary';
+            badgeHtml = `<span class="vis-bar__badge vis-bar__badge--boundary">i</span>`;
+          }
+
+          const barHeight = Math.max(24, Math.round((Math.abs(val) / maxVal) * 125));
+          return `
+            <div class="vis-bar ${stateClass}">
+              ${badgeHtml}
+              <span class="vis-bar__value">${val}</span>
+              <div class="vis-bar__rect" style="height: ${barHeight}px"></div>
+              <span class="vis-bar__label">[${idx}]</span>
+            </div>
+          `;
+        }).join('');
+
+        infoEl.innerHTML = step.description;
+      }
+
+      const engine = new VisualizerEngine({
+        render: renderStep,
+        highlightCode: highlightCodeLine,
+        defaultSpeed: 500,
+      });
+
+      function parseInputArray() {
+        const raw = inputEl.value
+          .split(',')
+          .map((s) => Number(s.trim()))
+          .filter((n) => Number.isFinite(n));
+        if (raw.length < 2) {
+          return [24, 9, 29, 14, 19, 27];
+        }
+        return raw.slice(0, 10);
+      }
+
+      function buildQuickSortSteps(initial) {
+        engine.reset();
+        const arr = [...initial];
+        const n = arr.length;
+        const permanentSorted = new Set();
+
+        engine.recordStep({
+          array: [...arr],
+          sorted: [],
+          description: `Starting Quick Sort on array of ${n} elements.`,
+          codeLine: 0,
+        });
+
+        function quickSortHelper(low, high) {
+          if (low > high) return;
+          if (low === high) {
+            permanentSorted.add(low);
+            engine.recordStep({
+              array: [...arr],
+              sorted: Array.from(permanentSorted),
+              description: `Single item <strong>${arr[low]}</strong> at [${low}] is trivially in its sorted position.`,
+              codeLine: 1,
+            });
+            return;
+          }
+
+          const pivotVal = arr[high];
+
+          engine.recordStep({
+            array: [...arr],
+            pivotIdx: high,
+            sorted: Array.from(permanentSorted),
+            description: `Partition range <code>[${low}..${high}]</code>: Selected <strong>pivot = ${pivotVal}</strong> at index [${high}].`,
+            codeLine: 10,
+          });
+
+          let i = low - 1;
+
+          for (let j = low; j < high; j++) {
+            engine.recordStep({
+              array: [...arr],
+              pivotIdx: high,
+              boundaryIdx: i >= 0 ? i : undefined,
+              comparing: [j],
+              sorted: Array.from(permanentSorted),
+              description: `Comparing <strong>arr[${j}] = ${arr[j]}</strong> with pivot <strong>${pivotVal}</strong>: is ${arr[j]} &le; ${pivotVal}?`,
+              codeLine: 13,
+            });
+
+            if (arr[j] <= pivotVal) {
+              i++;
+
+              if (i !== j) {
+                engine.recordStep({
+                  array: [...arr],
+                  pivotIdx: high,
+                  boundaryIdx: i,
+                  swapping: [i, j],
+                  sorted: Array.from(permanentSorted),
+                  description: `Yes (${arr[j]} &le; ${pivotVal})! Increment boundary to [${i}] and swap <strong>${arr[i]}</strong> with <strong>${arr[j]}</strong>.`,
+                  codeLine: 15,
+                });
+
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+
+                engine.recordStep({
+                  array: [...arr],
+                  pivotIdx: high,
+                  boundaryIdx: i,
+                  swapping: [i, j],
+                  sorted: Array.from(permanentSorted),
+                  description: `Swapped! Smaller item <strong>${arr[i]}</strong> is now placed behind the boundary.`,
+                  codeLine: 15,
+                });
+              } else {
+                engine.recordStep({
+                  array: [...arr],
+                  pivotIdx: high,
+                  boundaryIdx: i,
+                  sorted: Array.from(permanentSorted),
+                  description: `Yes (${arr[j]} &le; ${pivotVal})! Boundary advances to index [${i}].`,
+                  codeLine: 14,
+                });
+              }
+            } else {
+              engine.recordStep({
+                array: [...arr],
+                pivotIdx: high,
+                boundaryIdx: i >= 0 ? i : undefined,
+                sorted: Array.from(permanentSorted),
+                description: `No (${arr[j]} &gt; ${pivotVal}). It belongs in the right partition. Boundary remains at [${i}].`,
+                codeLine: 13,
+              });
+            }
+          }
+
+          // Swap pivot into i + 1
+          const pivotTarget = i + 1;
+
+          engine.recordStep({
+            array: [...arr],
+            pivotIdx: high,
+            swapping: [pivotTarget, high],
+            sorted: Array.from(permanentSorted),
+            description: `Scan complete! Swap pivot <strong>${arr[high]}</strong> into position [${pivotTarget}] between the two partitions.`,
+            codeLine: 17,
+          });
+
+          [arr[pivotTarget], arr[high]] = [arr[high], arr[pivotTarget]];
+          permanentSorted.add(pivotTarget);
+
+          engine.recordStep({
+            array: [...arr],
+            sorted: Array.from(permanentSorted),
+            description: `Pivot <strong>${arr[pivotTarget]}</strong> is now locked in its final sorted position at index [${pivotTarget}].`,
+            codeLine: 18,
+          });
+
+          // Recursive calls
+          quickSortHelper(low, pivotTarget - 1);
+          quickSortHelper(pivotTarget + 1, high);
+        }
+
+        quickSortHelper(0, n - 1);
+
+        const allSorted = arr.map((_, idx) => idx);
+        engine.recordStep({
+          array: [...arr],
+          sorted: allSorted,
+          description: `✅ Done! The array is completely sorted in-place: <strong>[${arr.join(', ')}]</strong>.`,
+          codeLine: 7,
+        });
+
+        engine.goToStep(0);
+      }
+
+      renderCodePanel();
+      engine.bindControls();
+
+      document.getElementById('btn-apply').addEventListener('click', () => {
+        const nums = parseInputArray();
+        inputEl.value = nums.join(', ');
+        buildQuickSortSteps(nums);
+        engine.play();
+      });
+
+      document.getElementById('btn-random').addEventListener('click', () => {
+        const length = 6;
+        const nums = Array.from({ length }, () => Math.floor(Math.random() * 89) + 4);
+        inputEl.value = nums.join(', ');
+        buildQuickSortSteps(nums);
+      });
+
+      document.querySelectorAll('[data-preset]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.preset;
+          buildQuickSortSteps(parseInputArray());
+        });
+      });
+
+      buildQuickSortSteps(parseInputArray());
+    </script>
+  </body>
+</html>
+

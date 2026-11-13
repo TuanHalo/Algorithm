@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bubble Sort Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-bar {
+        flex: 1;
+        max-width: 56px;
+        height: 170px;
+      }
+
+      .vis-bar__value {
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+      }
+
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .vis-preset-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <!-- Input Controls -->
+      <div class="vis-input">
+        <input
+          id="array-input"
+          class="vis-input__field"
+          type="text"
+          value="5, 3, 8, 1, 4, 2"
+          placeholder="Enter numbers separated by commas, e.g. 5, 3, 8, 1"
+          aria-label="Array numbers"
+        />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">▶ Load &amp; Run</button>
+        <button id="btn-random" class="vis-btn" type="button">🎲 Random</button>
+      </div>
+
+      <div class="vis-presets" style="margin-bottom: 0.75rem;">
+        <span class="vis-preset-label">Try presets:</span>
+        <button class="vis-btn" type="button" data-preset="1, 2, 3, 4, 5, 6">Best case (already sorted)</button>
+        <button class="vis-btn" type="button" data-preset="6, 5, 4, 3, 2, 1">Worst case (reversed)</button>
+        <button class="vis-btn" type="button" data-preset="5, 3, 8, 1, 4, 2">Mixed</button>
+      </div>
+
+      <!-- Playback Controls -->
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button" title="Jump to start">⏮ Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button" title="Previous step">◀ Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button" title="Play animation">▶ Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" title="Pause animation" style="display: none;">⏸ Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button" title="Next step">Next ▶</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed">
+          <span>Speed</span>
+          <input class="vis-speed-slider" type="range" min="1" max="10" value="6" />
+        </label>
+      </div>
+
+      <!-- Legend -->
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-default);"></span> Unsorted</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Comparing</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Swapping</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-sorted);"></span> Sorted</span>
+      </div>
+
+      <!-- Bar Chart Canvas -->
+      <div id="vis-canvas" class="vis-canvas" aria-live="polite"></div>
+
+      <!-- Step Description -->
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">
+        Enter numbers above and click <strong>Play</strong> or <strong>Next</strong> to step through Bubble Sort.
+      </div>
+
+      <!-- Highlighted Python Code -->
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def bubble_sort(arr: list[int]) -> list[int]:',
+        '    n = len(arr)',
+        '    for i in range(n):',
+        '        swapped = False',
+        '        for j in range(0, n - i - 1):',
+        '            if arr[j] > arr[j + 1]:',
+        '                arr[j], arr[j + 1] = arr[j + 1], arr[j]',
+        '                swapped = True',
+        '        if not swapped:',
+        '            break',
+        '    return arr',
+      ];
+
+      const canvasEl = document.getElementById('vis-canvas');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+      const inputEl = document.getElementById('array-input');
+
+      function renderCodePanel() {
+        codeEl.innerHTML = PYTHON_LINES.map((line, index) => {
+          return `<span class="vis-code__line" data-line="${index}"><span class="vis-code__line-number">${index + 1}</span>${line}</span>`;
+        }).join('');
+      }
+
+      function highlightCodeLine(lineIndex) {
+        codeEl.querySelectorAll('.vis-code__line').forEach((el, idx) => {
+          el.classList.toggle('vis-code__line--active', idx === lineIndex);
+        });
+      }
+
+      function renderStep(step) {
+        const arr = step.array;
+        const maxVal = Math.max(...arr.map((v) => Math.abs(v)), 1);
+        const comparing = new Set(step.comparing || []);
+        const swapping = new Set(step.swapping || []);
+        const sorted = new Set(step.sorted || []);
+
+        canvasEl.innerHTML = arr.map((val, idx) => {
+          let stateClass = '';
+          if (swapping.has(idx)) {
+            stateClass = 'vis-bar--swapping';
+          } else if (comparing.has(idx)) {
+            stateClass = 'vis-bar--comparing';
+          } else if (sorted.has(idx)) {
+            stateClass = 'vis-bar--sorted';
+          }
+
+          const barHeight = Math.max(24, Math.round((Math.abs(val) / maxVal) * 125));
+          return `
+            <div class="vis-bar ${stateClass}">
+              <span class="vis-bar__value">${val}</span>
+              <div class="vis-bar__rect" style="height: ${barHeight}px"></div>
+              <span class="vis-bar__label">[${idx}]</span>
+            </div>
+          `;
+        }).join('');
+
+        infoEl.innerHTML = step.description;
+      }
+
+      const engine = new VisualizerEngine({
+        render: renderStep,
+        highlightCode: highlightCodeLine,
+        defaultSpeed: 450,
+      });
+
+      function parseInputArray() {
+        const raw = inputEl.value
+          .split(',')
+          .map((s) => Number(s.trim()))
+          .filter((n) => Number.isFinite(n));
+        if (raw.length < 2) {
+          return [5, 3, 8, 1, 4, 2];
+        }
+        return raw.slice(0, 12);
+      }
+
+      function buildBubbleSortSteps(initial) {
+        engine.reset();
+        const arr = [...initial];
+        const n = arr.length;
+        const sortedIndices = [];
+
+        engine.recordStep({
+          array: [...arr],
+          sorted: [],
+          description: `Starting with <strong>[${arr.join(', ')}]</strong>. Let's bubble the biggest numbers to the right!`,
+          codeLine: 0,
+        });
+
+        for (let i = 0; i < n; i++) {
+          let swapped = false;
+          engine.recordStep({
+            array: [...arr],
+            sorted: [...sortedIndices],
+            description: `Pass <strong>${i + 1}</strong>: scanning unsorted items from index 0 to ${n - i - 1}.`,
+            codeLine: 2,
+          });
+
+          for (let j = 0; j < n - i - 1; j++) {
+            engine.recordStep({
+              array: [...arr],
+              comparing: [j, j + 1],
+              sorted: [...sortedIndices],
+              description: `Comparing <strong>${arr[j]}</strong> and <strong>${arr[j + 1]}</strong>: is ${arr[j]} &gt; ${arr[j + 1]}?`,
+              codeLine: 5,
+            });
+
+            if (arr[j] > arr[j + 1]) {
+              const left = arr[j];
+              const right = arr[j + 1];
+              [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+              swapped = true;
+
+              engine.recordStep({
+                array: [...arr],
+                swapping: [j, j + 1],
+                sorted: [...sortedIndices],
+                description: `Yes! Swap <strong>${left}</strong> and <strong>${right}</strong> so the bigger value moves right.`,
+                codeLine: 6,
+              });
+            }
+          }
+
+          sortedIndices.push(n - i - 1);
+
+          if (!swapped) {
+            for (let k = 0; k < n; k++) {
+              if (!sortedIndices.includes(k)) sortedIndices.push(k);
+            }
+            engine.recordStep({
+              array: [...arr],
+              sorted: [...sortedIndices],
+              description: `No swaps in this pass! The list is already sorted early — breaking out.`,
+              codeLine: 9,
+            });
+            break;
+          }
+
+          engine.recordStep({
+            array: [...arr],
+            sorted: [...sortedIndices],
+            description: `End of pass ${i + 1}: <strong>${arr[n - i - 1]}</strong> is locked in its final sorted spot.`,
+            codeLine: 4,
+          });
+        }
+
+        const allSorted = arr.map((_, idx) => idx);
+        engine.recordStep({
+          array: [...arr],
+          sorted: allSorted,
+          description: `✅ Done! Sorted array: <strong>[${arr.join(', ')}]</strong>`,
+          codeLine: 10,
+        });
+
+        engine.goToStep(0);
+      }
+
+      renderCodePanel();
+      engine.bindControls();
+
+      document.getElementById('btn-apply').addEventListener('click', () => {
+        const nums = parseInputArray();
+        inputEl.value = nums.join(', ');
+        buildBubbleSortSteps(nums);
+        engine.play();
+      });
+
+      document.getElementById('btn-random').addEventListener('click', () => {
+        const length = 6;
+        const nums = Array.from({ length }, () => Math.floor(Math.random() * 19) + 1);
+        inputEl.value = nums.join(', ');
+        buildBubbleSortSteps(nums);
+      });
+
+      document.querySelectorAll('[data-preset]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.preset;
+          buildBubbleSortSteps(parseInputArray());
+        });
+      });
+
+      buildBubbleSortSteps(parseInputArray());
+    </script>
+  </body>
+</html>
+

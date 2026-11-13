@@ -9,7 +9,15 @@ export const TOPICS: readonly TopicConfig[] = [
     color: 'var(--color-sorting)',
     order: 1,
     description: 'Learn how to arrange data in order — from simple swaps to divide-and-conquer.',
-    previewAlgorithms: ['Bubble Sort', 'Selection Sort', 'Merge Sort', 'Quick Sort', 'Insertion Sort'],
+    previewAlgorithms: [
+      'Bubble Sort',
+      'Selection Sort',
+      'Insertion Sort',
+      'Merge Sort',
+      'Quick Sort',
+      'Heap Sort',
+      'Counting Sort',
+    ],
   },
   {
     slug: 'searching',

@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Counting Sort Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-stage {
+        background: var(--bg-card);
+        border-radius: var(--border-radius);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay);
+        padding: 0.9rem 1.1rem;
+        margin-bottom: 0.9rem;
+      }
+
+      .vis-stage__title {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.6rem;
+      }
+
+      .vis-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        justify-content: center;
+      }
+
+      .vis-cell {
+        min-width: 44px;
+        padding: 0.4rem 0.5rem;
+        border-radius: var(--border-radius-xs);
+        background: var(--vis-default);
+        box-shadow: var(--shadow-clay-subtle);
+        text-align: center;
+        transition: all 220ms ease;
+        position: relative;
+      }
+
+      .vis-cell--empty {
+        background: rgba(255, 255, 255, 0.35);
+        color: var(--text-muted);
+      }
+
+      .vis-cell--active {
+        background: var(--vis-pivot);
+        transform: translateY(-2px);
+        box-shadow: 0 0 10px rgba(205, 180, 219, 0.85);
+      }
+
+      .vis-cell--comparing {
+        background: var(--vis-comparing);
+      }
+
+      .vis-cell--updating {
+        background: var(--vis-swapping);
+        transform: translateY(-2px);
+      }
+
+      .vis-cell--sorted {
+        background: var(--vis-sorted);
+      }
+
+      .vis-cell__val {
+        display: block;
+        font-family: var(--font-code);
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .vis-cell__idx {
+        display: block;
+        font-family: var(--font-code);
+        font-size: 0.66rem;
+        color: var(--text-secondary);
+        margin-top: 2px;
+      }
+
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .vis-preset-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <!-- Input Controls -->
+      <div class="vis-input">
+        <input
+          id="array-input"
+          class="vis-input__field"
+          type="text"
+          value="4, 2, 2, 8, 3, 3, 1"
+          placeholder="Non-negative integers (0–12), e.g. 4, 2, 2, 8, 3, 3, 1"
+          aria-label="Array numbers"
+        />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">▶ Load &amp; Run</button>
+        <button id="btn-random" class="vis-btn" type="button">🎲 Random</button>
+      </div>
+
+      <div class="vis-presets" style="margin-bottom: 0.75rem;">
+        <span class="vis-preset-label">Try presets:</span>
+        <button class="vis-btn" type="button" data-preset="4, 2, 2, 8, 3, 3, 1">Mixed with duplicates</button>
+        <button class="vis-btn" type="button" data-preset="0, 1, 2, 3, 4, 5">Already sorted</button>
+        <button class="vis-btn" type="button" data-preset="5, 5, 1, 0, 2, 1">Many repeats (small range)</button>
+      </div>
+
+      <!-- Playback Controls -->
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button" title="Jump to start">⏮ Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button" title="Previous step">◀ Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button" title="Play animation">▶ Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" title="Pause animation" style="display: none;">⏸ Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button" title="Next step">Next ▶</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed">
+          <span>Speed</span>
+          <input class="vis-speed-slider" type="range" min="1" max="10" value="6" />
+        </label>
+      </div>
+
+      <!-- Legend -->
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-default);"></span> Unprocessed</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> Active Item</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Reading Bucket</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Updating Count / Output</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-sorted);"></span> Placed Stably</span>
+      </div>
+
+      <!-- Row 1: Input Array -->
+      <div class="vis-stage">
+        <div class="vis-stage__title">1. Input Array (arr)</div>
+        <div id="vis-input-row" class="vis-row"></div>
+      </div>
+
+      <!-- Row 2: Frequency / Prefix Sum Buckets -->
+      <div class="vis-stage">
+        <div class="vis-stage__title" id="counts-title">2. Frequency Buckets (counts[0..max])</div>
+        <div id="vis-counts-row" class="vis-row"></div>
+      </div>
+
+      <!-- Row 3: Output Array -->
+      <div class="vis-stage">
+        <div class="vis-stage__title">3. Sorted Output Array (output)</div>
+        <div id="vis-output-row" class="vis-row"></div>
+      </div>
+
+      <!-- Step Description -->
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">
+        Enter non-negative integers (0–12) and click <strong>Play</strong> or <strong>Next</strong> to step through Counting Sort.
+      </div>
+
+      <!-- Highlighted Python Code -->
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def counting_sort(arr: list[int]) -> list[int]:',
+        '    if not arr:',
+        '        return arr',
+        '    max_val = max(arr)',
+        '    # Tally how many times each value appears',
+        '    counts = [0] * (max_val + 1)',
+        '    for num in arr:',
+        '        counts[num] += 1',
+        '    # Convert counts to cumulative end positions',
+        '    for val in range(1, len(counts)):',
+        '        counts[val] += counts[val - 1]',
+        '    # Walk backwards so equal values keep original order',
+        '    output = [0] * len(arr)',
+        '    for num in reversed(arr):',
+        '        counts[num] -= 1',
+        '        output[counts[num]] = num',
+        '    return output',
+      ];
+
+      const inputRowEl = document.getElementById('vis-input-row');
+      const countsRowEl = document.getElementById('vis-counts-row');
+      const countsTitleEl = document.getElementById('counts-title');
+      const outputRowEl = document.getElementById('vis-output-row');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+      const inputEl = document.getElementById('array-input');
+
+      function renderCodePanel() {
+        codeEl.innerHTML = PYTHON_LINES.map((line, index) => {
+          return `<span class="vis-code__line" data-line="${index}"><span class="vis-code__line-number">${index + 1}</span>${line}</span>`;
+        }).join('');
+      }
+
+      function highlightCodeLine(lineIndex) {
+        codeEl.querySelectorAll('.vis-code__line').forEach((el, idx) => {
+          el.classList.toggle('vis-code__line--active', idx === lineIndex);
+        });
+      }
+
+      function renderStep(step) {
+        const arr = step.array;
+        const counts = step.counts;
+        const output = step.output;
+        const activeInput = step.activeInput ?? -1;
+        const activeCount = step.activeCount ?? -1;
+        const compareCount = step.compareCount ?? -1;
+        const updatedOutput = step.updatedOutput ?? -1;
+        const placedSet = new Set(step.placedOutput || []);
+
+        countsTitleEl.textContent = step.countsLabel || '2. Frequency Buckets (counts[0..max])';
+
+        inputRowEl.innerHTML = arr.map((val, idx) => {
+          const cls = idx === activeInput ? 'vis-cell--active' : '';
+          return `
+            <div class="vis-cell ${cls}">
+              <span class="vis-cell__val">${val}</span>
+              <span class="vis-cell__idx">[${idx}]</span>
+            </div>
+          `;
+        }).join('');
+
+        countsRowEl.innerHTML = counts.map((val, idx) => {
+          let cls = '';
+          if (idx === activeCount) cls = 'vis-cell--updating';
+          else if (idx === compareCount) cls = 'vis-cell--comparing';
+          return `
+            <div class="vis-cell ${cls}">
+              <span class="vis-cell__val">${val}</span>
+              <span class="vis-cell__idx">val=${idx}</span>
+            </div>
+          `;
+        }).join('');
+
+        outputRowEl.innerHTML = output.map((val, idx) => {
+          let cls = val === null ? 'vis-cell--empty' : '';
+          if (idx === updatedOutput) cls = 'vis-cell--updating';
+          else if (placedSet.has(idx)) cls = 'vis-cell--sorted';
+          return `
+            <div class="vis-cell ${cls}">
+              <span class="vis-cell__val">${val === null ? '·' : val}</span>
+              <span class="vis-cell__idx">[${idx}]</span>
+            </div>
+          `;
+        }).join('');
+
+        infoEl.innerHTML = step.description;
+      }
+
+      const engine = new VisualizerEngine({
+        render: renderStep,
+        highlightCode: highlightCodeLine,
+        defaultSpeed: 500,
+      });
+
+      function parseInputArray() {
+        const raw = inputEl.value
+          .split(',')
+          .map((s) => Math.round(Number(s.trim())))
+          .filter((n) => Number.isFinite(n) && n >= 0 && n <= 12);
+        if (raw.length < 2) {
+          return [4, 2, 2, 8, 3, 3, 1];
+        }
+        return raw.slice(0, 10);
+      }
+
+      function buildCountingSortSteps(initial) {
+        engine.reset();
+        const arr = [...initial];
+        const n = arr.length;
+        const maxVal = Math.max(...arr);
+        const counts = new Array(maxVal + 1).fill(0);
+        const output = new Array(n).fill(null);
+        const placed = [];
+
+        engine.recordStep({
+          array: [...arr],
+          counts: [...counts],
+          output: [...output],
+          countsLabel: `2. Frequency Buckets (size ${maxVal + 1}, all initialized to 0)`,
+          description: `Max value is <strong>${maxVal}</strong>. Created ${maxVal + 1} zeroed tally buckets for values <code>0..${maxVal}</code>.`,
+          codeLine: 5,
+        });
+
+        // Step 1: Frequency tally
+        for (let i = 0; i < n; i++) {
+          const num = arr[i];
+          counts[num] += 1;
+          engine.recordStep({
+            array: [...arr],
+            counts: [...counts],
+            output: [...output],
+            activeInput: i,
+            activeCount: num,
+            countsLabel: '2. Frequency Buckets (counting occurrences)',
+            description: `Tallying <code>arr[${i}] = ${num}</code>: increment <code>counts[${num}]</code> to <strong>${counts[num]}</strong>.`,
+            codeLine: 7,
+          });
+        }
+
+        // Step 2: Cumulative prefix sums
+        for (let val = 1; val < counts.length; val++) {
+          const prev = counts[val - 1];
+          const cur = counts[val];
+          counts[val] = cur + prev;
+          engine.recordStep({
+            array: [...arr],
+            counts: [...counts],
+            output: [...output],
+            compareCount: val - 1,
+            activeCount: val,
+            countsLabel: '2. Prefix Sums (ending positions in output)',
+            description: `Prefix sum at value ${val}: <code>${cur} + ${prev} = ${counts[val]}</code> (values ≤ ${val} end before index ${counts[val]}).`,
+            codeLine: 10,
+          });
+        }
+
+        // Step 3: Reverse placement for stability
+        for (let i = n - 1; i >= 0; i--) {
+          const num = arr[i];
+          counts[num] -= 1;
+          const targetIdx = counts[num];
+          output[targetIdx] = num;
+
+          engine.recordStep({
+            array: [...arr],
+            counts: [...counts],
+            output: [...output],
+            activeInput: i,
+            activeCount: num,
+            updatedOutput: targetIdx,
+            placedOutput: [...placed],
+            countsLabel: '2. Prefix Sums (decremented on placement)',
+            description: `Walk backwards to <code>arr[${i}] = ${num}</code>: decrement <code>counts[${num}]</code> to <strong>${targetIdx}</strong>, place ${num} at <code>output[${targetIdx}]</code>.`,
+            codeLine: 15,
+          });
+
+          placed.push(targetIdx);
+        }
+
+        engine.recordStep({
+          array: [...arr],
+          counts: [...counts],
+          output: [...output],
+          placedOutput: [...placed],
+          countsLabel: '2. Prefix Sums (all items placed)',
+          description: `✅ Done! Sorted stably in linear O(n + k) time with zero element comparisons: <strong>[${output.join(', ')}]</strong>.`,
+          codeLine: 16,
+        });
+
+        engine.goToStep(0);
+      }
+
+      renderCodePanel();
+      engine.bindControls();
+
+      document.getElementById('btn-apply').addEventListener('click', () => {
+        const nums = parseInputArray();
+        inputEl.value = nums.join(', ');
+        buildCountingSortSteps(nums);
+        engine.play();
+      });
+
+      document.getElementById('btn-random').addEventListener('click', () => {
+        const length = 7;
+        const nums = Array.from({ length }, () => Math.floor(Math.random() * 10));
+        inputEl.value = nums.join(', ');
+        buildCountingSortSteps(nums);
+      });
+
+      document.querySelectorAll('[data-preset]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.preset;
+          buildCountingSortSteps(parseInputArray());
+        });
+      });
+
+      buildCountingSortSteps(parseInputArray());
+    </script>
+  </body>
+</html>
+

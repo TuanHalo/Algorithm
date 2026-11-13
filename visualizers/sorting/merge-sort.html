@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Merge Sort Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-bar {
+        flex: 1;
+        max-width: 52px;
+        height: 170px;
+      }
+
+      .vis-bar__value {
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+      }
+
+      .vis-bar--left .vis-bar__rect {
+        background: #b5c7ed;
+      }
+
+      .vis-bar--right .vis-bar__rect {
+        background: #ffd3b6;
+      }
+
+      .vis-bar--merging .vis-bar__rect {
+        background: var(--vis-swapping);
+        box-shadow: 0 0 10px rgba(255, 170, 165, 0.8);
+      }
+
+      .vis-bar__badge {
+        position: absolute;
+        top: -18px;
+        font-family: var(--font-code);
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 1px 4px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .vis-bar__badge--left {
+        background: #b5c7ed;
+        color: #1e293b;
+      }
+
+      .vis-bar__badge--right {
+        background: #ffd3b6;
+        color: #431407;
+      }
+
+      .vis-bar__badge--write {
+        background: var(--vis-swapping);
+        color: #4c0519;
+      }
+
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .vis-preset-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <!-- Input Controls -->
+      <div class="vis-input">
+        <input
+          id="array-input"
+          class="vis-input__field"
+          type="text"
+          value="38, 27, 43, 3, 9, 82, 10"
+          placeholder="Enter numbers separated by commas, e.g. 38, 27, 43, 3, 9"
+          aria-label="Array numbers"
+        />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">▶ Load &amp; Run</button>
+        <button id="btn-random" class="vis-btn" type="button">🎲 Random</button>
+      </div>
+
+      <div class="vis-presets" style="margin-bottom: 0.75rem;">
+        <span class="vis-preset-label">Try presets:</span>
+        <button class="vis-btn" type="button" data-preset="10, 20, 30, 40, 50, 60, 70">Best case (already sorted)</button>
+        <button class="vis-btn" type="button" data-preset="70, 60, 50, 40, 30, 20, 10">Worst case (reversed)</button>
+        <button class="vis-btn" type="button" data-preset="38, 27, 43, 3, 9, 82, 10">Mixed</button>
+      </div>
+
+      <!-- Playback Controls -->
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button" title="Jump to start">⏮ Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button" title="Previous step">◀ Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button" title="Play animation">▶ Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" title="Pause animation" style="display: none;">⏸ Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button" title="Next step">Next ▶</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed">
+          <span>Speed</span>
+          <input class="vis-speed-slider" type="range" min="1" max="10" value="6" />
+        </label>
+      </div>
+
+      <!-- Legend -->
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-default);"></span> Unsorted</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: #b5c7ed;"></span> Left Half</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: #ffd3b6;"></span> Right Half</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Comparing</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Writing Back</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-sorted);"></span> Sorted</span>
+      </div>
+
+      <!-- Bar Chart Canvas -->
+      <div id="vis-canvas" class="vis-canvas" aria-live="polite"></div>
+
+      <!-- Step Description -->
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">
+        Enter numbers above and click <strong>Play</strong> or <strong>Next</strong> to step through Merge Sort.
+      </div>
+
+      <!-- Highlighted Python Code -->
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def merge_sort(arr: list[int]) -> list[int]:',
+        '    if len(arr) <= 1:',
+        '        return arr',
+        '    # Divide: split array down the middle',
+        '    mid = len(arr) // 2',
+        '    left = merge_sort(arr[:mid])',
+        '    right = merge_sort(arr[mid:])',
+        '    # Conquer: merge two sorted halves',
+        '    merged: list[int] = []',
+        '    i = j = 0',
+        '    while i < len(left) and j < len(right):',
+        '        if left[i] <= right[j]:',
+        '            merged.append(left[i])',
+        '            i += 1',
+        '        else:',
+        '            merged.append(right[j])',
+        '            j += 1',
+        '    # Gather remaining elements',
+        '    merged.extend(left[i:])',
+        '    merged.extend(right[j:])',
+        '    return merged',
+      ];
+
+      const canvasEl = document.getElementById('vis-canvas');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+      const inputEl = document.getElementById('array-input');
+
+      function renderCodePanel() {
+        codeEl.innerHTML = PYTHON_LINES.map((line, index) => {
+          return `<span class="vis-code__line" data-line="${index}"><span class="vis-code__line-number">${index + 1}</span>${line}</span>`;
+        }).join('');
+      }
+
+      function highlightCodeLine(lineIndex) {
+        codeEl.querySelectorAll('.vis-code__line').forEach((el, idx) => {
+          el.classList.toggle('vis-code__line--active', idx === lineIndex);
+        });
+      }
+
+      function renderStep(step) {
+        const arr = step.array;
+        const maxVal = Math.max(...arr.map((v) => Math.abs(v)), 1);
+        const leftSet = new Set(step.leftIndices || []);
+        const rightSet = new Set(step.rightIndices || []);
+        const comparing = new Set(step.comparing || []);
+        const writing = step.writing !== undefined ? step.writing : -1;
+        const sorted = new Set(step.sorted || []);
+
+        canvasEl.innerHTML = arr.map((val, idx) => {
+          let stateClass = '';
+          let badgeHtml = '';
+
+          if (idx === writing) {
+            stateClass = 'vis-bar--merging';
+            badgeHtml = `<span class="vis-bar__badge vis-bar__badge--write">MERGE</span>`;
+          } else if (comparing.has(idx)) {
+            stateClass = 'vis-bar--comparing';
+          } else if (sorted.has(idx)) {
+            stateClass = 'vis-bar--sorted';
+          } else if (leftSet.has(idx)) {
+            stateClass = 'vis-bar--left';
+            badgeHtml = `<span class="vis-bar__badge vis-bar__badge--left">L</span>`;
+          } else if (rightSet.has(idx)) {
+            stateClass = 'vis-bar--right';
+            badgeHtml = `<span class="vis-bar__badge vis-bar__badge--right">R</span>`;
+          }
+
+          const barHeight = Math.max(24, Math.round((Math.abs(val) / maxVal) * 125));
+          return `
+            <div class="vis-bar ${stateClass}">
+              ${badgeHtml}
+              <span class="vis-bar__value">${val}</span>
+              <div class="vis-bar__rect" style="height: ${barHeight}px"></div>
+              <span class="vis-bar__label">[${idx}]</span>
+            </div>
+          `;
+        }).join('');
+
+        infoEl.innerHTML = step.description;
+      }
+
+      const engine = new VisualizerEngine({
+        render: renderStep,
+        highlightCode: highlightCodeLine,
+        defaultSpeed: 500,
+      });
+
+      function parseInputArray() {
+        const raw = inputEl.value
+          .split(',')
+          .map((s) => Number(s.trim()))
+          .filter((n) => Number.isFinite(n));
+        if (raw.length < 2) {
+          return [38, 27, 43, 3, 9, 82, 10];
+        }
+        return raw.slice(0, 10);
+      }
+
+      function buildMergeSortSteps(initial) {
+        engine.reset();
+        const arr = [...initial];
+        const n = arr.length;
+
+        engine.recordStep({
+          array: [...arr],
+          sorted: [],
+          description: `Starting Merge Sort on array of ${n} elements. Divide-and-Conquer begins!`,
+          codeLine: 0,
+        });
+
+        function mergeSortHelper(start, end) {
+          if (start >= end) {
+            return;
+          }
+
+          const mid = Math.floor((start + end) / 2);
+
+          const leftIndices = [];
+          for (let k = start; k <= mid; k++) leftIndices.push(k);
+          const rightIndices = [];
+          for (let k = mid + 1; k <= end; k++) rightIndices.push(k);
+
+          engine.recordStep({
+            array: [...arr],
+            leftIndices,
+            rightIndices,
+            description: `Divide: Split subarray <code>[${start}..${end}]</code> at mid index [${mid}] into Left <code>[${start}..${mid}]</code> and Right <code>[${mid + 1}..${end}]</code>.`,
+            codeLine: 4,
+          });
+
+          mergeSortHelper(start, mid);
+          mergeSortHelper(mid + 1, end);
+
+          // Merge step
+          const leftCopy = arr.slice(start, mid + 1);
+          const rightCopy = arr.slice(mid + 1, end + 1);
+
+          engine.recordStep({
+            array: [...arr],
+            leftIndices,
+            rightIndices,
+            description: `Conquer: Merging sorted Left <strong>[${leftCopy.join(', ')}]</strong> and Right <strong>[${rightCopy.join(', ')}]</strong> back into <code>[${start}..${end}]</code>.`,
+            codeLine: 7,
+          });
+
+          let p1 = 0;
+          let p2 = 0;
+          let k = start;
+
+          while (p1 < leftCopy.length && p2 < rightCopy.length) {
+            const actualLeftIdx = start + p1;
+            const actualRightIdx = mid + 1 + p2;
+
+            engine.recordStep({
+              array: [...arr],
+              leftIndices,
+              rightIndices,
+              comparing: [actualLeftIdx, actualRightIdx],
+              writing: k,
+              description: `Comparing <strong>${leftCopy[p1]}</strong> (Left) vs <strong>${rightCopy[p2]}</strong> (Right): which is smaller?`,
+              codeLine: 11,
+            });
+
+            if (leftCopy[p1] <= rightCopy[p2]) {
+              arr[k] = leftCopy[p1];
+              engine.recordStep({
+                array: [...arr],
+                leftIndices,
+                rightIndices,
+                writing: k,
+                description: `Left value <strong>${leftCopy[p1]}</strong> is smaller or equal (preserving stability). Written to index [${k}].`,
+                codeLine: 12,
+              });
+              p1++;
+            } else {
+              arr[k] = rightCopy[p2];
+              engine.recordStep({
+                array: [...arr],
+                leftIndices,
+                rightIndices,
+                writing: k,
+                description: `Right value <strong>${rightCopy[p2]}</strong> is smaller. Written to index [${k}].`,
+                codeLine: 15,
+              });
+              p2++;
+            }
+            k++;
+          }
+
+          while (p1 < leftCopy.length) {
+            arr[k] = leftCopy[p1];
+            engine.recordStep({
+              array: [...arr],
+              writing: k,
+              description: `Gather remaining Left value <strong>${leftCopy[p1]}</strong> into index [${k}].`,
+              codeLine: 18,
+            });
+            p1++;
+            k++;
+          }
+
+          while (p2 < rightCopy.length) {
+            arr[k] = rightCopy[p2];
+            engine.recordStep({
+              array: [...arr],
+              writing: k,
+              description: `Gather remaining Right value <strong>${rightCopy[p2]}</strong> into index [${k}].`,
+              codeLine: 19,
+            });
+            p2++;
+            k++;
+          }
+
+          const mergedRange = [];
+          for (let m = start; m <= end; m++) mergedRange.push(m);
+
+          engine.recordStep({
+            array: [...arr],
+            sorted: mergedRange,
+            description: `Subarray <code>[${start}..${end}]</code> successfully merged into sorted order: <strong>[${arr.slice(start, end + 1).join(', ')}]</strong>.`,
+            codeLine: 20,
+          });
+        }
+
+        mergeSortHelper(0, n - 1);
+
+        const allSorted = arr.map((_, idx) => idx);
+        engine.recordStep({
+          array: [...arr],
+          sorted: allSorted,
+          description: `✅ Done! Complete array is sorted in guaranteed O(n log n) time: <strong>[${arr.join(', ')}]</strong>.`,
+          codeLine: 20,
+        });
+
+        engine.goToStep(0);
+      }
+
+      renderCodePanel();
+      engine.bindControls();
+
+      document.getElementById('btn-apply').addEventListener('click', () => {
+        const nums = parseInputArray();
+        inputEl.value = nums.join(', ');
+        buildMergeSortSteps(nums);
+        engine.play();
+      });
+
+      document.getElementById('btn-random').addEventListener('click', () => {
+        const length = 7;
+        const nums = Array.from({ length }, () => Math.floor(Math.random() * 89) + 3);
+        inputEl.value = nums.join(', ');
+        buildMergeSortSteps(nums);
+      });
+
+      document.querySelectorAll('[data-preset]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.preset;
+          buildMergeSortSteps(parseInputArray());
+        });
+      });
+
+      buildMergeSortSteps(parseInputArray());
+    </script>
+  </body>
+</html>
+
