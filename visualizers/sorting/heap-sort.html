@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Heap Sort Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-tree-card {
+        background: var(--bg-card);
+        border-radius: var(--border-radius);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay);
+        padding: 0.75rem 1rem 0.25rem;
+        margin-bottom: 1rem;
+      }
+
+      .vis-tree-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+      }
+
+      .vis-tree-svg {
+        width: 100%;
+        max-height: 205px;
+        display: block;
+      }
+
+      .vis-bar {
+        flex: 1;
+        max-width: 52px;
+        height: 155px;
+      }
+
+      .vis-bar__value {
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+      }
+
+      .vis-bar--root .vis-bar__rect {
+        background: var(--vis-pivot);
+        box-shadow: 0 0 10px rgba(205, 180, 219, 0.85);
+      }
+
+      .vis-bar__badge {
+        position: absolute;
+        top: -18px;
+        font-family: var(--font-code);
+        font-size: 0.62rem;
+        font-weight: 700;
+        padding: 1px 4px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+      }
+
+      .vis-bar__badge--root {
+        background: var(--vis-pivot);
+        color: #3d2b4d;
+      }
+
+      .vis-bar__badge--largest {
+        background: var(--vis-comparing);
+        color: #431407;
+      }
+
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .vis-preset-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <!-- Input Controls -->
+      <div class="vis-input">
+        <input
+          id="array-input"
+          class="vis-input__field"
+          type="text"
+          value="4, 10, 3, 5, 1, 8, 2"
+          placeholder="Enter up to 10 numbers, e.g. 4, 10, 3, 5, 1, 8, 2"
+          aria-label="Array numbers"
+        />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">▶ Load &amp; Run</button>
+        <button id="btn-random" class="vis-btn" type="button">🎲 Random</button>
+      </div>
+
+      <div class="vis-presets" style="margin-bottom: 0.75rem;">
+        <span class="vis-preset-label">Try presets:</span>
+        <button class="vis-btn" type="button" data-preset="1, 2, 3, 4, 5, 6, 7">Already sorted</button>
+        <button class="vis-btn" type="button" data-preset="7, 6, 5, 4, 3, 2, 1">Reversed (already max-heap)</button>
+        <button class="vis-btn" type="button" data-preset="4, 10, 3, 5, 1, 8, 2">Mixed (7 nodes)</button>
+      </div>
+
+      <!-- Playback Controls -->
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button" title="Jump to start">⏮ Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button" title="Previous step">◀ Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button" title="Play animation">▶ Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" title="Pause animation" style="display: none;">⏸ Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button" title="Next step">Next ▶</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed">
+          <span>Speed</span>
+          <input class="vis-speed-slider" type="range" min="1" max="10" value="6" />
+        </label>
+      </div>
+
+      <!-- Legend -->
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-default);"></span> In Heap</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> Heapify Root</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Comparing Child</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Swapping</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-sorted);"></span> Sorted</span>
+      </div>
+
+      <!-- Implicit Binary Tree View -->
+      <div class="vis-tree-card">
+        <div class="vis-tree-label">Implicit Binary Heap Tree (Parent i → Children 2i+1, 2i+2)</div>
+        <svg id="vis-tree" class="vis-tree-svg" viewBox="0 0 600 190" aria-label="Binary heap tree"></svg>
+      </div>
+
+      <!-- Bar Chart Canvas -->
+      <div id="vis-canvas" class="vis-canvas" aria-live="polite"></div>
+
+      <!-- Step Description -->
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">
+        Enter numbers above and click <strong>Play</strong> or <strong>Next</strong> to step through Heap Sort.
+      </div>
+
+      <!-- Highlighted Python Code -->
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def heap_sort(arr: list[int]) -> list[int]:',
+        '    n = len(arr)',
+        '    # Build max-heap bottom-up from last non-leaf',
+        '    for i in range(n // 2 - 1, -1, -1):',
+        '        heapify(arr, n, i)',
+        '    # Extract max root one by one to the end',
+        '    for end in range(n - 1, 0, -1):',
+        '        arr[0], arr[end] = arr[end], arr[0]',
+        '        heapify(arr, end, 0)',
+        '    return arr',
+        '',
+        'def heapify(arr: list[int], size: int, root: int) -> None:',
+        '    largest = root',
+        '    left, right = 2 * root + 1, 2 * root + 2',
+        '    if left < size and arr[left] > arr[largest]:',
+        '        largest = left',
+        '    if right < size and arr[right] > arr[largest]:',
+        '        largest = right',
+        '    if largest != root:',
+        '        arr[root], arr[largest] = arr[largest], arr[root]',
+        '        heapify(arr, size, largest)',
+      ];
+
+      const treeEl = document.getElementById('vis-tree');
+      const canvasEl = document.getElementById('vis-canvas');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+      const inputEl = document.getElementById('array-input');
+
+      function renderCodePanel() {
+        codeEl.innerHTML = PYTHON_LINES.map((line, index) => {
+          return `<span class="vis-code__line" data-line="${index}"><span class="vis-code__line-number">${index + 1}</span>${line}</span>`;
+        }).join('');
+      }
+
+      function highlightCodeLine(lineIndex) {
+        codeEl.querySelectorAll('.vis-code__line').forEach((el, idx) => {
+          el.classList.toggle('vis-code__line--active', idx === lineIndex);
+        });
+      }
+
+      function getNodeColor(idx, step) {
+        const comparing = new Set(step.comparing || []);
+        const swapping = new Set(step.swapping || []);
+        const sorted = new Set(step.sorted || []);
+        const rootIdx = step.rootIdx !== undefined ? step.rootIdx : -1;
+
+        if (swapping.has(idx)) return 'var(--vis-swapping)';
+        if (sorted.has(idx)) return 'var(--vis-sorted)';
+        if (idx === rootIdx) return 'var(--vis-pivot)';
+        if (comparing.has(idx)) return 'var(--vis-comparing)';
+        return 'var(--vis-default)';
+      }
+
+      function renderTree(step) {
+        const arr = step.array;
+        const n = arr.length;
+        const sorted = new Set(step.sorted || []);
+        const positions = [];
+
+        for (let i = 0; i < n; i++) {
+          const level = Math.floor(Math.log2(i + 1));
+          const levelStart = Math.pow(2, level) - 1;
+          const posInLevel = i - levelStart;
+          const nodesInLevel = Math.pow(2, level);
+          const x = ((posInLevel + 0.5) / nodesInLevel) * 560 + 20;
+          const y = 26 + level * 46;
+          positions.push({ x, y });
+        }
+
+        let edgesSvg = '';
+        for (let i = 1; i < n; i++) {
+          const parent = Math.floor((i - 1) / 2);
+          const pPos = positions[parent];
+          const cPos = positions[i];
+          const isSortedEdge = sorted.has(i) || sorted.has(parent);
+          const stroke = isSortedEdge ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.28)';
+          const dash = isSortedEdge ? 'stroke-dasharray="4 3"' : '';
+          edgesSvg += `<line x1="${pPos.x}" y1="${pPos.y}" x2="${cPos.x}" y2="${cPos.y}" stroke="${stroke}" stroke-width="2" ${dash} />`;
+        }
+
+        let nodesSvg = '';
+        for (let i = 0; i < n; i++) {
+          const { x, y } = positions[i];
+          const fill = getNodeColor(i, step);
+          const opacity = sorted.has(i) ? '0.65' : '1';
+          nodesSvg += `
+            <g opacity="${opacity}">
+              <circle cx="${x}" cy="${y}" r="16" fill="${fill}" stroke="rgba(255,255,255,0.85)" stroke-width="2" />
+              <text x="${x}" y="${y + 4}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" font-weight="700" fill="#2d2d2d">${arr[i]}</text>
+              <text x="${x}" y="${y + 25}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#7a7a7a">[${i}]</text>
+            </g>
+          `;
+        }
+
+        treeEl.innerHTML = edgesSvg + nodesSvg;
+      }
+
+      function renderStep(step) {
+        renderTree(step);
+
+        const arr = step.array;
+        const maxVal = Math.max(...arr.map((v) => Math.abs(v)), 1);
+        const comparing = new Set(step.comparing || []);
+        const swapping = new Set(step.swapping || []);
+        const sorted = new Set(step.sorted || []);
+        const rootIdx = step.rootIdx !== undefined ? step.rootIdx : -1;
+        const largestIdx = step.largestIdx !== undefined ? step.largestIdx : -1;
+
+        canvasEl.innerHTML = arr.map((val, idx) => {
+          let stateClass = '';
+          let badgeHtml = '';
+
+          if (swapping.has(idx)) {
+            stateClass = 'vis-bar--swapping';
+          } else if (sorted.has(idx)) {
+            stateClass = 'vis-bar--sorted';
+          } else if (idx === rootIdx) {
+            stateClass = 'vis-bar--root';
+            badgeHtml = '<span class="vis-bar__badge vis-bar__badge--root">ROOT</span>';
+          } else if (comparing.has(idx)) {
+            stateClass = 'vis-bar--comparing';
+            if (idx === largestIdx) {
+              badgeHtml = '<span class="vis-bar__badge vis-bar__badge--largest">MAX</span>';
+            }
+          }
+
+          const barHeight = Math.max(22, Math.round((Math.abs(val) / maxVal) * 110));
+          return `
+            <div class="vis-bar ${stateClass}">
+              ${badgeHtml}
+              <span class="vis-bar__value">${val}</span>
+              <div class="vis-bar__rect" style="height: ${barHeight}px"></div>
+              <span class="vis-bar__label">[${idx}]</span>
+            </div>
+          `;
+        }).join('');
+
+        infoEl.innerHTML = step.description;
+      }
+
+      const engine = new VisualizerEngine({
+        render: renderStep,
+        highlightCode: highlightCodeLine,
+        defaultSpeed: 500,
+      });
+
+      function parseInputArray() {
+        const raw = inputEl.value
+          .split(',')
+          .map((s) => Number(s.trim()))
+          .filter((n) => Number.isFinite(n));
+        if (raw.length < 2) {
+          return [4, 10, 3, 5, 1, 8, 2];
+        }
+        return raw.slice(0, 10);
+      }
+
+      function buildHeapSortSteps(initial) {
+        engine.reset();
+        const arr = [...initial];
+        const n = arr.length;
+        const sortedIndices = new Set();
+
+        engine.recordStep({
+          array: [...arr],
+          sorted: [],
+          description: `Starting Heap Sort on ${n} elements. Phase 1: Build a Max-Heap bottom-up.`,
+          codeLine: 0,
+        });
+
+        function heapify(size, root, phaseLabel) {
+          let largest = root;
+          const left = 2 * root + 1;
+          const right = 2 * root + 2;
+
+          const children = [];
+          if (left < size) children.push(left);
+          if (right < size) children.push(right);
+
+          engine.recordStep({
+            array: [...arr],
+            rootIdx: root,
+            comparing: children,
+            sorted: Array.from(sortedIndices),
+            description: `${phaseLabel}: Checking root <strong>${arr[root]}</strong> at [${root}] against ${children.length ? 'children' : 'no children inside heap'}.`,
+            codeLine: 12,
+          });
+
+          if (left < size) {
+            engine.recordStep({
+              array: [...arr],
+              rootIdx: root,
+              comparing: [left],
+              largestIdx: largest !== root ? largest : undefined,
+              sorted: Array.from(sortedIndices),
+              description: `Compare left child <strong>arr[${left}] = ${arr[left]}</strong> with current largest <strong>${arr[largest]}</strong>.`,
+              codeLine: 14,
+            });
+            if (arr[left] > arr[largest]) {
+              largest = left;
+              engine.recordStep({
+                array: [...arr],
+                rootIdx: root,
+                comparing: [left],
+                largestIdx: largest,
+                sorted: Array.from(sortedIndices),
+                description: `Left child <strong>${arr[left]}</strong> is larger! Update largest = [${left}].`,
+                codeLine: 15,
+              });
+            }
+          }
+
+          if (right < size) {
+            engine.recordStep({
+              array: [...arr],
+              rootIdx: root,
+              comparing: [right],
+              largestIdx: largest !== root ? largest : undefined,
+              sorted: Array.from(sortedIndices),
+              description: `Compare right child <strong>arr[${right}] = ${arr[right]}</strong> with current largest <strong>${arr[largest]}</strong>.`,
+              codeLine: 16,
+            });
+            if (arr[right] > arr[largest]) {
+              largest = right;
+              engine.recordStep({
+                array: [...arr],
+                rootIdx: root,
+                comparing: [right],
+                largestIdx: largest,
+                sorted: Array.from(sortedIndices),
+                description: `Right child <strong>${arr[right]}</strong> is larger! Update largest = [${right}].`,
+                codeLine: 17,
+              });
+            }
+          }
+
+          if (largest !== root) {
+            engine.recordStep({
+              array: [...arr],
+              rootIdx: root,
+              swapping: [root, largest],
+              sorted: Array.from(sortedIndices),
+              description: `Heap property violated! Swap <strong>${arr[root]}</strong> [${root}] with larger child <strong>${arr[largest]}</strong> [${largest}].`,
+              codeLine: 19,
+            });
+
+            [arr[root], arr[largest]] = [arr[largest], arr[root]];
+
+            engine.recordStep({
+              array: [...arr],
+              swapping: [root, largest],
+              sorted: Array.from(sortedIndices),
+              description: `Swapped! Now sift down recursively at index [${largest}] to fix affected subtree.`,
+              codeLine: 20,
+            });
+
+            heapify(size, largest, phaseLabel);
+          }
+        }
+
+        // Phase 1: Build Max-Heap
+        for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
+          heapify(n, i, 'Build Max-Heap');
+        }
+
+        engine.recordStep({
+          array: [...arr],
+          rootIdx: 0,
+          sorted: [],
+          description: `✅ Max-Heap built! Largest value <strong>${arr[0]}</strong> is now at the root [0]. Phase 2: Extract max items.`,
+          codeLine: 6,
+        });
+
+        // Phase 2: Extract elements one by one
+        for (let end = n - 1; end > 0; end--) {
+          engine.recordStep({
+            array: [...arr],
+            swapping: [0, end],
+            sorted: Array.from(sortedIndices),
+            description: `Extract max root <strong>${arr[0]}</strong> by swapping it with last heap item <strong>${arr[end]}</strong> at [${end}].`,
+            codeLine: 7,
+          });
+
+          [arr[0], arr[end]] = [arr[end], arr[0]];
+          sortedIndices.add(end);
+
+          engine.recordStep({
+            array: [...arr],
+            rootIdx: 0,
+            sorted: Array.from(sortedIndices),
+            description: `<strong>${arr[end]}</strong> is locked at [${end}]. Shrink heap size to ${end} and heapify root [0].`,
+            codeLine: 8,
+          });
+
+          heapify(end, 0, 'Sift Down');
+        }
+
+        sortedIndices.add(0);
+        engine.recordStep({
+          array: [...arr],
+          sorted: Array.from(sortedIndices),
+          description: `✅ Done! Sorted array in guaranteed O(n log n) time and O(1) space: <strong>[${arr.join(', ')}]</strong>.`,
+          codeLine: 9,
+        });
+
+        engine.goToStep(0);
+      }
+
+      renderCodePanel();
+      engine.bindControls();
+
+      document.getElementById('btn-apply').addEventListener('click', () => {
+        const nums = parseInputArray();
+        inputEl.value = nums.join(', ');
+        buildHeapSortSteps(nums);
+        engine.play();
+      });
+
+      document.getElementById('btn-random').addEventListener('click', () => {
+        const length = 7;
+        const nums = Array.from({ length }, () => Math.floor(Math.random() * 49) + 2);
+        inputEl.value = nums.join(', ');
+        buildHeapSortSteps(nums);
+      });
+
+      document.querySelectorAll('[data-preset]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.preset;
+          buildHeapSortSteps(parseInputArray());
+        });
+      });
+
+      buildHeapSortSteps(parseInputArray());
+    </script>
+  </body>
+</html>
+
