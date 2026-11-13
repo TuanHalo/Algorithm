@@ -1,0 +1,145 @@
+---
+import { withBase } from '../utils/url';
+
+interface SortingSummaryRow {
+  readonly slug: string;
+  readonly name: string;
+  readonly best: string;
+  readonly average: string;
+  readonly worst: string;
+  readonly space: string;
+  readonly stable: boolean;
+  readonly bestFor: string;
+}
+
+const SORTING_MATRIX: readonly SortingSummaryRow[] = [
+  {
+    slug: 'bubble-sort',
+    name: 'Bubble Sort',
+    best: 'O(n)',
+    average: 'O(n²)',
+    worst: 'O(n²)',
+    space: 'O(1)',
+    stable: true,
+    bestFor: 'Visual learning & nearly sorted tiny lists',
+  },
+  {
+    slug: 'selection-sort',
+    name: 'Selection Sort',
+    best: 'O(n²)',
+    average: 'O(n²)',
+    worst: 'O(n²)',
+    space: 'O(1)',
+    stable: false,
+    bestFor: 'Write-sensitive memory (at most n − 1 swaps)',
+  },
+  {
+    slug: 'insertion-sort',
+    name: 'Insertion Sort',
+    best: 'O(n)',
+    average: 'O(n²)',
+    worst: 'O(n²)',
+    space: 'O(1)',
+    stable: true,
+    bestFor: 'Nearly sorted data, streaming & small hybrid runs',
+  },
+  {
+    slug: 'merge-sort',
+    name: 'Merge Sort',
+    best: 'O(n log n)',
+    average: 'O(n log n)',
+    worst: 'O(n log n)',
+    space: 'O(n)',
+    stable: true,
+    bestFor: 'Guaranteed O(n log n) speed & stable sorting',
+  },
+  {
+    slug: 'quick-sort',
+    name: 'Quick Sort',
+    best: 'O(n log n)',
+    average: 'O(n log n)',
+    worst: 'O(n²)',
+    space: 'O(log n)',
+    stable: false,
+    bestFor: 'Fastest general-purpose in-place array sorting',
+  },
+  {
+    slug: 'heap-sort',
+    name: 'Heap Sort',
+    best: 'O(n log n)',
+    average: 'O(n log n)',
+    worst: 'O(n log n)',
+    space: 'O(1)',
+    stable: false,
+    bestFor: 'Strict O(1) space with O(n log n) worst-case safety',
+  },
+  {
+    slug: 'counting-sort',
+    name: 'Counting Sort',
+    best: 'O(n + k)',
+    average: 'O(n + k)',
+    worst: 'O(n + k)',
+    space: 'O(n + k)',
+    stable: true,
+    bestFor: 'Bounded non-negative integers with small range k',
+  },
+] as const;
+---
+
+<section class="clay-section sorting-matrix">
+  <h2 class="clay-section__title">📊 Sorting Comparison &amp; Decision Matrix</h2>
+  <p class="sorting-matrix__intro">
+    Use this side-by-side cheat sheet to pick the right sorting algorithm for your constraints (assuming ~10⁸ operations/sec, quadratic sorts stay fast up to <code>n ≤ 10,000</code>).
+  </p>
+  <div class="matrix-scroll">
+    <table class="clay-table">
+      <thead>
+        <tr>
+          <th>Algorithm</th>
+          <th>Best</th>
+          <th>Average</th>
+          <th>Worst</th>
+          <th>Space</th>
+          <th>Stable</th>
+          <th>Best When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {SORTING_MATRIX.map((row) => (
+          <tr>
+            <td>
+              <a href={withBase(`/learn/sorting/${row.slug}/`)} class="matrix-link">
+                {row.name}
+              </a>
+            </td>
+            <td><code>{row.best}</code></td>
+            <td><code>{row.average}</code></td>
+            <td><code>{row.worst}</code></td>
+            <td><code>{row.space}</code></td>
+            <td>{row.stable ? '✅ Yes' : '❌ No'}</td>
+            <td>{row.bestFor}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+  .sorting-matrix {
+    margin-top: var(--space-2xl);
+  }
+
+  .sorting-matrix__intro {
+    margin-bottom: var(--space-md);
+  }
+
+  .matrix-scroll {
+    overflow-x: auto;
+  }
+
+  .matrix-link {
+    font-weight: 600;
+  }
+</style>
+

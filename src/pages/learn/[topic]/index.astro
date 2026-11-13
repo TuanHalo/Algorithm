@@ -3,6 +3,7 @@ import type { GetStaticPaths } from 'astro';
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ComplexityBadge from '../../../components/ComplexityBadge.astro';
+import SortingMatrix from '../../../components/SortingMatrix.astro';
 import { TOPICS } from '../../../utils/topics';
 import type { TopicConfig } from '../../../types/content';
 import { withBase } from '../../../utils/url';
@@ -77,6 +78,8 @@ const lessons = allLessons
         </div>
       </div>
     )}
+
+    {topic.slug === 'sorting' && <SortingMatrix />}
   </div>
 </BaseLayout>
 
