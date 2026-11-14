@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interpolation Search Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-target-group {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .vis-target-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        white-space: nowrap;
+      }
+
+      .vis-target-field {
+        width: 88px;
+        min-width: 72px;
+        flex: 0 0 auto;
+        text-align: center;
+      }
+
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .vis-preset-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+
+      .vis-status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.65rem;
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+      }
+
+      .vis-status-group {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .vis-pill {
+        background: var(--bg-card);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+      }
+
+      .vis-pill--target {
+        background: rgba(168, 216, 234, 0.55);
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .vis-formula-bar {
+        background: var(--bg-card);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        border-radius: var(--border-radius-sm);
+        padding: 0.55rem 0.9rem;
+        margin-bottom: 0.85rem;
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        color: var(--text-primary);
+        text-align: center;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+
+      .vis-canvas {
+        align-items: center;
+        min-height: 195px;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        padding: 2.6rem 1.25rem 1.5rem;
+      }
+
+      .vis-cell {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
+        transition: transform 250ms ease, opacity 250ms ease;
+      }
+
+      .vis-cell__badges {
+        position: absolute;
+        top: -28px;
+        display: flex;
+        gap: 3px;
+        justify-content: center;
+        white-space: nowrap;
+      }
+
+      .vis-cell__badge {
+        font-family: var(--font-code);
+        font-size: 0.62rem;
+        font-weight: 700;
+        padding: 2px 5px;
+        border-radius: 5px;
+        letter-spacing: 0.03em;
+        box-shadow: var(--shadow-clay-subtle);
+      }
+
+      .vis-cell__badge--low {
+        background: #a8d8ea;
+        color: #0c4a6e;
+      }
+
+      .vis-cell__badge--pos {
+        background: var(--vis-comparing);
+        color: #431407;
+      }
+
+      .vis-cell__badge--high {
+        background: var(--vis-pivot);
+        color: #3d2b4d;
+      }
+
+      .vis-cell__badge--found {
+        background: var(--vis-active);
+        color: #14532d;
+      }
+
+      .vis-cell__box {
+        min-width: 52px;
+        padding: 0 6px;
+        height: 52px;
+        border-radius: var(--border-radius-sm);
+        background: var(--vis-default);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-code);
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        transition: all 250ms ease;
+      }
+
+      .vis-cell__index {
+        font-family: var(--font-code);
+        font-size: 0.7rem;
+        color: var(--text-muted);
+      }
+
+      .vis-cell--in-window .vis-cell__box {
+        background: rgba(168, 216, 234, 0.45);
+      }
+
+      .vis-cell--discarded {
+        opacity: 0.32;
+      }
+
+      .vis-cell--discarded .vis-cell__box {
+        background: #e2e8f0;
+      }
+
+      .vis-cell--pos {
+        transform: translateY(-4px);
+      }
+
+      .vis-cell--pos .vis-cell__box {
+        background: var(--vis-comparing);
+        box-shadow: var(--shadow-clay);
+      }
+
+      .vis-cell--found {
+        transform: translateY(-6px) scale(1.06);
+      }
+
+      .vis-cell--found .vis-cell__box {
+        background: var(--vis-active);
+        box-shadow: 0 0 16px rgba(168, 230, 207, 0.95), var(--shadow-clay);
+      }
+
+      .vis-sort-note {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+        text-align: center;
+        min-height: 1.1em;
+      }
+
+      @media (max-width: 600px) {
+        .vis-cell__box {
+          min-width: 42px;
+          height: 42px;
+          font-size: 0.82rem;
+        }
+        .vis-target-field {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <!-- Input Controls -->
+      <div class="vis-input">
+        <input
+          id="array-input"
+          class="vis-input__field"
+          type="text"
+          value="10, 20, 30, 40, 50, 60, 70, 80, 90, 100"
+          placeholder="Sorted numbers (auto-sorted on load), e.g. 10, 20, 30, 40"
+          aria-label="Sorted array numbers"
+        />
+        <div class="vis-target-group">
+          <label for="target-input" class="vis-target-label">Target:</label>
+          <input
+            id="target-input"
+            class="vis-input__field vis-target-field"
+            type="number"
+            value="80"
+            aria-label="Target number"
+          />
+        </div>
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">▶ Load &amp; Run</button>
+        <button id="btn-random" class="vis-btn" type="button">🎲 Random</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Try presets:</span>
+        <button class="vis-btn" type="button" data-array="10, 20, 30, 40, 50, 60, 70, 80, 90, 100" data-target="80">Uniform (1 probe!)</button>
+        <button class="vis-btn" type="button" data-array="3, 9, 15, 22, 28, 35, 41, 49, 55, 62" data-target="49">Near-uniform</button>
+        <button class="vis-btn" type="button" data-array="1, 2, 4, 8, 16, 32, 64, 128, 256, 1000" data-target="256">Skewed O(n) worst case</button>
+        <button class="vis-btn" type="button" data-array="5, 5, 5, 5, 5, 5" data-target="5">Flat duplicates</button>
+      </div>
+
+      <!-- Playback Controls -->
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button" title="Jump to start">⏮ Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button" title="Previous step">◀ Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button" title="Play animation">▶ Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" title="Pause animation" style="display: none;">⏸ Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button" title="Next step">Next ▶</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed">
+          <span>Speed</span>
+          <input class="vis-speed-slider" type="range" min="1" max="10" value="6" />
+        </label>
+      </div>
+
+      <!-- Legend -->
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: rgba(168, 216, 234, 0.7);"></span> Active Window</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Estimated Probe (pos)</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: #e2e8f0;"></span> Eliminated</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Found!</span>
+      </div>
+
+      <div id="sort-note" class="vis-sort-note"></div>
+
+      <!-- Status Pills -->
+      <div class="vis-status-bar">
+        <span id="status-target" class="vis-pill vis-pill--target">Target: 80</span>
+        <div class="vis-status-group">
+          <span id="status-window" class="vis-pill">Window: [0..9]</span>
+          <span id="status-probes" class="vis-pill">Probes: 0</span>
+        </div>
+      </div>
+
+      <!-- Probe Formula Banner -->
+      <div id="vis-formula" class="vis-formula-bar">
+        pos = low + ((target - arr[low]) * (high - low)) // (arr[high] - arr[low])
+      </div>
+
+      <!-- Array Canvas -->
+      <div id="vis-canvas" class="vis-canvas" aria-live="polite"></div>
+
+      <!-- Step Description -->
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">
+        Enter a sorted array and target above, then press <strong>Play</strong> or <strong>Next</strong>.
+      </div>
+
+      <!-- Highlighted Python Code -->
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def interpolation_search(arr: list[int], target: int) -> int:',
+        '    low, high = 0, len(arr) - 1',
+        '    while low <= high and arr[low] <= target <= arr[high]:',
+        '        if arr[low] == arr[high]:',
+        '            return low if arr[low] == target else -1',
+        '        span = arr[high] - arr[low]',
+        '        pos = low + ((target - arr[low]) * (high - low)) // span',
+        '        if arr[pos] == target:',
+        '            return pos',
+        '        if arr[pos] < target:',
+        '            low = pos + 1',
+        '        else:',
+        '            high = pos - 1',
+        '    return -1',
+      ];
+
+      const canvasEl = document.getElementById('vis-canvas');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+      const formulaEl = document.getElementById('vis-formula');
+      const arrayInputEl = document.getElementById('array-input');
+      const targetInputEl = document.getElementById('target-input');
+      const statusTargetEl = document.getElementById('status-target');
+      const statusWindowEl = document.getElementById('status-window');
+      const statusProbesEl = document.getElementById('status-probes');
+      const sortNoteEl = document.getElementById('sort-note');
+
+      function renderCodePanel() {
+        codeEl.innerHTML = PYTHON_LINES.map((line, index) => {
+          return `<span class="vis-code__line" data-line="${index}"><span class="vis-code__line-number">${index + 1}</span>${line}</span>`;
+        }).join('');
+      }
+
+      function highlightCodeLine(lineIndex) {
+        codeEl.querySelectorAll('.vis-code__line').forEach((el, idx) => {
+          el.classList.toggle('vis-code__line--active', idx === lineIndex);
+        });
+      }
+
+      function renderStep(step) {
+        const arr = step.array;
+        const low = step.low;
+        const high = step.high;
+        const pos = step.pos;
+        const foundIdx = step.found;
+
+        statusTargetEl.textContent = `Target: ${step.target}`;
+        statusWindowEl.textContent = low <= high ? `Window: [${low}..${high}]` : 'Window: empty';
+        statusProbesEl.textContent = `Probes: ${step.probes ?? 0}`;
+        formulaEl.innerHTML = step.formula || 'pos = low + ((target - arr[low]) * (high - low)) // (arr[high] - arr[low])';
+
+        canvasEl.innerHTML = arr.map((val, idx) => {
+          let stateClass = '';
+          const badges = [];
+
+          if (idx === foundIdx) {
+            stateClass = 'vis-cell--found';
+            badges.push('<span class="vis-cell__badge vis-cell__badge--found">FOUND</span>');
+          } else {
+            if (idx === pos) {
+              stateClass = 'vis-cell--pos';
+            } else if (step.done || idx < low || idx > high) {
+              stateClass = 'vis-cell--discarded';
+            } else {
+              stateClass = 'vis-cell--in-window';
+            }
+            if (!step.done) {
+              if (idx === low) badges.push('<span class="vis-cell__badge vis-cell__badge--low">L</span>');
+              if (idx === pos) badges.push('<span class="vis-cell__badge vis-cell__badge--pos">POS</span>');
+              if (idx === high) badges.push('<span class="vis-cell__badge vis-cell__badge--high">H</span>');
+            }
+          }
+
+          return `
+            <div class="vis-cell ${stateClass}">
+              <div class="vis-cell__badges">${badges.join('')}</div>
+              <div class="vis-cell__box">${val}</div>
+              <span class="vis-cell__index">[${idx}]</span>
+            </div>
+          `;
+        }).join('');
+
+        infoEl.innerHTML = step.description;
+      }
+
+      const engine = new VisualizerEngine({
+        render: renderStep,
+        highlightCode: highlightCodeLine,
+        defaultSpeed: 700,
+      });
+
+      function parseInputs() {
+        const raw = arrayInputEl.value
+          .split(',')
+          .map((s) => Number(s.trim()))
+          .filter((n) => Number.isFinite(n));
+        const baseArr = raw.length >= 1 ? raw.slice(0, 12) : [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+        const sorted = [...baseArr].sort((a, b) => a - b);
+        const wasUnsorted = baseArr.some((val, i) => val !== sorted[i]);
+        sortNoteEl.textContent = wasUnsorted
+          ? 'ℹ️ Sorted your numbers automatically — Interpolation Search requires a sorted list.'
+          : '';
+        const parsedTarget = Number(targetInputEl.value);
+        const target = Number.isFinite(parsedTarget) ? parsedTarget : 80;
+        return { arr: sorted, target };
+      }
+
+      function buildInterpolationSteps(arr, target) {
+        engine.reset();
+        let low = 0;
+        let high = arr.length - 1;
+        let probes = 0;
+
+        engine.recordStep({
+          array: [...arr],
+          target,
+          low,
+          high,
+          probes: 0,
+          formula: 'pos = low + ((target - arr[low]) * (high - low)) // (arr[high] - arr[low])',
+          description: `Starting Interpolation Search for <strong>${target}</strong> in range <strong>[${low}..${high}]</strong> (values ${arr[low]}..${arr[high]}).`,
+          codeLine: 1,
+        });
+
+        while (low <= high && target >= arr[low] && target <= arr[high]) {
+          if (arr[low] === arr[high]) {
+            probes++;
+            if (arr[low] === target) {
+              engine.recordStep({
+                array: [...arr],
+                target,
+                low,
+                high,
+                pos: low,
+                found: low,
+                done: true,
+                probes,
+                formula: `arr[low] == arr[high] == ${arr[low]} → check arr[${low}] directly`,
+                description: `✅ All values in window equal <strong>${arr[low]}</strong>! Match at index <strong>${low}</strong>.`,
+                codeLine: 4,
+              });
+            } else {
+              engine.recordStep({
+                array: [...arr],
+                target,
+                low,
+                high,
+                done: true,
+                probes,
+                formula: `arr[low] == arr[high] == ${arr[low]} ≠ ${target}`,
+                description: `❌ All values equal <strong>${arr[low]}</strong> ≠ <strong>${target}</strong> — returning <strong>-1</strong>.`,
+                codeLine: 4,
+              });
+            }
+            engine.goToStep(0);
+            return;
+          }
+
+          const span = arr[high] - arr[low];
+          const pos = low + Math.floor(((target - arr[low]) * (high - low)) / span);
+          const formulaText = `pos = ${low} + ((${target} - ${arr[low]}) * (${high} - ${low})) // (${arr[high]} - ${arr[low]}) = <strong>${pos}</strong>`;
+          probes++;
+
+          engine.recordStep({
+            array: [...arr],
+            target,
+            low,
+            high,
+            pos,
+            probes,
+            formula: formulaText,
+            description: `Estimated probe <strong>pos = ${pos}</strong> (value <strong>${arr[pos]}</strong>). Comparing with target <strong>${target}</strong>.`,
+            codeLine: 6,
+          });
+
+          if (arr[pos] === target) {
+            engine.recordStep({
+              array: [...arr],
+              target,
+              low,
+              high,
+              pos,
+              found: pos,
+              done: true,
+              probes,
+              formula: formulaText,
+              description: `✅ Direct hit! <strong>arr[${pos}] == ${target}</strong> found in ${probes} probe${probes === 1 ? '' : 's'}!`,
+              codeLine: 8,
+            });
+            engine.goToStep(0);
+            return;
+          }
+
+          if (arr[pos] < target) {
+            low = pos + 1;
+            engine.recordStep({
+              array: [...arr],
+              target,
+              low,
+              high,
+              probes,
+              formula: formulaText,
+              description: `<strong>${arr[pos]} &lt; ${target}</strong>, so move right: <strong>low = ${low}</strong>.`,
+              codeLine: 10,
+            });
+          } else {
+            high = pos - 1;
+            engine.recordStep({
+              array: [...arr],
+              target,
+              low,
+              high,
+              probes,
+              formula: formulaText,
+              description: `<strong>${arr[pos]} &gt; ${target}</strong>, so move left: <strong>high = ${high}</strong>.`,
+              codeLine: 12,
+            });
+          }
+        }
+
+        engine.recordStep({
+          array: [...arr],
+          target,
+          low,
+          high,
+          done: true,
+          probes,
+          formula: low <= high
+            ? `Guard failed: target ${target} is outside [${arr[low]}..${arr[high]}]`
+            : `Guard failed: window collapsed (low=${low} > high=${high})`,
+          description: `❌ Target <strong>${target}</strong> is outside the remaining value bounds — returning <strong>-1</strong>.`,
+          codeLine: 13,
+        });
+
+        engine.goToStep(0);
+      }
+
+      renderCodePanel();
+      engine.bindControls();
+
+      document.getElementById('btn-apply').addEventListener('click', () => {
+        const { arr, target } = parseInputs();
+        arrayInputEl.value = arr.join(', ');
+        targetInputEl.value = String(target);
+        buildInterpolationSteps(arr, target);
+        engine.play();
+      });
+
+      document.getElementById('btn-random').addEventListener('click', () => {
+        const step = Math.floor(Math.random() * 8) + 4;
+        let current = Math.floor(Math.random() * 10) + 2;
+        const arr = Array.from({ length: 10 }, () => {
+          current += step + Math.floor(Math.random() * 4);
+          return current;
+        });
+        const pickExisting = Math.random() < 0.75;
+        const target = pickExisting
+          ? arr[Math.floor(Math.random() * arr.length)]
+          : arr[3] + 1;
+        arrayInputEl.value = arr.join(', ');
+        targetInputEl.value = String(target);
+        sortNoteEl.textContent = '';
+        buildInterpolationSteps(arr, target);
+      });
+
+      document.querySelectorAll('[data-array]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          arrayInputEl.value = btn.dataset.array;
+          targetInputEl.value = btn.dataset.target;
+          const { arr, target } = parseInputs();
+          buildInterpolationSteps(arr, target);
+        });
+      });
+
+      const initial = parseInputs();
+      buildInterpolationSteps(initial.arr, initial.target);
+    </script>
+  </body>
+</html>
+
