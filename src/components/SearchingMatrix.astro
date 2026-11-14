@@ -1,0 +1,145 @@
+---
+import { withBase } from '../utils/url';
+
+interface SearchingSummaryRow {
+  readonly slug: string;
+  readonly name: string;
+  readonly best: string;
+  readonly average: string;
+  readonly worst: string;
+  readonly space: string;
+  readonly requiresSorted: boolean;
+  readonly bestFor: string;
+}
+
+const SEARCHING_MATRIX: readonly SearchingSummaryRow[] = [
+  {
+    slug: 'linear-search',
+    name: 'Linear Search',
+    best: 'O(1)',
+    average: 'O(n)',
+    worst: 'O(n)',
+    space: 'O(1)',
+    requiresSorted: false,
+    bestFor: 'Unsorted lists, tiny arrays, or one-off lookups',
+  },
+  {
+    slug: 'binary-search',
+    name: 'Binary Search',
+    best: 'O(1)',
+    average: 'O(log n)',
+    worst: 'O(log n)',
+    space: 'O(1)',
+    requiresSorted: true,
+    bestFor: 'Default fast exact lookup in any sorted array',
+  },
+  {
+    slug: 'binary-search-bounds',
+    name: 'Binary Search Bounds',
+    best: 'O(log n)',
+    average: 'O(log n)',
+    worst: 'O(log n)',
+    space: 'O(1)',
+    requiresSorted: true,
+    bestFor: 'First/last occurrence with duplicates & counting ranges',
+  },
+  {
+    slug: 'jump-search',
+    name: 'Jump Search',
+    best: 'O(1)',
+    average: 'O(√n)',
+    worst: 'O(√n)',
+    space: 'O(1)',
+    requiresSorted: true,
+    bestFor: 'Forward-only block jumps where backward seeking is costly',
+  },
+  {
+    slug: 'interpolation-search',
+    name: 'Interpolation Search',
+    best: 'O(1)',
+    average: 'O(log log n)',
+    worst: 'O(n)',
+    space: 'O(1)',
+    requiresSorted: true,
+    bestFor: 'Large, uniformly spaced sorted numeric arrays',
+  },
+  {
+    slug: 'exponential-search',
+    name: 'Exponential Search',
+    best: 'O(1)',
+    average: 'O(log i)',
+    worst: 'O(log n)',
+    space: 'O(1)',
+    requiresSorted: true,
+    bestFor: 'Unbounded sorted streams or targets near index 0',
+  },
+  {
+    slug: 'ternary-search',
+    name: 'Ternary Search',
+    best: 'O(1)',
+    average: 'O(log₃ n)',
+    worst: 'O(log₃ n)',
+    space: 'O(1)',
+    requiresSorted: true,
+    bestFor: 'Unimodal peak/valley finding (Binary Search wins on arrays)',
+  },
+] as const;
+---
+
+<section class="clay-section searching-matrix">
+  <h2 class="clay-section__title">📊 Searching Comparison &amp; Decision Matrix</h2>
+  <p class="searching-matrix__intro">
+    Use this side-by-side cheat sheet to choose the right searching strategy — whether your data is unsorted, sorted, uniformly spaced, or unbounded.
+  </p>
+  <div class="matrix-scroll">
+    <table class="clay-table">
+      <thead>
+        <tr>
+          <th>Algorithm</th>
+          <th>Best</th>
+          <th>Average</th>
+          <th>Worst</th>
+          <th>Space</th>
+          <th>Sorted?</th>
+          <th>Best When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {SEARCHING_MATRIX.map((row) => (
+          <tr>
+            <td>
+              <a href={withBase(`/learn/searching/${row.slug}/`)} class="matrix-link">
+                {row.name}
+              </a>
+            </td>
+            <td><code>{row.best}</code></td>
+            <td><code>{row.average}</code></td>
+            <td><code>{row.worst}</code></td>
+            <td><code>{row.space}</code></td>
+            <td>{row.requiresSorted ? '✅ Yes' : '❌ No'}</td>
+            <td>{row.bestFor}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+  .searching-matrix {
+    margin-top: var(--space-2xl);
+  }
+
+  .searching-matrix__intro {
+    margin-bottom: var(--space-md);
+  }
+
+  .matrix-scroll {
+    overflow-x: auto;
+  }
+
+  .matrix-link {
+    font-weight: 600;
+  }
+</style>
+
