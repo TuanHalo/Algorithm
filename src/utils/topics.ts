@@ -26,7 +26,15 @@ export const TOPICS: readonly TopicConfig[] = [
     color: 'var(--color-searching)',
     order: 2,
     description: 'Find what you need fast — from scanning everything to cutting the search in half.',
-    previewAlgorithms: ['Linear Search', 'Binary Search'],
+    previewAlgorithms: [
+      'Linear Search',
+      'Binary Search',
+      'Binary Search Bounds',
+      'Jump Search',
+      'Interpolation Search',
+      'Exponential Search',
+      'Ternary Search',
+    ],
   },
   {
     slug: 'graph',

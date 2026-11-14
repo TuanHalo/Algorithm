@@ -4,6 +4,7 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ComplexityBadge from '../../../components/ComplexityBadge.astro';
 import SortingMatrix from '../../../components/SortingMatrix.astro';
+import SearchingMatrix from '../../../components/SearchingMatrix.astro';
 import { TOPICS } from '../../../utils/topics';
 import type { TopicConfig } from '../../../types/content';
 import { withBase } from '../../../utils/url';
@@ -80,6 +81,7 @@ const lessons = allLessons
     )}
 
     {topic.slug === 'sorting' && <SortingMatrix />}
+    {topic.slug === 'searching' && <SearchingMatrix />}
   </div>
 </BaseLayout>
 
