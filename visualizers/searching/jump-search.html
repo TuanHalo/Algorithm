@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jump Search Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-target-group {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .vis-target-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        white-space: nowrap;
+      }
+
+      .vis-target-field {
+        width: 84px;
+        min-width: 72px;
+        flex: 0 0 auto;
+        text-align: center;
+      }
+
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .vis-preset-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+
+      .vis-status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+      }
+
+      .vis-status-group {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .vis-pill {
+        background: var(--bg-card);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+      }
+
+      .vis-pill--target {
+        background: rgba(168, 216, 234, 0.55);
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .vis-pill--stage {
+        background: rgba(205, 180, 219, 0.55);
+        font-weight: 600;
+        color: #3d2b4d;
+      }
+
+      .vis-canvas {
+        align-items: center;
+        min-height: 195px;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        padding: 2.6rem 1.25rem 1.5rem;
+      }
+
+      .vis-cell {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
+        transition: transform 250ms ease, opacity 250ms ease;
+      }
+
+      .vis-cell--block-start {
+        margin-left: 0.45rem;
+      }
+
+      .vis-cell__badges {
+        position: absolute;
+        top: -28px;
+        display: flex;
+        gap: 3px;
+        justify-content: center;
+        white-space: nowrap;
+      }
+
+      .vis-cell__badge {
+        font-family: var(--font-code);
+        font-size: 0.62rem;
+        font-weight: 700;
+        padding: 2px 5px;
+        border-radius: 5px;
+        letter-spacing: 0.03em;
+        box-shadow: var(--shadow-clay-subtle);
+      }
+
+      .vis-cell__badge--prev {
+        background: #a8d8ea;
+        color: #0c4a6e;
+      }
+
+      .vis-cell__badge--jump {
+        background: var(--vis-pivot);
+        color: #3d2b4d;
+      }
+
+      .vis-cell__badge--scan {
+        background: var(--vis-comparing);
+        color: #431407;
+      }
+
+      .vis-cell__badge--found {
+        background: var(--vis-active);
+        color: #14532d;
+      }
+
+      .vis-cell__box {
+        width: 50px;
+        height: 50px;
+        border-radius: var(--border-radius-sm);
+        background: var(--vis-default);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-code);
+        font-size: 0.96rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        transition: all 250ms ease;
+      }
+
+      .vis-cell__index {
+        font-family: var(--font-code);
+        font-size: 0.7rem;
+        color: var(--text-muted);
+      }
+
+      .vis-cell--in-block .vis-cell__box {
+        background: rgba(168, 216, 234, 0.5);
+      }
+
+      .vis-cell--skipped {
+        opacity: 0.34;
+      }
+
+      .vis-cell--skipped .vis-cell__box {
+        background: #e2e8f0;
+      }
+
+      .vis-cell--jump {
+        transform: translateY(-4px);
+      }
+
+      .vis-cell--jump .vis-cell__box {
+        background: var(--vis-pivot);
+        box-shadow: var(--shadow-clay);
+      }
+
+      .vis-cell--scan {
+        transform: translateY(-4px);
+      }
+
+      .vis-cell--scan .vis-cell__box {
+        background: var(--vis-comparing);
+        box-shadow: var(--shadow-clay);
+      }
+
+      .vis-cell--found {
+        transform: translateY(-6px) scale(1.06);
+      }
+
+      .vis-cell--found .vis-cell__box {
+        background: var(--vis-active);
+        box-shadow: 0 0 16px rgba(168, 230, 207, 0.95), var(--shadow-clay);
+      }
+
+      .vis-sort-note {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+        text-align: center;
+        min-height: 1.1em;
+      }
+
+      @media (max-width: 600px) {
+        .vis-cell__box {
+          width: 42px;
+          height: 42px;
+          font-size: 0.86rem;
+        }
+        .vis-target-field {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <!-- Input Controls -->
+      <div class="vis-input">
+        <input
+          id="array-input"
+          class="vis-input__field"
+          type="text"
+          value="2, 5, 8, 12, 16, 23, 38, 56, 72"
+          placeholder="Sorted numbers (auto-sorted on load), e.g. 2, 5, 8, 12"
+          aria-label="Sorted array numbers"
+        />
+        <div class="vis-target-group">
+          <label for="target-input" class="vis-target-label">Target:</label>
+          <input
+            id="target-input"
+            class="vis-input__field vis-target-field"
+            type="number"
+            value="16"
+            aria-label="Target number"
+          />
+        </div>
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">▶ Load &amp; Run</button>
+        <button id="btn-random" class="vis-btn" type="button">🎲 Random</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Try presets:</span>
+        <button class="vis-btn" type="button" data-array="2, 5, 8, 12, 16, 23, 38, 56, 72" data-target="16">2nd block match</button>
+        <button class="vis-btn" type="button" data-array="2, 5, 8, 12, 16, 23, 38, 56, 72" data-target="72">Last element</button>
+        <button class="vis-btn" type="button" data-array="2, 5, 8, 12, 16, 23, 38, 56, 72" data-target="19">Missing inside block</button>
+        <button class="vis-btn" type="button" data-array="1, 4, 7, 11, 15, 19, 24, 29, 34, 40, 48, 55" data-target="40">12 items (step=3)</button>
+      </div>
+
+      <!-- Playback Controls -->
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button" title="Jump to start">⏮ Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button" title="Previous step">◀ Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button" title="Play animation">▶ Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" title="Pause animation" style="display: none;">⏸ Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button" title="Next step">Next ▶</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed">
+          <span>Speed</span>
+          <input class="vis-speed-slider" type="range" min="1" max="10" value="6" />
+        </label>
+      </div>
+
+      <!-- Legend -->
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> Block Probe</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: rgba(168, 216, 234, 0.7);"></span> Candidate Block</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Linear Scan</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: #e2e8f0;"></span> Skipped</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Found!</span>
+      </div>
+
+      <div id="sort-note" class="vis-sort-note"></div>
+
+      <!-- Status Pills -->
+      <div class="vis-status-bar">
+        <span id="status-target" class="vis-pill vis-pill--target">Target: 16</span>
+        <div class="vis-status-group">
+          <span id="status-stage" class="vis-pill vis-pill--stage">Stage: Setup</span>
+          <span id="status-block" class="vis-pill">Block √n: 3</span>
+          <span id="status-comparisons" class="vis-pill">Comparisons: 0</span>
+        </div>
+      </div>
+
+      <!-- Array Canvas -->
+      <div id="vis-canvas" class="vis-canvas" aria-live="polite"></div>
+
+      <!-- Step Description -->
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">
+        Enter a sorted array and target above, then press <strong>Play</strong> or <strong>Next</strong>.
+      </div>
+
+      <!-- Highlighted Python Code -->
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def jump_search(arr: list[int], target: int) -> int:',
+        '    n = len(arr)',
+        '    block = math.isqrt(n)',
+        '    prev, step = 0, block',
+        '    while arr[min(step, n) - 1] < target:',
+        '        prev = step',
+        '        step += block',
+        '        if prev >= n:',
+        '            return -1',
+        '    for idx in range(prev, min(step, n)):',
+        '        if arr[idx] == target:',
+        '            return idx',
+        '        if arr[idx] > target:',
+        '            break',
+        '    return -1',
+      ];
+
+      const canvasEl = document.getElementById('vis-canvas');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+      const arrayInputEl = document.getElementById('array-input');
+      const targetInputEl = document.getElementById('target-input');
+      const statusTargetEl = document.getElementById('status-target');
+      const statusStageEl = document.getElementById('status-stage');
+      const statusBlockEl = document.getElementById('status-block');
+      const statusComparisonsEl = document.getElementById('status-comparisons');
+      const sortNoteEl = document.getElementById('sort-note');
+
+      function renderCodePanel() {
+        codeEl.innerHTML = PYTHON_LINES.map((line, index) => {
+          return `<span class="vis-code__line" data-line="${index}"><span class="vis-code__line-number">${index + 1}</span>${line}</span>`;
+        }).join('');
+      }
+
+      function highlightCodeLine(lineIndex) {
+        codeEl.querySelectorAll('.vis-code__line').forEach((el, idx) => {
+          el.classList.toggle('vis-code__line--active', idx === lineIndex);
+        });
+      }
+
+      function renderStep(step) {
+        const arr = step.array;
+        const block = step.block;
+        const skippedUntil = step.skippedUntil ?? -1;
+        const blockRange = step.blockRange;
+        const jumpProbe = step.jumpProbe;
+        const scanIdx = step.scanIdx;
+        const foundIdx = step.found;
+
+        statusTargetEl.textContent = `Target: ${step.target}`;
+        statusStageEl.textContent = `Stage: ${step.stage}`;
+        statusBlockEl.textContent = `Block √n: ${block}`;
+        statusComparisonsEl.textContent = `Comparisons: ${step.comparisons ?? 0}`;
+
+        canvasEl.innerHTML = arr.map((val, idx) => {
+          let stateClass = '';
+          const badges = [];
+          const isBlockStart = idx > 0 && idx % block === 0;
+
+          if (idx === foundIdx) {
+            stateClass = 'vis-cell--found';
+            badges.push('<span class="vis-cell__badge vis-cell__badge--found">FOUND</span>');
+          } else if (idx === scanIdx) {
+            stateClass = 'vis-cell--scan';
+            badges.push('<span class="vis-cell__badge vis-cell__badge--scan">SCAN</span>');
+          } else if (idx === jumpProbe) {
+            stateClass = 'vis-cell--jump';
+            badges.push('<span class="vis-cell__badge vis-cell__badge--jump">JUMP</span>');
+          } else if (idx <= skippedUntil || (step.done && idx !== foundIdx)) {
+            stateClass = 'vis-cell--skipped';
+          } else if (blockRange && idx >= blockRange[0] && idx <= blockRange[1]) {
+            stateClass = 'vis-cell--in-block';
+          }
+
+          if (idx === step.prev && !step.done) {
+            badges.push('<span class="vis-cell__badge vis-cell__badge--prev">PREV</span>');
+          }
+
+          return `
+            <div class="vis-cell ${isBlockStart ? 'vis-cell--block-start' : ''} ${stateClass}">
+              <div class="vis-cell__badges">${badges.join('')}</div>
+              <div class="vis-cell__box">${val}</div>
+              <span class="vis-cell__index">[${idx}]</span>
+            </div>
+          `;
+        }).join('');
+
+        infoEl.innerHTML = step.description;
+      }
+
+      const engine = new VisualizerEngine({
+        render: renderStep,
+        highlightCode: highlightCodeLine,
+        defaultSpeed: 650,
+      });
+
+      function parseInputs() {
+        const raw = arrayInputEl.value
+          .split(',')
+          .map((s) => Number(s.trim()))
+          .filter((n) => Number.isFinite(n));
+        const baseArr = raw.length >= 2 ? raw.slice(0, 12) : [2, 5, 8, 12, 16, 23, 38, 56, 72];
+        const sorted = [...baseArr].sort((a, b) => a - b);
+        const wasUnsorted = baseArr.some((val, i) => val !== sorted[i]);
+        sortNoteEl.textContent = wasUnsorted
+          ? 'ℹ️ Sorted your numbers automatically — Jump Search requires a sorted list.'
+          : '';
+        const parsedTarget = Number(targetInputEl.value);
+        const target = Number.isFinite(parsedTarget) ? parsedTarget : 16;
+        return { arr: sorted, target };
+      }
+
+      function buildJumpSearchSteps(arr, target) {
+        engine.reset();
+        const n = arr.length;
+        const block = Math.max(1, Math.floor(Math.sqrt(n)));
+        let prev = 0;
+        let step = block;
+        let comparisons = 0;
+
+        engine.recordStep({
+          array: [...arr],
+          target,
+          block,
+          prev,
+          stage: 'Setup',
+          comparisons: 0,
+          description: `Array length <strong>n = ${n}</strong>, so block jump size is <strong>⌊√${n}⌋ = ${block}</strong>.`,
+          codeLine: 2,
+        });
+
+        while (true) {
+          const probeIdx = Math.min(step, n) - 1;
+          comparisons++;
+          const probeVal = arr[probeIdx];
+
+          engine.recordStep({
+            array: [...arr],
+            target,
+            block,
+            prev,
+            jumpProbe: probeIdx,
+            skippedUntil: prev - 1,
+            stage: '1. Block Jump',
+            comparisons,
+            description: `Check block end at index <strong>${probeIdx}</strong> (value <strong>${probeVal}</strong>): is <strong>${probeVal} &lt; ${target}</strong>?`,
+            codeLine: 4,
+          });
+
+          if (probeVal >= target) {
+            engine.recordStep({
+              array: [...arr],
+              target,
+              block,
+              prev,
+              blockRange: [prev, probeIdx],
+              skippedUntil: prev - 1,
+              stage: '2. Linear Scan',
+              comparisons,
+              description: `<strong>${probeVal} ≥ ${target}</strong>! Target can only be inside block <strong>[${prev}..${probeIdx}]</strong>. Switching to linear scan.`,
+              codeLine: 9,
+            });
+            break;
+          }
+
+          prev = step;
+          step += block;
+
+          if (prev >= n) {
+            engine.recordStep({
+              array: [...arr],
+              target,
+              block,
+              prev,
+              skippedUntil: n - 1,
+              done: true,
+              stage: 'Done',
+              comparisons,
+              description: `❌ Reached past the end (<strong>prev = ${prev} ≥ ${n}</strong>). <strong>${target}</strong> is not in the array — returning <strong>-1</strong>.`,
+              codeLine: 8,
+            });
+            engine.goToStep(0);
+            return;
+          }
+
+          engine.recordStep({
+            array: [...arr],
+            target,
+            block,
+            prev,
+            skippedUntil: prev - 1,
+            stage: '1. Block Jump',
+            comparisons,
+            description: `<strong>${probeVal} &lt; ${target}</strong>, so skip block and jump to <strong>prev = ${prev}</strong>.`,
+            codeLine: 6,
+          });
+        }
+
+        const end = Math.min(step, n);
+        for (let idx = prev; idx < end; idx++) {
+          comparisons++;
+          engine.recordStep({
+            array: [...arr],
+            target,
+            block,
+            prev,
+            scanIdx: idx,
+            blockRange: [prev, end - 1],
+            skippedUntil: idx - 1,
+            stage: '2. Linear Scan',
+            comparisons,
+            description: `Scanning index <strong>${idx}</strong> (value <strong>${arr[idx]}</strong>) against target <strong>${target}</strong>.`,
+            codeLine: 10,
+          });
+
+          if (arr[idx] === target) {
+            engine.recordStep({
+              array: [...arr],
+              target,
+              block,
+              prev,
+              found: idx,
+              done: true,
+              stage: 'Found!',
+              comparisons,
+              description: `✅ Match! Found <strong>${target}</strong> at index <strong>${idx}</strong> in ${comparisons} comparisons.`,
+              codeLine: 11,
+            });
+            engine.goToStep(0);
+            return;
+          }
+
+          if (arr[idx] > target) {
+            engine.recordStep({
+              array: [...arr],
+              target,
+              block,
+              prev,
+              skippedUntil: n - 1,
+              done: true,
+              stage: 'Done',
+              comparisons,
+              description: `❌ <strong>${arr[idx]} &gt; ${target}</strong> in a sorted block — stop early and return <strong>-1</strong>.`,
+              codeLine: 13,
+            });
+            engine.goToStep(0);
+            return;
+          }
+        }
+
+        engine.recordStep({
+          array: [...arr],
+          target,
+          block,
+          prev,
+          skippedUntil: n - 1,
+          done: true,
+          stage: 'Done',
+          comparisons,
+          description: `❌ Finished block without finding <strong>${target}</strong> — returning <strong>-1</strong>.`,
+          codeLine: 14,
+        });
+
+        engine.goToStep(0);
+      }
+
+      renderCodePanel();
+      engine.bindControls();
+
+      document.getElementById('btn-apply').addEventListener('click', () => {
+        const { arr, target } = parseInputs();
+        arrayInputEl.value = arr.join(', ');
+        targetInputEl.value = String(target);
+        buildJumpSearchSteps(arr, target);
+        engine.play();
+      });
+
+      document.getElementById('btn-random').addEventListener('click', () => {
+        const set = new Set();
+        while (set.size < 10) {
+          set.add(Math.floor(Math.random() * 90) + 1);
+        }
+        const arr = [...set].sort((a, b) => a - b);
+        const pickExisting = Math.random() < 0.75;
+        const target = pickExisting
+          ? arr[Math.floor(Math.random() * arr.length)]
+          : Math.floor(Math.random() * 95) + 1;
+        arrayInputEl.value = arr.join(', ');
+        targetInputEl.value = String(target);
+        sortNoteEl.textContent = '';
+        buildJumpSearchSteps(arr, target);
+      });
+
+      document.querySelectorAll('[data-array]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          arrayInputEl.value = btn.dataset.array;
+          targetInputEl.value = btn.dataset.target;
+          const { arr, target } = parseInputs();
+          buildJumpSearchSteps(arr, target);
+        });
+      });
+
+      const initial = parseInputs();
+      buildJumpSearchSteps(initial.arr, initial.target);
+    </script>
+  </body>
+</html>
+
