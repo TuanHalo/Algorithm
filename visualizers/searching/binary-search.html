@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Binary Search Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-target-group {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .vis-target-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        white-space: nowrap;
+      }
+
+      .vis-target-field {
+        width: 84px;
+        min-width: 72px;
+        flex: 0 0 auto;
+        text-align: center;
+      }
+
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .vis-preset-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+
+      .vis-status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+      }
+
+      .vis-status-group {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .vis-pill {
+        background: var(--bg-card);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+      }
+
+      .vis-pill--target {
+        background: rgba(168, 216, 234, 0.55);
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .vis-canvas {
+        align-items: center;
+        min-height: 190px;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+        padding: 2.5rem 1.25rem 1.5rem;
+      }
+
+      .vis-cell {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
+        transition: transform 250ms ease, opacity 250ms ease;
+      }
+
+      .vis-cell__badges {
+        position: absolute;
+        top: -28px;
+        display: flex;
+        gap: 3px;
+        justify-content: center;
+        white-space: nowrap;
+      }
+
+      .vis-cell__badge {
+        font-family: var(--font-code);
+        font-size: 0.62rem;
+        font-weight: 700;
+        padding: 2px 5px;
+        border-radius: 5px;
+        letter-spacing: 0.03em;
+        box-shadow: var(--shadow-clay-subtle);
+      }
+
+      .vis-cell__badge--low {
+        background: #a8d8ea;
+        color: #0c4a6e;
+      }
+
+      .vis-cell__badge--mid {
+        background: var(--vis-comparing);
+        color: #431407;
+      }
+
+      .vis-cell__badge--high {
+        background: var(--vis-pivot);
+        color: #3d2b4d;
+      }
+
+      .vis-cell__badge--found {
+        background: var(--vis-active);
+        color: #14532d;
+      }
+
+      .vis-cell__box {
+        width: 54px;
+        height: 54px;
+        border-radius: var(--border-radius-sm);
+        background: var(--vis-default);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-code);
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        transition: all 250ms ease;
+      }
+
+      .vis-cell__index {
+        font-family: var(--font-code);
+        font-size: 0.72rem;
+        color: var(--text-muted);
+      }
+
+      .vis-cell--in-window .vis-cell__box {
+        background: rgba(168, 216, 234, 0.45);
+      }
+
+      .vis-cell--discarded {
+        opacity: 0.32;
+      }
+
+      .vis-cell--discarded .vis-cell__box {
+        background: #e2e8f0;
+      }
+
+      .vis-cell--mid {
+        transform: translateY(-4px);
+      }
+
+      .vis-cell--mid .vis-cell__box {
+        background: var(--vis-comparing);
+        box-shadow: var(--shadow-clay);
+      }
+
+      .vis-cell--found {
+        transform: translateY(-6px) scale(1.06);
+      }
+
+      .vis-cell--found .vis-cell__box {
+        background: var(--vis-active);
+        box-shadow: 0 0 16px rgba(168, 230, 207, 0.95), var(--shadow-clay);
+      }
+
+      .vis-sort-note {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+        text-align: center;
+        min-height: 1.1em;
+      }
+
+      @media (max-width: 600px) {
+        .vis-cell__box {
+          width: 44px;
+          height: 44px;
+          font-size: 0.9rem;
+        }
+        .vis-target-field {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <!-- Input Controls -->
+      <div class="vis-input">
+        <input
+          id="array-input"
+          class="vis-input__field"
+          type="text"
+          value="2, 5, 8, 12, 16, 23, 38, 56, 72"
+          placeholder="Sorted numbers (auto-sorted on load), e.g. 2, 5, 8, 12, 16"
+          aria-label="Sorted array numbers"
+        />
+        <div class="vis-target-group">
+          <label for="target-input" class="vis-target-label">Target:</label>
+          <input
+            id="target-input"
+            class="vis-input__field vis-target-field"
+            type="number"
+            value="23"
+            aria-label="Target number"
+          />
+        </div>
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">▶ Load &amp; Run</button>
+        <button id="btn-random" class="vis-btn" type="button">🎲 Random</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Try presets:</span>
+        <button class="vis-btn" type="button" data-array="2, 5, 8, 12, 16, 23, 38" data-target="12">Best case (1st mid)</button>
+        <button class="vis-btn" type="button" data-array="2, 5, 8, 12, 16, 23, 38, 56, 72" data-target="72">Right boundary</button>
+        <button class="vis-btn" type="button" data-array="2, 5, 8, 12, 16, 23, 38, 56, 72" data-target="5">Left half</button>
+        <button class="vis-btn" type="button" data-array="2, 5, 8, 12, 16, 23, 38, 56, 72" data-target="20">Not found (-1)</button>
+      </div>
+
+      <!-- Playback Controls -->
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button" title="Jump to start">⏮ Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button" title="Previous step">◀ Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button" title="Play animation">▶ Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" title="Pause animation" style="display: none;">⏸ Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button" title="Next step">Next ▶</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed">
+          <span>Speed</span>
+          <input class="vis-speed-slider" type="range" min="1" max="10" value="6" />
+        </label>
+      </div>
+
+      <!-- Legend -->
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: rgba(168, 216, 234, 0.7);"></span> Active Window</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Midpoint (mid)</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: #e2e8f0;"></span> Eliminated Half</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Found!</span>
+      </div>
+
+      <div id="sort-note" class="vis-sort-note"></div>
+
+      <!-- Status Pills -->
+      <div class="vis-status-bar">
+        <span id="status-target" class="vis-pill vis-pill--target">Target: 23</span>
+        <div class="vis-status-group">
+          <span id="status-window" class="vis-pill">Window: [0..8]</span>
+          <span id="status-comparisons" class="vis-pill">Comparisons: 0</span>
+        </div>
+      </div>
+
+      <!-- Array Canvas -->
+      <div id="vis-canvas" class="vis-canvas" aria-live="polite"></div>
+
+      <!-- Step Description -->
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">
+        Enter a sorted array and target above, then press <strong>Play</strong> or <strong>Next</strong>.
+      </div>
+
+      <!-- Highlighted Python Code -->
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def binary_search(arr: list[int], target: int) -> int:',
+        '    low = 0',
+        '    high = len(arr) - 1',
+        '    while low <= high:',
+        '        mid = low + (high - low) // 2',
+        '        if arr[mid] == target:',
+        '            return mid',
+        '        if arr[mid] < target:',
+        '            low = mid + 1',
+        '        else:',
+        '            high = mid - 1',
+        '    return -1',
+      ];
+
+      const canvasEl = document.getElementById('vis-canvas');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+      const arrayInputEl = document.getElementById('array-input');
+      const targetInputEl = document.getElementById('target-input');
+      const statusTargetEl = document.getElementById('status-target');
+      const statusWindowEl = document.getElementById('status-window');
+      const statusComparisonsEl = document.getElementById('status-comparisons');
+      const sortNoteEl = document.getElementById('sort-note');
+
+      function renderCodePanel() {
+        codeEl.innerHTML = PYTHON_LINES.map((line, index) => {
+          return `<span class="vis-code__line" data-line="${index}"><span class="vis-code__line-number">${index + 1}</span>${line}</span>`;
+        }).join('');
+      }
+
+      function highlightCodeLine(lineIndex) {
+        codeEl.querySelectorAll('.vis-code__line').forEach((el, idx) => {
+          el.classList.toggle('vis-code__line--active', idx === lineIndex);
+        });
+      }
+
+      function renderStep(step) {
+        const arr = step.array;
+        const low = step.low;
+        const high = step.high;
+        const mid = step.mid;
+        const foundIdx = step.found;
+
+        statusTargetEl.textContent = `Target: ${step.target}`;
+        statusWindowEl.textContent = low <= high ? `Window: [${low}..${high}]` : 'Window: empty';
+        statusComparisonsEl.textContent = `Comparisons: ${step.comparisons ?? 0}`;
+
+        canvasEl.innerHTML = arr.map((val, idx) => {
+          let stateClass = '';
+          const badges = [];
+
+          if (idx === foundIdx) {
+            stateClass = 'vis-cell--found';
+            badges.push('<span class="vis-cell__badge vis-cell__badge--found">FOUND</span>');
+          } else {
+            if (idx === mid) {
+              stateClass = 'vis-cell--mid';
+            } else if (idx < low || idx > high) {
+              stateClass = 'vis-cell--discarded';
+            } else {
+              stateClass = 'vis-cell--in-window';
+            }
+            if (idx === low) badges.push('<span class="vis-cell__badge vis-cell__badge--low">L</span>');
+            if (idx === mid) badges.push('<span class="vis-cell__badge vis-cell__badge--mid">M</span>');
+            if (idx === high) badges.push('<span class="vis-cell__badge vis-cell__badge--high">H</span>');
+          }
+
+          return `
+            <div class="vis-cell ${stateClass}">
+              <div class="vis-cell__badges">${badges.join('')}</div>
+              <div class="vis-cell__box">${val}</div>
+              <span class="vis-cell__index">[${idx}]</span>
+            </div>
+          `;
+        }).join('');
+
+        infoEl.innerHTML = step.description;
+      }
+
+      const engine = new VisualizerEngine({
+        render: renderStep,
+        highlightCode: highlightCodeLine,
+        defaultSpeed: 650,
+      });
+
+      function parseInputs() {
+        const raw = arrayInputEl.value
+          .split(',')
+          .map((s) => Number(s.trim()))
+          .filter((n) => Number.isFinite(n));
+        const baseArr = raw.length >= 1 ? raw.slice(0, 12) : [2, 5, 8, 12, 16, 23, 38, 56, 72];
+        const sorted = [...baseArr].sort((a, b) => a - b);
+        const wasUnsorted = baseArr.some((val, i) => val !== sorted[i]);
+        sortNoteEl.textContent = wasUnsorted
+          ? 'ℹ️ Sorted your numbers automatically — Binary Search requires a sorted list.'
+          : '';
+        const parsedTarget = Number(targetInputEl.value);
+        const target = Number.isFinite(parsedTarget) ? parsedTarget : 23;
+        return { arr: sorted, target };
+      }
+
+      function buildBinarySearchSteps(arr, target) {
+        engine.reset();
+        let low = 0;
+        let high = arr.length - 1;
+        let comparisons = 0;
+
+        engine.recordStep({
+          array: [...arr],
+          target,
+          low,
+          high,
+          comparisons: 0,
+          description: `Starting Binary Search for <strong>${target}</strong> with window <strong>[${low}..${high}]</strong>.`,
+          codeLine: 1,
+        });
+
+        while (low <= high) {
+          const mid = low + Math.floor((high - low) / 2);
+          comparisons++;
+
+          engine.recordStep({
+            array: [...arr],
+            target,
+            low,
+            high,
+            mid,
+            comparisons,
+            description: `Midpoint <strong>mid = ${mid}</strong> (value <strong>${arr[mid]}</strong>). Comparing <strong>${arr[mid]}</strong> with <strong>${target}</strong>.`,
+            codeLine: 4,
+          });
+
+          if (arr[mid] === target) {
+            engine.recordStep({
+              array: [...arr],
+              target,
+              low,
+              high,
+              mid,
+              found: mid,
+              comparisons,
+              description: `✅ Match! <strong>arr[${mid}] == ${target}</strong>. Found in ${comparisons} comparison${comparisons === 1 ? '' : 's'}!`,
+              codeLine: 6,
+            });
+            engine.goToStep(0);
+            return;
+          }
+
+          if (arr[mid] < target) {
+            low = mid + 1;
+            engine.recordStep({
+              array: [...arr],
+              target,
+              low,
+              high,
+              comparisons,
+              description: `<strong>${arr[mid]} &lt; ${target}</strong>, so discard left half [${0}..${mid}] and set <strong>low = ${low}</strong>.`,
+              codeLine: 8,
+            });
+          } else {
+            high = mid - 1;
+            engine.recordStep({
+              array: [...arr],
+              target,
+              low,
+              high,
+              comparisons,
+              description: `<strong>${arr[mid]} &gt; ${target}</strong>, so discard right half [${mid}..${arr.length - 1}] and set <strong>high = ${high}</strong>.`,
+              codeLine: 10,
+            });
+          }
+        }
+
+        engine.recordStep({
+          array: [...arr],
+          target,
+          low,
+          high,
+          comparisons,
+          description: `❌ Window collapsed (<strong>low=${low} &gt; high=${high}</strong>). <strong>${target}</strong> is not in the array — returning <strong>-1</strong>.`,
+          codeLine: 11,
+        });
+
+        engine.goToStep(0);
+      }
+
+      renderCodePanel();
+      engine.bindControls();
+
+      document.getElementById('btn-apply').addEventListener('click', () => {
+        const { arr, target } = parseInputs();
+        arrayInputEl.value = arr.join(', ');
+        targetInputEl.value = String(target);
+        buildBinarySearchSteps(arr, target);
+        engine.play();
+      });
+
+      document.getElementById('btn-random').addEventListener('click', () => {
+        const set = new Set();
+        while (set.size < 9) {
+          set.add(Math.floor(Math.random() * 90) + 1);
+        }
+        const arr = [...set].sort((a, b) => a - b);
+        const pickExisting = Math.random() < 0.75;
+        const target = pickExisting
+          ? arr[Math.floor(Math.random() * arr.length)]
+          : Math.floor(Math.random() * 95) + 1;
+        arrayInputEl.value = arr.join(', ');
+        targetInputEl.value = String(target);
+        sortNoteEl.textContent = '';
+        buildBinarySearchSteps(arr, target);
+      });
+
+      document.querySelectorAll('[data-array]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          arrayInputEl.value = btn.dataset.array;
+          targetInputEl.value = btn.dataset.target;
+          const { arr, target } = parseInputs();
+          buildBinarySearchSteps(arr, target);
+        });
+      });
+
+      const initial = parseInputs();
+      buildBinarySearchSteps(initial.arr, initial.target);
+    </script>
+  </body>
+</html>
