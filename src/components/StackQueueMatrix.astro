@@ -1,0 +1,144 @@
+---
+import { withBase } from '../utils/url';
+
+interface StackQueueSummaryRow {
+  readonly slug: string;
+  readonly name: string;
+  readonly insertOp: string;
+  readonly removeOp: string;
+  readonly peekOp: string;
+  readonly space: string;
+  readonly ordering: string;
+  readonly bestFor: string;
+}
+
+const STACK_QUEUE_MATRIX: readonly StackQueueSummaryRow[] = [
+  {
+    slug: 'stack-operations',
+    name: 'Stack Operations',
+    insertOp: 'O(1) push',
+    removeOp: 'O(1) pop',
+    peekOp: 'O(1) top',
+    space: 'O(n)',
+    ordering: 'LIFO',
+    bestFor: 'Undo history, DFS traversal & call-stack tracking',
+  },
+  {
+    slug: 'queue-operations',
+    name: 'Queue Operations',
+    insertOp: 'O(1) rear',
+    removeOp: 'O(1) front',
+    peekOp: 'O(1) front',
+    space: 'O(n)',
+    ordering: 'FIFO',
+    bestFor: 'BFS level order, print queues & fair request buffering',
+  },
+  {
+    slug: 'circular-queue',
+    name: 'Circular Queue',
+    insertOp: 'O(1) wrap',
+    removeOp: 'O(1) wrap',
+    peekOp: 'O(1)',
+    space: 'O(k)',
+    ordering: 'FIFO Ring',
+    bestFor: 'Fixed-memory streaming rings & bounded event buffers',
+  },
+  {
+    slug: 'deque-operations',
+    name: 'Deque Operations',
+    insertOp: 'O(1) both',
+    removeOp: 'O(1) both',
+    peekOp: 'O(1) ends',
+    space: 'O(n)',
+    ordering: 'Two-Ended',
+    bestFor: '0-1 BFS, palindrome checks & work-stealing queues',
+  },
+  {
+    slug: 'valid-parentheses',
+    name: 'Balanced Brackets',
+    insertOp: 'O(n) scan',
+    removeOp: 'O(1) / char',
+    peekOp: 'O(1) top',
+    space: 'O(n)',
+    ordering: 'LIFO Match',
+    bestFor: 'Validating nested delimiters, tags & syntax pairs',
+  },
+  {
+    slug: 'monotonic-stack',
+    name: 'Monotonic Stack',
+    insertOp: 'O(1) amort.',
+    removeOp: 'O(1) amort.',
+    peekOp: 'O(1) top',
+    space: 'O(n)',
+    ordering: 'Monotonic',
+    bestFor: 'Next Greater / Smaller element, histogram & rain water',
+  },
+  {
+    slug: 'monotonic-queue',
+    name: 'Monotonic Queue',
+    insertOp: 'O(1) amort.',
+    removeOp: 'O(1) ends',
+    peekOp: 'O(1) max',
+    space: 'O(k)',
+    ordering: 'Window Max',
+    bestFor: 'Sliding window max/min & bounded lookback DP',
+  },
+] as const;
+---
+
+<section class="clay-section stack-queue-matrix">
+  <h2 class="clay-section__title">📊 Stack &amp; Queue Comparison &amp; Decision Matrix</h2>
+  <p class="stack-queue-matrix__intro">
+    Use this side-by-side cheat sheet to pick the right linear access pattern — from strict LIFO/FIFO buffers to amortized monotonic windows.
+  </p>
+  <div class="matrix-scroll">
+    <table class="clay-table">
+      <thead>
+        <tr>
+          <th>Pattern</th>
+          <th>Insert</th>
+          <th>Remove</th>
+          <th>Peek / Query</th>
+          <th>Space</th>
+          <th>Ordering</th>
+          <th>Best When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {STACK_QUEUE_MATRIX.map((row) => (
+          <tr>
+            <td>
+              <a href={withBase(`/learn/stack-queue/${row.slug}/`)} class="matrix-link">
+                {row.name}
+              </a>
+            </td>
+            <td><code>{row.insertOp}</code></td>
+            <td><code>{row.removeOp}</code></td>
+            <td><code>{row.peekOp}</code></td>
+            <td><code>{row.space}</code></td>
+            <td>{row.ordering}</td>
+            <td>{row.bestFor}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+  .stack-queue-matrix {
+    margin-top: var(--space-2xl);
+  }
+
+  .stack-queue-matrix__intro {
+    margin-bottom: var(--space-md);
+  }
+
+  .matrix-scroll {
+    overflow-x: auto;
+  }
+
+  .matrix-link {
+    font-weight: 600;
+  }
+</style>
