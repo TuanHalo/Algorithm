@@ -10,16 +10,16 @@ diagram: "/diagrams/stack-queue/valid-parentheses-flow.html"
 tags: ["stack-queue", "stack", "string", "matching"]
 ---
 
-## 🎯 What is Balanced Brackets?
+## What are balanced brackets?
 
-Imagine nesting Russian dolls — **the innermost doll you open must always be the very first one you snap shut before closing any outer doll**.
+Imagine nesting Russian dolls. The innermost doll you open must always be the first one you snap shut before closing any outer doll.
 Using a Stack, we remember every unmatched opening bracket in order and verify each closing bracket matches the most recent opener on top.
 
-## 🧠 Core Idea
+## Core idea
 
-> Push every opener `( [ {` → On each closer `) ] }`, pop and verify it matches the top opener → Valid iff the stack ends empty
+Push every opener `( [ {`. On each closer `) ] }`, pop and check that it matches the top opener; the string is valid if and only if the stack ends empty.
 
-## 🐍 Python Code
+## Python code
 
 ```python
 def is_valid_brackets(text: str) -> bool:
@@ -38,17 +38,17 @@ def is_valid_brackets(text: str) -> bool:
     return len(stack) == 0
 ```
 
-## ⏱️ Complexity
+## Complexity
 
 | Case | Time | Space | Why? |
 |---|---|---|---|
-| **Best** (first char is `)` ) | `O(1)` | `O(1)` | Stray closing bracket hits an empty stack and returns `False` at once |
-| **Average** | `O(n)` | `O(n)` | Each character is pushed and popped at most once across the string |
-| **Worst** (all openers `(((`) | `O(n)` | `O(n)` | Scans all `n` characters and holds up to `n` openers on the stack |
+| Best (first char is `)` ) | `O(1)` | `O(1)` | Stray closing bracket hits an empty stack and returns `False` at once |
+| Average | `O(n)` | `O(n)` | Each character is pushed and popped at most once across the string |
+| Worst (all openers `(((`) | `O(n)` | `O(n)` | Scans all `n` characters and holds up to `n` openers on the stack |
 
-## ⚡ When to Use
+## When to use
 
-| ✅ Great for | ❌ Avoid for |
+| Great for | Avoid for |
 |---|---|
 | Validating nested delimiters (`()`, `[]`, `{}`, HTML/XML tags) | Checking a single bracket type like `()` only (a simple `balance` counter uses `O(1)` space!) |
 | Building syntax linters, formula parsers, and code editors | Unnested flat token checks where order of closure does not matter |

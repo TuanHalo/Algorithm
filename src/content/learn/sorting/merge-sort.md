@@ -10,16 +10,16 @@ diagram: "/diagrams/sorting/merge-sort-flow.html"
 tags: ["sorting", "divide-and-conquer", "stable", "recursion"]
 ---
 
-## 🎯 What is Merge Sort?
+## What is Merge Sort?
 
-Imagine splitting a messy stack of test papers in half, sorting each half, and then **zipping them together by repeatedly picking the smaller top paper**.
-Merge Sort breaks an array down into single items, then merges those sorted pieces back together in perfect order.
+Imagine splitting a messy stack of test papers in half, sorting each half, and then zipping them together by repeatedly picking the smaller top paper.
+Merge Sort breaks an array down into single items, then merges those sorted pieces back together in order.
 
-## 🧠 Core Idea
+## Core idea
 
-> Divide array in half → Recursively sort both halves → Merge sorted halves back together
+Divide the array in half, recursively sort both halves, and merge the sorted halves back together.
 
-## 🐍 Python Code
+## Python code
 
 ```python
 def merge_sort(arr: list[int]) -> list[int]:
@@ -49,17 +49,17 @@ def merge_sort(arr: list[int]) -> list[int]:
     return merged
 ```
 
-## ⏱️ Complexity
+## Complexity
 
 | Case | Time | Space | Why? |
 |------|------|-------|------|
-| **Best** | `O(n log n)` | `O(n)` | Always divides into `log₂(n)` levels and does `O(n)` merge work per level |
-| **Average** | `O(n log n)` | `O(n)` | Every level of the recursion tree processes all `n` elements during merge |
-| **Worst** | `O(n log n)` | `O(n)` | Always splits down the middle, guaranteeing balanced halves in every case |
+| Best | `O(n log n)` | `O(n)` | Always divides into `log₂(n)` levels and does `O(n)` merge work per level |
+| Average | `O(n log n)` | `O(n)` | Every level of the recursion tree processes all `n` elements during merge |
+| Worst | `O(n log n)` | `O(n)` | Always splits down the middle, guaranteeing balanced halves in every case |
 
-## ⚡ When to Use
+## When to use
 
-| ✅ Great for | ❌ Avoid for |
+| Great for | Avoid for |
 |---|---|
 | Large datasets (`n > 10,000`, guaranteed `O(n log n)` speed with no worst-case drop) | Memory-constrained systems (requires `O(n)` extra memory buffer) |
 | Stable sorting needs (preserves relative order of equal elements) | Tiny arrays (`n < 20`, where Insertion Sort overhead is lower) |

@@ -10,16 +10,16 @@ diagram: "/diagrams/searching/exponential-search-flow.html"
 tags: ["searching", "unbounded", "doubling", "sorted"]
 ---
 
-## 🎯 What is Exponential Search?
+## What is exponential search?
 
-Imagine guessing a huge secret number by jumping **1, 2, 4, 8, 16… steps at a time until you overshoot, then playing Binary Search inside that tight range**.
-Exponential Search shines on **unbounded or massive sorted lists** where the target often sits near the front, because it never even touches elements far past the answer.
+Imagine guessing a large secret number by jumping 1, 2, 4, 8, 16, and so on until you overshoot, then running Binary Search inside that smaller range.
+Exponential Search works well on unbounded or very large sorted lists when the target sits near the front, because it never inspects elements far past the answer.
 
-## 🧠 Core Idea
+## Core idea
 
-> Double `bound` (`1, 2, 4, 8…`) until `arr[bound] > target` → Binary Search inside `[bound // 2, min(bound, n - 1)]`
+Double `bound` (`1, 2, 4, 8, ...`) until `arr[bound] > target`, then run Binary Search inside `[bound // 2, min(bound, n - 1)]`.
 
-## 🐍 Python Code
+## Python code
 
 ```python
 def exponential_search(arr: list[int], target: int) -> int:
@@ -47,19 +47,19 @@ def exponential_search(arr: list[int], target: int) -> int:
     return -1
 ```
 
-## ⏱️ Complexity
+## Complexity
 
 | Case | Time | Space | Why? |
 |------|------|-------|------|
-| **Best** (index `0`) | `O(1)` | `O(1)` | Upfront check catches `arr[0] == target` immediately |
-| **Average** (target at `i`) | `O(log i)` | `O(1)` | Doubling takes `log₂ i` steps; Binary Search runs on a slice of size `~i / 2` |
-| **Worst** (near end / missing) | `O(log n)` | `O(1)` | Range expands up to `n`, then Binary Search finishes in `O(log n)` |
+| Best (index `0`) | `O(1)` | `O(1)` | Upfront check catches `arr[0] == target` immediately |
+| Average (target at `i`) | `O(log i)` | `O(1)` | Doubling takes `log₂ i` steps; Binary Search runs on a slice of size `~i / 2` |
+| Worst (near end / missing) | `O(log n)` | `O(1)` | Range expands up to `n`, then Binary Search finishes in `O(log n)` |
 
-## ⚡ When to Use
+## When to use
 
-| ✅ Great for | ❌ Avoid for |
+| Great for | Avoid for |
 |---|---|
 | Unbounded or infinite sorted streams where `len(arr)` isn't known upfront | Unsorted data (both doubling and Binary Search break without sorted order) |
 | Sorted arrays where targets usually appear close to index `0` (`O(log i)` < `O(log n)`) | Uniformly spaced numeric arrays where Interpolation Search hits in `O(log log n)` |
-| Two-stage range discovery before calling Binary Search | Tiny arrays where extra bound-doubling logic adds unnecessary branches |
+| | Tiny arrays where extra bound-doubling logic adds unnecessary branches |
 

@@ -10,16 +10,16 @@ diagram: "/diagrams/searching/ternary-search-flow.html"
 tags: ["searching", "divide-and-conquer", "sorted", "three-way"]
 ---
 
-## 🎯 What is Ternary Search?
+## What is ternary search?
 
-Imagine asking **two friends to stand at the 1/3 and 2/3 marks of a sorted bookshelf** — one quick glance tells you which single third can hold your book.
+Imagine asking two friends to stand at the 1/3 and 2/3 marks of a sorted bookshelf. One glance tells you which third can hold your book.
 Ternary Search splits a sorted range into three parts per step, shrinking the window faster (`1/3` instead of `1/2`), though checking two dividers takes more comparisons overall than Binary Search.
 
-## 🧠 Core Idea
+## Core idea
 
-> Compute `mid1` and `mid2` → Check both dividers → Keep only the left, middle, or right third
+Compute `mid1` and `mid2`, check both dividers, and keep only the left, middle, or right third.
 
-## 🐍 Python Code
+## Python code
 
 ```python
 def ternary_search(arr: list[int], target: int) -> int:
@@ -45,19 +45,19 @@ def ternary_search(arr: list[int], target: int) -> int:
     return -1
 ```
 
-## ⏱️ Complexity
+## Complexity
 
 | Case | Time | Space | Why? |
 |------|------|-------|------|
-| **Best** (`mid1` or `mid2`) | `O(1)` | `O(1)` | First pass hits either the 1/3 or 2/3 divider immediately |
-| **Average** | `O(log₃ n)` | `O(1)` | Drops `2/3` of the array per loop, doing ~`2 · log₃ n ≈ 1.26 · log₂ n` checks |
-| **Worst** (missing or leaf) | `O(log₃ n)` | `O(1)` | Shrinks to a 1-element window after `⌊log₃ n⌋ + 1` iterations |
+| Best (`mid1` or `mid2`) | `O(1)` | `O(1)` | First pass hits either the 1/3 or 2/3 divider immediately |
+| Average | `O(log₃ n)` | `O(1)` | Drops `2/3` of the array per loop, doing ~`2 · log₃ n ≈ 1.26 · log₂ n` checks |
+| Worst (missing or leaf) | `O(log₃ n)` | `O(1)` | Shrinks to a 1-element window after `⌊log₃ n⌋ + 1` iterations |
 
-## ⚡ When to Use
+## When to use
 
-| ✅ Great for | ❌ Avoid for |
+| Great for | Avoid for |
 |---|---|
 | Finding the maximum or minimum of a unimodal curve (goes up then down) | Plain sorted array lookups (Binary Search uses ~20% fewer comparisons!) |
-| Understanding multi-way divide-and-conquer tradeoffs (`log₃ n` vs `log₂ n`) | Unsorted lists where comparing against dividers proves nothing |
-| Expensive single-variable convex/concave optimization problems | Tiny arrays where simpler linear or binary loops win |
+| Expensive single-variable convex/concave optimization problems | Unsorted lists where comparing against dividers proves nothing |
+| | Tiny arrays where simpler linear or binary loops win |
 

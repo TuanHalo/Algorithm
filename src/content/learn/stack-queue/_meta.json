@@ -3,5 +3,5 @@
   "icon": "📚",
   "color": "#ffaaa5",
   "order": 7,
-  "description": "First in, first out? Last in, first out? Master both."
+  "description": "Learn both FIFO (first in, first out) and LIFO (last in, first out) data structures."
 }

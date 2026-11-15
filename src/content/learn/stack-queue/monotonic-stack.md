@@ -10,16 +10,16 @@ diagram: "/diagrams/stack-queue/monotonic-stack-flow.html"
 tags: ["stack-queue", "monotonic-stack", "next-greater", "amortized"]
 ---
 
-## 🎯 What is a Monotonic Stack?
+## What is a monotonic stack?
 
-Imagine people standing in a line facing right — **the instant a taller newcomer walks up, every shorter person waiting ahead has finally spotted their Next Greater neighbor and leaves the line**.
+Imagine people standing in a line facing right. The instant a taller newcomer walks up, every shorter person waiting ahead has found their Next Greater neighbor and leaves the line.
 A Monotonic Stack keeps elements sorted inside the stack (strictly decreasing or increasing) so each element enters and leaves at most once, turning `O(n²)` nested loops into `O(n)`.
 
-## 🧠 Core Idea
+## Core idea
 
-> Keep unresolved indices in decreasing order → Pop all smaller tops when a bigger number arrives → Record it as their Next Greater
+Keep unresolved indices in decreasing order. When a bigger number arrives, pop all smaller tops and record it as their Next Greater.
 
-## 🐍 Python Code
+## Python code
 
 ```python
 def next_greater_elements(nums: list[int]) -> list[int]:
@@ -37,17 +37,17 @@ def next_greater_elements(nums: list[int]) -> list[int]:
     return result
 ```
 
-## ⏱️ Complexity
+## Complexity
 
 | Case | Time | Space | Why? |
 |---|---|---|---|
-| **Best** (strictly decreasing) | `O(n)` | `O(n)` | Zero pops happen; every index is pushed onto the stack once |
-| **Average** | `O(n)` | `O(n)` | Even with nested `while` pops, each element is pushed once and popped at most once |
-| **Worst** (increasing / spike) | `O(n)` | `O(n)` | At most `2n` total stack operations across the entire scan |
+| Best (strictly decreasing) | `O(n)` | `O(n)` | Zero pops happen; every index is pushed onto the stack once |
+| Average | `O(n)` | `O(n)` | Even with nested `while` pops, each element is pushed once and popped at most once |
+| Worst (increasing / spike) | `O(n)` | `O(n)` | At most `2n` total stack operations across the entire scan |
 
-## ⚡ When to Use
+## When to use
 
-| ✅ Great for | ❌ Avoid for |
+| Great for | Avoid for |
 |---|---|
 | Next Greater / Next Smaller Element, Daily Temperatures, Stock Span | Finding the global maximum or minimum (one running variable takes `O(1)` space) |
 | Largest Rectangle in Histogram and Trapping Rain Water | Queries needing the *k*-th largest element rather than the *nearest* taller one |

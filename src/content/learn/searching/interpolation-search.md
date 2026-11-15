@@ -10,16 +10,16 @@ diagram: "/diagrams/searching/interpolation-search-flow.html"
 tags: ["searching", "probing", "uniform-data", "sorted"]
 ---
 
-## 🎯 What is Interpolation Search?
+## What is interpolation search?
 
-Imagine looking up **"Zebra"** in a thick dictionary — **you don't open right to the middle; you jump straight near the back pages**.
-Interpolation Search upgrades Binary Search on **uniformly distributed sorted** numbers by guessing where the target sits proportionally between `arr[low]` and `arr[high]`.
+Imagine looking up "Zebra" in a thick dictionary: you flip straight toward the back pages.
+On uniformly distributed sorted numbers, Interpolation Search improves on Binary Search by estimating where the target sits proportionally between `arr[low]` and `arr[high]`.
 
-## 🧠 Core Idea
+## Core idea
 
-> Estimate `pos` using value ratio → Probe `arr[pos]` → Narrow `low` or `high` until found or out of range
+Estimate `pos` using the value ratio, probe `arr[pos]`, and narrow `low` or `high` until the target is found or out of range.
 
-## 🐍 Python Code
+## Python code
 
 ```python
 def interpolation_search(arr: list[int], target: int) -> int:
@@ -43,19 +43,19 @@ def interpolation_search(arr: list[int], target: int) -> int:
     return -1
 ```
 
-## ⏱️ Complexity
+## Complexity
 
 | Case | Time | Space | Why? |
 |------|------|-------|------|
-| **Best** (accurate first probe) | `O(1)` | `O(1)` | Uniform values let the first linear estimate land right on the target |
-| **Average** (uniform data) | `O(log log n)` | `O(1)` | Each probe shrinks the window size from `n` to roughly `√n` |
-| **Worst** (exponentially skewed) | `O(n)` | `O(1)` | Outliers skew the estimate, shrinking the window by only 1 item per step |
+| Best (accurate first probe) | `O(1)` | `O(1)` | Uniform values let the first linear estimate land right on the target |
+| Average (uniform data) | `O(log log n)` | `O(1)` | Each probe shrinks the window size from `n` to roughly `√n` |
+| Worst (exponentially skewed) | `O(n)` | `O(1)` | Outliers skew the estimate, shrinking the window by only 1 item per step |
 
-## ⚡ When to Use
+## When to use
 
-| ✅ Great for | ❌ Avoid for |
+| Great for | Avoid for |
 |---|---|
-| Large, sorted arrays with evenly spaced numeric values (timestamps, IDs, sensor logs) | Skewed or clustered distributions (exponential growth degrades to `O(n)`) |
+| Large, sorted arrays with evenly spaced numeric values (timestamps, IDs, sensor logs), cutting ~20 binary-search probes on millions of keys down to a few | Skewed or clustered distributions (exponential growth degrades to `O(n)`) |
 | Datasets where disk or memory probes are expensive and uniform spacing holds | Non-numeric data without an easy distance/interpolation metric |
-| Beating Binary Search's ~20 probes on millions of uniform keys | Small arrays (`n < 64`) where Binary Search has simpler arithmetic |
+| | Small arrays (`n < 64`) where Binary Search has simpler arithmetic |
 

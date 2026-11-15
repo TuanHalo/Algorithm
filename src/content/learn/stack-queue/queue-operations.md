@@ -10,16 +10,16 @@ diagram: "/diagrams/stack-queue/queue-operations-flow.html"
 tags: ["stack-queue", "queue", "fifo", "deque"]
 ---
 
-## 🎯 What is a Queue?
+## What is a queue?
 
-Imagine a single-lane coffee shop drive-thru — **the first car to pull into line is always the first car to pick up its order and drive out**.
-A Queue follows the **First-In, First-Out (FIFO)** rule, keeping requests fair by appending at the rear and serving from the front.
+Imagine a single-lane coffee shop drive-thru. The first car to pull into line is always the first car to pick up its order and drive out.
+A Queue follows the First-In, First-Out (FIFO) rule, keeping requests fair by appending at the rear and serving from the front.
 
-## 🧠 Core Idea
+## Core idea
 
-> Enqueue new items at the rear → Dequeue old items from the front → Use `deque` so front pops stay `O(1)`
+Enqueue new items at the rear and dequeue old items from the front, using `deque` so front pops stay `O(1)`.
 
-## 🐍 Python Code
+## Python code
 
 ```python
 from collections import deque
@@ -45,18 +45,18 @@ class Queue:
         return len(self._items) == 0
 ```
 
-## ⏱️ Complexity
+## Complexity
 
 | Operation / Case | Time | Space | Why? |
 |---|---|---|---|
-| **Enqueue** (`append`) | `O(1)` | `O(1)` extra | Inserts straight onto the tail pointer of the deque |
-| **Dequeue** (`popleft`) | `O(1)` | `O(1)` | Advances the head pointer instead of shifting every item left |
-| **Front / Empty** | `O(1)` | `O(1)` | Reads `self._items[0]` or checks length immediately |
-| **Naive `list.pop(0)`** | `O(n)` | `O(1)` | Must shift all `n - 1` remaining elements one slot left |
+| Enqueue (`append`) | `O(1)` | `O(1)` extra | Inserts straight onto the tail pointer of the deque |
+| Dequeue (`popleft`) | `O(1)` | `O(1)` | Advances the head pointer instead of shifting every item left |
+| Front / Empty | `O(1)` | `O(1)` | Reads `self._items[0]` or checks length immediately |
+| Naive `list.pop(0)` | `O(n)` | `O(1)` | Must shift all `n - 1` remaining elements one slot left |
 
-## ⚡ When to Use
+## When to use
 
-| ✅ Great for | ❌ Avoid for |
+| Great for | Avoid for |
 |---|---|
 | Breadth-First Search (BFS) level-by-level exploration | Most-recent-first tasks like Undo stacks or DFS backtracking |
 | Task queues, print spoolers, and fair request buffering | Using a plain Python `list.pop(0)` on large queues (slow `O(n)` shifts) |

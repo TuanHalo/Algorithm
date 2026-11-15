@@ -10,16 +10,16 @@ diagram: "/diagrams/stack-queue/stack-operations-flow.html"
 tags: ["stack-queue", "stack", "lifo", "fundamentals"]
 ---
 
-## 🎯 What is a Stack?
+## What is a stack?
 
-Imagine a spring-loaded stack of cafeteria trays — **you only ever place a new tray on top and lift the top tray off first**.
-A Stack follows the **Last-In, First-Out (LIFO)** rule, so the newest item waiting on top is always the first one to leave.
+Imagine a spring-loaded stack of cafeteria trays. You only ever place a new tray on top and lift the top tray off first.
+A Stack follows the Last-In, First-Out (LIFO) rule, so the newest item waiting on top is always the first one to leave.
 
-## 🧠 Core Idea
+## Core idea
 
-> Push onto the top → Peek or Pop only from the top → Never reach into the middle
+Push, peek, and pop only at the top, never reaching into the middle.
 
-## 🐍 Python Code
+## Python code
 
 ```python
 class Stack:
@@ -42,18 +42,18 @@ class Stack:
         return len(self._items) == 0
 ```
 
-## ⏱️ Complexity
+## Complexity
 
 | Operation / Case | Time | Space | Why? |
 |---|---|---|---|
-| **Push** (`append`) | `O(1)` amortized | `O(1)` extra | Writes directly to the end slot; occasional array resize averages out |
-| **Pop** (`pop`) | `O(1)` | `O(1)` | Removes the top element without shifting earlier items |
-| **Peek / Empty** | `O(1)` | `O(1)` | Reads `self._items[-1]` or checks length in one step |
-| **Total Memory** | — | `O(n)` | Stores `n` currently active items in the backing list |
+| Push (`append`) | `O(1)` amortized | `O(1)` extra | Writes directly to the end slot; occasional array resize averages out |
+| Pop (`pop`) | `O(1)` | `O(1)` | Removes the top element without shifting earlier items |
+| Peek / Empty | `O(1)` | `O(1)` | Reads `self._items[-1]` or checks length in one step |
+| Total Memory | — | `O(n)` | Stores `n` currently active items in the backing list |
 
-## ⚡ When to Use
+## When to use
 
-| ✅ Great for | ❌ Avoid for |
+| Great for | Avoid for |
 |---|---|
 | Undo/redo history, browser back buttons, and DFS traversal | Serving items strictly in arrival order (use a Queue instead) |
 | Tracking nested state like function calls and balanced brackets | Random access or searching for values buried in the middle (`O(n)`) |
