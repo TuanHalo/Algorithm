@@ -401,7 +401,7 @@
         const sorted = [...baseArr].sort((a, b) => a - b);
         const wasUnsorted = baseArr.some((val, i) => val !== sorted[i]);
         sortNoteEl.textContent = wasUnsorted
-          ? 'ℹ️ Sorted your numbers automatically — Ternary Search requires a sorted list.'
+          ? 'ℹ️ Sorted your numbers automatically because Ternary Search requires a sorted list.'
           : '';
         const parsedTarget = Number(targetInputEl.value);
         const target = Number.isFinite(parsedTarget) ? parsedTarget : 23;

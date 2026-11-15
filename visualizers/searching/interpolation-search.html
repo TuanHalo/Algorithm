@@ -403,7 +403,7 @@
         const sorted = [...baseArr].sort((a, b) => a - b);
         const wasUnsorted = baseArr.some((val, i) => val !== sorted[i]);
         sortNoteEl.textContent = wasUnsorted
-          ? 'ℹ️ Sorted your numbers automatically — Interpolation Search requires a sorted list.'
+          ? 'ℹ️ Sorted your numbers automatically because Interpolation Search requires a sorted list.'
           : '';
         const parsedTarget = Number(targetInputEl.value);
         const target = Number.isFinite(parsedTarget) ? parsedTarget : 80;
@@ -453,7 +453,7 @@
                 done: true,
                 probes,
                 formula: `arr[low] == arr[high] == ${arr[low]} ≠ ${target}`,
-                description: `❌ All values equal <strong>${arr[low]}</strong> ≠ <strong>${target}</strong> — returning <strong>-1</strong>.`,
+                description: `❌ All values equal <strong>${arr[low]}</strong> ≠ <strong>${target}</strong>; returning <strong>-1</strong>.`,
                 codeLine: 4,
               });
             }
@@ -533,7 +533,7 @@
           formula: low <= high
             ? `Guard failed: target ${target} is outside [${arr[low]}..${arr[high]}]`
             : `Guard failed: window collapsed (low=${low} > high=${high})`,
-          description: `❌ Target <strong>${target}</strong> is outside the remaining value bounds — returning <strong>-1</strong>.`,
+          description: `❌ Target <strong>${target}</strong> is outside the remaining value bounds; returning <strong>-1</strong>.`,
           codeLine: 13,
         });
 

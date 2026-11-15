@@ -179,7 +179,7 @@
         engine.recordStep({
           array: [...arr],
           sorted: [],
-          description: `Starting with <strong>[${arr.join(', ')}]</strong>. Let's bubble the biggest numbers to the right!`,
+          description: `Starting with <strong>[${arr.join(', ')}]</strong>, bubbling the largest numbers to the right.`,
           codeLine: 0,
         });
 
@@ -226,7 +226,7 @@
             engine.recordStep({
               array: [...arr],
               sorted: [...sortedIndices],
-              description: `No swaps in this pass! The list is already sorted early — breaking out.`,
+              description: `No swaps in this pass! The list is already sorted, so breaking out early.`,
               codeLine: 9,
             });
             break;

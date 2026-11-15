@@ -416,7 +416,7 @@
         const sorted = [...baseArr].sort((a, b) => a - b);
         const wasUnsorted = baseArr.some((val, i) => val !== sorted[i]);
         sortNoteEl.textContent = wasUnsorted
-          ? 'ℹ️ Sorted your numbers automatically — Binary Search Bounds requires a sorted list.'
+          ? 'ℹ️ Sorted your numbers automatically because Binary Search Bounds requires a sorted list.'
           : '';
         const parsedTarget = Number(targetInputEl.value);
         const target = Number.isFinite(parsedTarget) ? parsedTarget : 2;
@@ -529,7 +529,7 @@
           comparisons,
           description: ans !== -1
             ? `✅ Done! The <strong>${boundLabel}</strong> occurrence of <strong>${target}</strong> is at index <strong>${ans}</strong> (${comparisons} comparisons).`
-            : `❌ Window empty. <strong>${target}</strong> was not found — returning <strong>-1</strong>.`,
+            : `❌ Window empty. <strong>${target}</strong> was not found, so returning <strong>-1</strong>.`,
           codeLine: 15,
         });
 
