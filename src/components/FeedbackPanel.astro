@@ -10,11 +10,11 @@ const { strengths, improvements, edgeCases, alternatives } = Astro.props;
 ---
 
 <div class="clay-feedback">
-  <h3 class="clay-feedback__title">🤖 AI Feedback</h3>
+  <h3 class="clay-feedback__title">AI feedback</h3>
 
   {strengths.length > 0 && (
     <div class="clay-feedback__section">
-      <div class="clay-feedback__label">✅ Strengths</div>
+      <div class="clay-feedback__label">Strengths</div>
       <div class="clay-feedback__content">
         <ul>
           {strengths.map((s) => <li>{s}</li>)}
@@ -25,7 +25,7 @@ const { strengths, improvements, edgeCases, alternatives } = Astro.props;
 
   {improvements.length > 0 && (
     <div class="clay-feedback__section">
-      <div class="clay-feedback__label">🔧 Improvements</div>
+      <div class="clay-feedback__label">Improvements</div>
       <div class="clay-feedback__content">
         <ul>
           {improvements.map((s) => <li>{s}</li>)}
@@ -36,7 +36,7 @@ const { strengths, improvements, edgeCases, alternatives } = Astro.props;
 
   {edgeCases.length > 0 && (
     <div class="clay-feedback__section">
-      <div class="clay-feedback__label">🧪 Edge Cases to Consider</div>
+      <div class="clay-feedback__label">Edge cases to consider</div>
       <div class="clay-feedback__content">
         <ul>
           {edgeCases.map((s) => <li>{s}</li>)}
@@ -47,7 +47,7 @@ const { strengths, improvements, edgeCases, alternatives } = Astro.props;
 
   {alternatives.length > 0 && (
     <div class="clay-feedback__section">
-      <div class="clay-feedback__label">🔄 Alternative Approaches</div>
+      <div class="clay-feedback__label">Alternative approaches</div>
       <div class="clay-feedback__content">
         <ul>
           {alternatives.map((s) => <li>{s}</li>)}

@@ -8,7 +8,7 @@ export const TOPICS: readonly TopicConfig[] = [
     icon: '🔄',
     color: 'var(--color-sorting)',
     order: 1,
-    description: 'Learn how to arrange data in order — from simple swaps to divide-and-conquer.',
+    description: 'Learn how to arrange data in order, from simple swaps to divide-and-conquer.',
     previewAlgorithms: [
       'Bubble Sort',
       'Selection Sort',
@@ -25,7 +25,7 @@ export const TOPICS: readonly TopicConfig[] = [
     icon: '🔍',
     color: 'var(--color-searching)',
     order: 2,
-    description: 'Find what you need fast — from scanning everything to cutting the search in half.',
+    description: 'Find what you need fast, from scanning everything to cutting the search in half.',
     previewAlgorithms: [
       'Linear Search',
       'Binary Search',
@@ -42,7 +42,7 @@ export const TOPICS: readonly TopicConfig[] = [
     icon: '🕸️',
     color: 'var(--color-graph)',
     order: 3,
-    description: 'Navigate networks — social connections, maps, dependencies, and paths.',
+    description: 'Navigate networks such as social connections, maps, dependencies, and paths.',
     previewAlgorithms: ['BFS', 'DFS', 'Dijkstra', 'Bellman-Ford'],
   },
   {
@@ -51,7 +51,7 @@ export const TOPICS: readonly TopicConfig[] = [
     icon: '🧩',
     color: 'var(--color-dp)',
     order: 4,
-    description: 'Break big problems into small ones — remember solutions, never repeat work.',
+    description: 'Break big problems into small ones, remember solutions, and avoid repeating work.',
     previewAlgorithms: ['Fibonacci', 'Knapsack', 'LCS', 'Coin Change'],
   },
   {
@@ -60,7 +60,7 @@ export const TOPICS: readonly TopicConfig[] = [
     icon: '🌳',
     color: 'var(--color-tree)',
     order: 5,
-    description: 'Hierarchical data — from file systems to family trees to search engines.',
+    description: 'Hierarchical data, from file systems and family trees to search engines.',
     previewAlgorithms: ['BST', 'AVL', 'Inorder', 'Preorder', 'Postorder'],
   },
   {
@@ -69,7 +69,7 @@ export const TOPICS: readonly TopicConfig[] = [
     icon: '🔗',
     color: 'var(--color-linked-list)',
     order: 6,
-    description: 'Nodes chained by pointers — fast insertions, reversals, and cycle detection.',
+    description: 'Nodes chained by pointers for fast insertions, reversals, and cycle detection.',
     previewAlgorithms: ['Singly Linked List', 'Fast & Slow Pointers', 'Reverse List'],
   },
   {
@@ -78,7 +78,7 @@ export const TOPICS: readonly TopicConfig[] = [
     icon: '📚',
     color: 'var(--color-stack-queue)',
     order: 7,
-    description: 'First in, first out? Last in, first out? Master both.',
+    description: 'Learn both FIFO (first in, first out) and LIFO (last in, first out) data structures.',
     previewAlgorithms: [
       'Stack Operations',
       'Queue Operations',
@@ -95,7 +95,7 @@ export const TOPICS: readonly TopicConfig[] = [
     icon: '🗝️',
     color: 'var(--color-hashing)',
     order: 8,
-    description: 'Instant lookups — turn any key into a fast address.',
+    description: 'Instant lookups by turning any key into a fast address.',
     previewAlgorithms: ['Hash Map', 'Hash Set', 'Collision Handling'],
   },
   {
@@ -104,7 +104,7 @@ export const TOPICS: readonly TopicConfig[] = [
     icon: '💰',
     color: 'var(--color-greedy)',
     order: 9,
-    description: 'Make the best local choice every time — sometimes that is all you need.',
+    description: 'Make the best local choice at each step when a local optimum leads to a global one.',
     previewAlgorithms: ['Activity Selection', 'Huffman Coding'],
   },
   {
@@ -113,7 +113,7 @@ export const TOPICS: readonly TopicConfig[] = [
     icon: '🔙',
     color: 'var(--color-backtracking)',
     order: 10,
-    description: 'Try everything, undo what does not work — systematic exploration.',
+    description: 'Try a path and undo what does not work to explore all possibilities.',
     previewAlgorithms: ['N-Queens', 'Sudoku', 'Permutations'],
   },
 ] as const;
