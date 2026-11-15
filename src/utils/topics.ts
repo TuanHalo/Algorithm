@@ -79,7 +79,15 @@ export const TOPICS: readonly TopicConfig[] = [
     color: 'var(--color-stack-queue)',
     order: 7,
     description: 'First in, first out? Last in, first out? Master both.',
-    previewAlgorithms: ['Stack Operations', 'Queue Operations', 'Monotonic Stack'],
+    previewAlgorithms: [
+      'Stack Operations',
+      'Queue Operations',
+      'Circular Queue',
+      'Deque Operations',
+      'Balanced Brackets',
+      'Monotonic Stack',
+      'Monotonic Queue',
+    ],
   },
   {
     slug: 'hashing',

@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Circular Queue Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-cap-group {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .vis-cap-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        white-space: nowrap;
+      }
+
+      .vis-cap-field {
+        width: 68px;
+        min-width: 64px;
+        flex: 0 0 auto;
+        text-align: center;
+      }
+
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .vis-preset-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+
+      .vis-status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        font-family: var(--font-code);
+        font-size: 0.76rem;
+        color: var(--text-secondary);
+      }
+
+      .vis-status-group {
+        display: flex;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+      }
+
+      .vis-pill {
+        background: var(--bg-card);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        border-radius: 999px;
+        padding: 0.25rem 0.7rem;
+      }
+
+      .vis-pill--accent {
+        background: rgba(255, 170, 165, 0.45);
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .vis-canvas {
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.1rem;
+        min-height: 205px;
+        padding: 2.2rem 1.25rem 1.25rem;
+      }
+
+      .ring-slots {
+        display: flex;
+        gap: 0.65rem;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .ring-slot {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.32rem;
+      }
+
+      .ring-slot__badges {
+        position: absolute;
+        top: -26px;
+        display: flex;
+        gap: 3px;
+        white-space: nowrap;
+      }
+
+      .ring-badge {
+        font-family: var(--font-code);
+        font-size: 0.6rem;
+        font-weight: 700;
+        padding: 2px 5px;
+        border-radius: 5px;
+        box-shadow: var(--shadow-clay-subtle);
+      }
+
+      .ring-badge--front {
+        background: #a8d8ea;
+        color: #0c4a6e;
+      }
+
+      .ring-badge--rear {
+        background: var(--vis-pivot);
+        color: #3d2b4d;
+      }
+
+      .ring-slot__box {
+        width: 58px;
+        height: 58px;
+        border-radius: var(--border-radius-sm);
+        background: rgba(255, 255, 255, 0.45);
+        border: 2px dashed rgba(90, 90, 90, 0.25);
+        box-shadow: var(--shadow-clay-pressed);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-code);
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        transition: all 240ms ease;
+      }
+
+      .ring-slot--filled .ring-slot__box {
+        background: var(--vis-default);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        color: var(--text-primary);
+      }
+
+      .ring-slot--write .ring-slot__box {
+        background: var(--vis-active);
+        transform: translateY(-4px) scale(1.05);
+        box-shadow: var(--shadow-clay);
+      }
+
+      .ring-slot--read .ring-slot__box {
+        background: var(--vis-swapping);
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-clay);
+      }
+
+      .ring-slot--full .ring-slot__box {
+        background: rgba(255, 170, 165, 0.45);
+      }
+
+      .ring-slot__idx {
+        font-family: var(--font-code);
+        font-size: 0.7rem;
+        color: var(--text-muted);
+      }
+
+      .ops-chips {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.35rem;
+      }
+
+      .op-chip {
+        font-family: var(--font-code);
+        font-size: 0.72rem;
+        padding: 0.2rem 0.48rem;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.55);
+        border: var(--border-clay);
+        color: var(--text-secondary);
+      }
+
+      .op-chip--done {
+        opacity: 0.45;
+      }
+
+      .op-chip--current {
+        background: #ffaaa5;
+        color: #4a1512;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input
+          id="ops-input"
+          class="vis-input__field"
+          type="text"
+          value="ENQ 10, ENQ 20, ENQ 30, DEQ, DEQ, ENQ 40, ENQ 50, ENQ 60"
+          placeholder="Operations: ENQ 10, DEQ (comma-separated)"
+          aria-label="Circular queue operations"
+        />
+        <div class="vis-cap-group">
+          <label for="cap-input" class="vis-cap-label">Cap:</label>
+          <input id="cap-input" class="vis-input__field vis-cap-field" type="number" min="3" max="8" value="4" aria-label="Buffer capacity" />
+        </div>
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">▶ Load &amp; Run</button>
+        <button id="btn-random" class="vis-btn" type="button">🎲 Random</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Try presets:</span>
+        <button class="vis-btn" type="button" data-cap="4" data-ops="ENQ 10, ENQ 20, ENQ 30, DEQ, DEQ, ENQ 40, ENQ 50, ENQ 60">Wrap-Around Reuse</button>
+        <button class="vis-btn" type="button" data-cap="3" data-ops="ENQ 1, ENQ 2, ENQ 3, ENQ 4, DEQ, ENQ 4">Full Buffer Reject</button>
+        <button class="vis-btn" type="button" data-cap="4" data-ops="ENQ 7, DEQ, DEQ, ENQ 8">Empty Underflow</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button" title="Jump to start">⏮ Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button" title="Previous step">◀ Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button" title="Play animation">▶ Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" title="Pause animation" style="display: none;">⏸ Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button" title="Next step">Next ▶</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed">
+          <span>Speed</span>
+          <input class="vis-speed-slider" type="range" min="1" max="10" value="6" />
+        </label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: #a8d8ea;"></span> Front (F)</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> Next Write / Rear</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Enqueued Slot</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Dequeuing Slot</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-formula" class="vis-pill vis-pill--accent">Formula: rear = (0 + 0) % 4 = 0</span>
+        <div class="vis-status-group">
+          <span id="status-size" class="vis-pill">Size: 0 / 4</span>
+          <span id="status-output" class="vis-pill">Last Output: None</span>
+        </div>
+      </div>
+
+      <div id="vis-canvas" class="vis-canvas" aria-live="polite"></div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">
+        Watch how <code>front</code> and <code>(front + size) % cap</code> wrap cleanly around index 0.
+      </div>
+
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'class CircularQueue:',
+        '    def __init__(self, capacity: int) -> None:',
+        '        self._buf = [None] * capacity',
+        '        self._cap, self._front, self._size = capacity, 0, 0',
+        '    def enqueue(self, value: int) -> bool:',
+        '        if self._size == self._cap:',
+        '            return False',
+        '        rear = (self._front + self._size) % self._cap',
+        '        self._buf[rear] = value',
+        '        self._size += 1',
+        '        return True',
+        '    def dequeue(self) -> int | None:',
+        '        if self._size == 0:',
+        '            return None',
+        '        val = self._buf[self._front]',
+        '        self._buf[self._front] = None',
+        '        self._front = (self._front + 1) % self._cap',
+        '        self._size -= 1',
+        '        return val',
+      ];
+
+      const canvasEl = document.getElementById('vis-canvas');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+      const opsInputEl = document.getElementById('ops-input');
+      const capInputEl = document.getElementById('cap-input');
+      const statusFormulaEl = document.getElementById('status-formula');
+      const statusSizeEl = document.getElementById('status-size');
+      const statusOutputEl = document.getElementById('status-output');
+
+      function renderCodePanel() {
+        codeEl.innerHTML = PYTHON_LINES.map((line, index) => (
+          `<span class="vis-code__line" data-line="${index}"><span class="vis-code__line-number">${index + 1}</span>${line}</span>`
+        )).join('');
+      }
+
+      function highlightCodeLine(lineIndex) {
+        codeEl.querySelectorAll('.vis-code__line').forEach((el, idx) => {
+          el.classList.toggle('vis-code__line--active', idx === lineIndex);
+        });
+      }
+
+      function parseInputs() {
+        const capRaw = Number(capInputEl.value);
+        const cap = Number.isFinite(capRaw) ? Math.max(3, Math.min(8, Math.round(capRaw))) : 4;
+        const tokens = opsInputEl.value.split(',').map((t) => t.trim()).filter(Boolean);
+        const ops = [];
+        for (const token of tokens.slice(0, 14)) {
+          const parts = token.split(/\s+/);
+          const cmd = parts[0].toUpperCase();
+          if ((cmd === 'ENQ' || cmd === 'ENQUEUE') && parts[1] !== undefined && Number.isFinite(Number(parts[1]))) {
+            ops.push({ type: 'ENQ', value: Number(parts[1]), label: `ENQ ${Number(parts[1])}` });
+          } else if (cmd === 'DEQ' || cmd === 'DEQUEUE') {
+            ops.push({ type: 'DEQ', label: 'DEQ' });
+          }
+        }
+        return {
+          cap,
+          ops: ops.length > 0 ? ops : [
+            { type: 'ENQ', value: 10, label: 'ENQ 10' },
+            { type: 'ENQ', value: 20, label: 'ENQ 20' },
+            { type: 'DEQ', label: 'DEQ' },
+          ],
+        };
+      }
+
+      function renderStep(step) {
+        statusFormulaEl.textContent = step.formula;
+        statusSizeEl.textContent = `Size: ${step.size} / ${step.cap}`;
+        statusOutputEl.textContent = `Last Output: ${step.output ?? 'None'}`;
+
+        const nextWrite = (step.front + step.size) % step.cap;
+        const slotsHtml = step.buf.map((val, idx) => {
+          const badges = [];
+          if (idx === step.front) badges.push('<span class="ring-badge ring-badge--front">F</span>');
+          if (idx === nextWrite) badges.push('<span class="ring-badge ring-badge--rear">NEXT</span>');
+
+          let cls = val !== null ? 'ring-slot--filled' : '';
+          if (idx === step.activeIdx && step.mode === 'write') cls += ' ring-slot--write';
+          else if (idx === step.activeIdx && step.mode === 'read') cls += ' ring-slot--read';
+          else if (step.mode === 'full') cls += ' ring-slot--full';
+
+          return `
+            <div class="ring-slot ${cls}">
+              <div class="ring-slot__badges">${badges.join('')}</div>
+              <div class="ring-slot__box">${val === null ? '—' : val}</div>
+              <span class="ring-slot__idx">[${idx}]</span>
+            </div>
+          `;
+        }).join('');
+
+        const chipsHtml = step.ops.map((op, idx) => {
+          let cls = '';
+          if (idx < step.opIdx) cls = 'op-chip--done';
+          else if (idx === step.opIdx) cls = 'op-chip--current';
+          return `<span class="op-chip ${cls}">${op.label}</span>`;
+        }).join('');
+
+        canvasEl.innerHTML = `
+          <div class="ring-slots">${slotsHtml}</div>
+          <div class="ops-chips">${chipsHtml}</div>
+        `;
+        infoEl.innerHTML = step.description;
+      }
+
+      const engine = new VisualizerEngine({
+        render: renderStep,
+        highlightCode: highlightCodeLine,
+        defaultSpeed: 720,
+      });
+
+      function buildSteps(cap, ops) {
+        engine.reset();
+        const buf = Array(cap).fill(null);
+        let front = 0;
+        let size = 0;
+        let lastOutput = 'None';
+
+        engine.recordStep({
+          buf: [...buf],
+          cap,
+          front,
+          size,
+          ops,
+          opIdx: -1,
+          activeIdx: -1,
+          mode: 'idle',
+          output: lastOutput,
+          formula: `rear = (${front} + ${size}) % ${cap} = ${(front + size) % cap}`,
+          description: `Allocated fixed array of <strong>${cap}</strong> slots with <code>front = 0</code> and <code>size = 0</code>.`,
+          codeLine: 3,
+        });
+
+        ops.forEach((op, idx) => {
+          if (op.type === 'ENQ') {
+            if (size === cap) {
+              lastOutput = 'False';
+              engine.recordStep({
+                buf: [...buf],
+                cap,
+                front,
+                size,
+                ops,
+                opIdx: idx,
+                activeIdx: -1,
+                mode: 'full',
+                output: lastOutput,
+                formula: `Full! size (${size}) == cap (${cap})`,
+                description: `❌ Buffer full (<code>size == ${cap}</code>). Rejecting <strong>${op.value}</strong> and returning <strong>False</strong>.`,
+                codeLine: 6,
+              });
+            } else {
+              const rear = (front + size) % cap;
+              buf[rear] = op.value;
+              size += 1;
+              lastOutput = 'True';
+              engine.recordStep({
+                buf: [...buf],
+                cap,
+                front,
+                size,
+                ops,
+                opIdx: idx,
+                activeIdx: rear,
+                mode: 'write',
+                output: lastOutput,
+                formula: `rear = (${front} + ${size - 1}) % ${cap} = ${rear}`,
+                description: `Wrapped index <strong>rear = ${rear}</strong>. Stored <strong>${op.value}</strong> at <code>buf[${rear}]</code> (size = ${size}).`,
+                codeLine: 8,
+              });
+            }
+          } else if (op.type === 'DEQ') {
+            if (size === 0) {
+              lastOutput = 'None';
+              engine.recordStep({
+                buf: [...buf],
+                cap,
+                front,
+                size,
+                ops,
+                opIdx: idx,
+                activeIdx: -1,
+                mode: 'idle',
+                output: lastOutput,
+                formula: `Empty! size = 0`,
+                description: '⚠️ Buffer empty (<code>size == 0</code>) — <strong>dequeue()</strong> returns <strong>None</strong>.',
+                codeLine: 13,
+              });
+            } else {
+              const val = buf[front];
+              engine.recordStep({
+                buf: [...buf],
+                cap,
+                front,
+                size,
+                ops,
+                opIdx: idx,
+                activeIdx: front,
+                mode: 'read',
+                output: lastOutput,
+                formula: `next front = (${front} + 1) % ${cap} = ${(front + 1) % cap}`,
+                description: `Reading <strong>${val}</strong> from <code>buf[${front}]</code> before wrapping <code>front</code> forward.`,
+                codeLine: 14,
+              });
+              buf[front] = null;
+              front = (front + 1) % cap;
+              size -= 1;
+              lastOutput = String(val);
+              engine.recordStep({
+                buf: [...buf],
+                cap,
+                front,
+                size,
+                ops,
+                opIdx: idx,
+                activeIdx: -1,
+                mode: 'idle',
+                output: lastOutput,
+                formula: `front = ${front}, next rear = (${front} + ${size}) % ${cap} = ${(front + size) % cap}`,
+                description: `Returned <strong>${val}</strong> and advanced <code>front</code> to <strong>${front}</strong> (freed slot can now be reused!).`,
+                codeLine: 16,
+              });
+            }
+          }
+        });
+
+        engine.goToStep(0);
+      }
+
+      renderCodePanel();
+      engine.bindControls();
+
+      document.getElementById('btn-apply').addEventListener('click', () => {
+        const { cap, ops } = parseInputs();
+        capInputEl.value = String(cap);
+        opsInputEl.value = ops.map((o) => o.label).join(', ');
+        buildSteps(cap, ops);
+        engine.play();
+      });
+
+      document.getElementById('btn-random').addEventListener('click', () => {
+        const cap = Math.floor(Math.random() * 3) + 4;
+        const seq = [];
+        for (let i = 0; i < 8; i++) {
+          if (i < 2 || Math.random() < 0.62) {
+            seq.push(`ENQ ${Math.floor(Math.random() * 89) + 10}`);
+          } else {
+            seq.push('DEQ');
+          }
+        }
+        capInputEl.value = String(cap);
+        opsInputEl.value = seq.join(', ');
+        const parsed = parseInputs();
+        buildSteps(parsed.cap, parsed.ops);
+      });
+
+      document.querySelectorAll('[data-ops]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          capInputEl.value = btn.dataset.cap;
+          opsInputEl.value = btn.dataset.ops;
+          const parsed = parseInputs();
+          buildSteps(parsed.cap, parsed.ops);
+        });
+      });
+
+      const initial = parseInputs();
+      buildSteps(initial.cap, initial.ops);
+    </script>
+  </body>
+</html>
