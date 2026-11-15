@@ -21,8 +21,8 @@ for (const list of lessonsByTopic.values()) {
 <BaseLayout title="Learn Algorithms" description="Interactive algorithm lessons organized by topic with step-by-step visualizations.">
   <div class="container">
     <header class="page-header">
-      <h1>📚 Learn Algorithms</h1>
-      <p>Pick a topic and dive in. Each lesson includes interactive visualizations, clean Python code, and friendly explanations.</p>
+      <h1>Learn algorithms</h1>
+      <p>Pick a topic to start. Each lesson has an interactive visualization, Python code, and an explanation.</p>
     </header>
 
     <div class="topics-list">
@@ -51,7 +51,7 @@ for (const list of lessonsByTopic.values()) {
                       href={withBase(`/learn/${topic.slug}/${lessonSlug}/`)}
                       class="clay-btn clay-btn--small clay-btn--primary"
                     >
-                      ✨ {lesson.data.title}
+                      {lesson.data.title}
                     </a>
                   );
                 })

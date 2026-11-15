@@ -20,10 +20,9 @@ const recentProblems = problems.slice(0, 3);
     <!-- Hero Section -->
     <section class="hero">
       <div class="hero__content clay-card">
-        <h1 class="hero__title">🧮 Algorithm Hub</h1>
+        <h1 class="hero__title">Algorithm Hub</h1>
         <p class="hero__subtitle">
-          Learn algorithms through <strong>interactive visualizations</strong>,
-          not walls of text.
+          Learn algorithms with interactive, step-by-step visualizations.
         </p>
         <div class="hero__actions">
           <a href={withBase('/learn/')} class="clay-btn clay-btn--primary">
@@ -38,7 +37,7 @@ const recentProblems = problems.slice(0, 3);
 
     <!-- Topics Grid -->
     <section class="section">
-      <h2 class="section__title">📚 Algorithm Topics</h2>
+      <h2 class="section__title">Algorithm topics</h2>
       <div class="topic-grid">
         {topics.map((topic) => (
           <TopicCard
@@ -56,7 +55,7 @@ const recentProblems = problems.slice(0, 3);
     <!-- Recent Problems -->
     <section class="section">
       <div class="section__header">
-        <h2 class="section__title">📝 Recent Problems</h2>
+        <h2 class="section__title">Recent problems</h2>
         {problems.length > 0 && (
           <a href={withBase('/problems/')} class="clay-btn clay-btn--small">View all →</a>
         )}
@@ -79,7 +78,7 @@ const recentProblems = problems.slice(0, 3);
         </div>
       ) : (
         <div class="clay-card empty-state">
-          <p>🚀 No problems solved yet. Start your journey!</p>
+          <p>No problems solved yet.</p>
         </div>
       )}
     </section>

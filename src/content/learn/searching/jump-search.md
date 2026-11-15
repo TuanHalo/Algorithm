@@ -10,16 +10,16 @@ diagram: "/diagrams/searching/jump-search-flow.html"
 tags: ["searching", "block-jump", "sorted", "iterative"]
 ---
 
-## 🎯 What is Jump Search?
+## What is jump search?
 
-Imagine finding page 142 in a thick book — **you flip ahead 20 pages at a time until you pass 142, then step back one chunk and scan page by page**.
-Jump Search skips through a **sorted** array in fixed blocks of size `√n` to pinpoint the single block that could hold the target, then runs a short Linear Search inside it.
+Imagine finding page 142 in a thick book. You flip ahead 20 pages at a time until you pass 142, then step back one chunk and scan page by page.
+Jump Search skips through a sorted array in fixed blocks of size `√n` to locate the only block that could hold the target, then runs a Linear Search inside it.
 
-## 🧠 Core Idea
+## Core idea
 
-> Jump forward by `√n` while block end `< target` → Stop on the first block that overshoots → Linear scan from `prev`
+Jump forward by `√n` while the block end is `< target`, stop at the first block that overshoots, and scan linearly from `prev`.
 
-## 🐍 Python Code
+## Python code
 
 ```python
 import math
@@ -47,19 +47,19 @@ def jump_search(arr: list[int], target: int) -> int:
     return -1
 ```
 
-## ⏱️ Complexity
+## Complexity
 
 | Case | Time | Space | Why? |
 |------|------|-------|------|
-| **Best** (first block) | `O(1)` | `O(1)` | Target sits at index `0` or the very first jump probe |
-| **Average** | `O(√n)` | `O(1)` | Jumps `~n / (2√n)` blocks, then scans `~√n / 2` items |
-| **Worst** (last block / miss) | `O(√n)` | `O(1)` | Makes at most `√n` jumps plus `√n` linear checks (`2√n` total) |
+| Best (first block) | `O(1)` | `O(1)` | Target sits at index `0` or the very first jump probe |
+| Average | `O(√n)` | `O(1)` | Jumps `~n / (2√n)` blocks, then scans `~√n / 2` items |
+| Worst (last block / miss) | `O(√n)` | `O(1)` | Makes at most `√n` jumps plus `√n` linear checks (`2√n` total) |
 
-## ⚡ When to Use
+## When to use
 
-| ✅ Great for | ❌ Avoid for |
+| Great for | Avoid for |
 |---|---|
 | Sorted data where jumping backward is costly (only jumps forward once per block, then scans forward) | Unsorted lists (skipping blocks could jump right past the target) |
-| Learning how `√n` block decomposition trades off against `O(log n)` halving | Standard in-memory arrays where Binary Search (`O(log n)`) is strictly faster |
-| Large read-only sorted buffers where sequential prefetching within a block is cheap | Frequently modified collections with insertions and deletions |
+| Large read-only sorted buffers where sequential prefetching within a block is cheap | Standard in-memory arrays where Binary Search (`O(log n)`) is strictly faster |
+| | Frequently modified collections with insertions and deletions |
 

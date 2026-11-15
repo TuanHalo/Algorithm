@@ -410,7 +410,7 @@
         const sorted = [...baseArr].sort((a, b) => a - b);
         const wasUnsorted = baseArr.some((val, i) => val !== sorted[i]);
         sortNoteEl.textContent = wasUnsorted
-          ? 'ℹ️ Sorted your numbers automatically — Exponential Search requires a sorted list.'
+          ? 'ℹ️ Sorted your numbers automatically because Exponential Search requires a sorted list.'
           : '';
         const parsedTarget = Number(targetInputEl.value);
         const target = Number.isFinite(parsedTarget) ? parsedTarget : 7;
@@ -563,7 +563,7 @@
           stage: 'Done',
           windowLabel: 'Window empty',
           comparisons,
-          description: `❌ Window collapsed without finding <strong>${target}</strong> — returning <strong>-1</strong>.`,
+          description: `❌ Window collapsed without finding <strong>${target}</strong>; returning <strong>-1</strong>.`,
           codeLine: 16,
         });
 

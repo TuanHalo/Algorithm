@@ -10,16 +10,16 @@ diagram: "/diagrams/sorting/heap-sort-flow.html"
 tags: ["sorting", "heap", "binary-tree", "in-place", "unstable"]
 ---
 
-## 🎯 What is Heap Sort?
+## What is Heap Sort?
 
-Imagine a knockout tournament bracket — **the strongest champion rises to the top, takes the podium, and the remaining contenders re-compete for the next spot**.
+Imagine a knockout tournament bracket: the strongest champion rises to the top, and the remaining contenders compete again for the next spot.
 Heap Sort turns your array into an implicit binary tree (a Max-Heap) so the biggest item always sits at index `0`, swaps it to the end, and repairs the heap repeatedly.
 
-## 🧠 Core Idea
+## Core idea
 
-> Build a Max-Heap → Swap root (max) to the end → Shrink heap and sift down
+Build a Max-Heap, swap the root (max) to the end, then shrink the heap and sift down.
 
-## 🐍 Python Code
+## Python code
 
 ```python
 def heap_sort(arr: list[int]) -> list[int]:
@@ -47,17 +47,17 @@ def heapify(arr: list[int], size: int, root: int) -> None:
         heapify(arr, size, largest)
 ```
 
-## ⏱️ Complexity
+## Complexity
 
 | Case | Time | Space | Why? |
 |------|------|-------|------|
-| **Best** | `O(n log n)` | `O(1)` | Even on sorted input, extracting `n` roots requires `O(log n)` sifting each |
-| **Average** | `O(n log n)` | `O(1)` | Bottom-up heap build is `O(n)`, followed by `n - 1` `O(log n)` extractions |
-| **Worst** | `O(n log n)` | `O(1)` | Tree height is always `log₂(n)`, guaranteeing no quadratic worst case |
+| Best | `O(n log n)` | `O(1)` | Even on sorted input, extracting `n` roots requires `O(log n)` sifting each |
+| Average | `O(n log n)` | `O(1)` | Bottom-up heap build is `O(n)`, followed by `n - 1` `O(log n)` extractions |
+| Worst | `O(n log n)` | `O(1)` | Tree height is always `log₂(n)`, guaranteeing no quadratic worst case |
 
-## ⚡ When to Use
+## When to use
 
-| ✅ Great for | ❌ Avoid for |
+| Great for | Avoid for |
 |---|---|
 | Strict memory limits + worst-case guarantees (`O(1)` space and `O(n log n)` time) | General-purpose arrays where Quick Sort wins on CPU cache locality |
 | Embedded systems or real-time deadlines (never degrades to `O(n²)`) | When stable sorting is required (long-distance swaps reorder duplicates) |

@@ -10,16 +10,16 @@ diagram: "/diagrams/stack-queue/deque-operations-flow.html"
 tags: ["stack-queue", "deque", "double-ended", "fundamentals"]
 ---
 
-## 🎯 What is a Deque?
+## What is a deque?
 
-Imagine a subway car with doors open at **both** the front and the back — **passengers can step on or off from either end without squeezing past anyone inside**.
+Imagine a subway car with doors open at both the front and the back. Passengers can step on or off from either end without squeezing past anyone inside.
 A Deque (Double-Ended Queue) combines a Stack and a Queue into one structure, giving `O(1)` insertions and removals at both ends.
 
-## 🧠 Core Idea
+## Core idea
 
-> Push or pop at either `front` or `rear` in `O(1)` → Unifies Stack (`LIFO`), Queue (`FIFO`), and two-ended algorithms
+Push or pop at either `front` or `rear` in `O(1)`, unifying Stack (`LIFO`), Queue (`FIFO`), and two-ended algorithms.
 
-## 🐍 Python Code
+## Python code
 
 ```python
 from collections import deque
@@ -45,18 +45,18 @@ def demo_deque_ops() -> list[int]:
     return list(dq)
 ```
 
-## ⏱️ Complexity
+## Complexity
 
 | Operation / Case | Time | Space | Why? |
 |---|---|---|---|
-| **Push Front / Back** (`appendleft` / `append`) | `O(1)` | `O(1)` extra | Doubly-linked block pointers attach directly to head or tail |
-| **Pop Front / Back** (`popleft` / `pop`) | `O(1)` | `O(1)` | Detaches head or tail element without shifting interior items |
-| **Index Access** (`dq[i]`) | `O(n)` middle / `O(1)` ends | `O(1)` | Walking across internal blocks from the nearest end takes linear time |
-| **Total Memory** | — | `O(n)` | Stores `n` elements across fixed-size memory blocks |
+| Push Front / Back (`appendleft` / `append`) | `O(1)` | `O(1)` extra | Doubly-linked block pointers attach directly to head or tail |
+| Pop Front / Back (`popleft` / `pop`) | `O(1)` | `O(1)` | Detaches head or tail element without shifting interior items |
+| Index Access (`dq[i]`) | `O(n)` middle / `O(1)` ends | `O(1)` | Walking across internal blocks from the nearest end takes linear time |
+| Total Memory | — | `O(n)` | Stores `n` elements across fixed-size memory blocks |
 
-## ⚡ When to Use
+## When to use
 
-| ✅ Great for | ❌ Avoid for |
+| Great for | Avoid for |
 |---|---|
 | Sliding window algorithms (`Monotonic Queue`) and 0-1 BFS | Heavy random indexing by arbitrary position `dq[i]` (use a `list`) |
 | Palindrome checks, undo buffers with size caps (`maxlen`), and work-stealing | Sorting or binary searching (deques lack contiguous fast slicing) |

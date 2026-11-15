@@ -366,7 +366,7 @@
               stack: [...stack],
               charState: 'current',
               verdict: 'scanning',
-              description: `Saw opener <code>${escapeHtml(ch)}</code> at index ${i} — pushed onto the stack.`,
+              description: `Saw opener <code>${escapeHtml(ch)}</code> at index ${i}; pushed onto the stack.`,
               codeLine: 5,
             });
           } else if (pairs[ch]) {
@@ -428,8 +428,8 @@
           charState: 'idle',
           verdict: isValid ? 'valid' : 'invalid',
           description: isValid
-            ? '✅ Finished scan with an empty stack — all brackets are balanced! Returning <strong>True</strong>.'
-            : `❌ End of string reached with ${stack.length} unclosed bracket(s) still on the stack — returning <strong>False</strong>.`,
+            ? '✅ Finished scan with an empty stack: all brackets are balanced. Returning <strong>True</strong>.'
+            : `❌ End of string reached with ${stack.length} unclosed bracket(s) still on the stack; returning <strong>False</strong>.`,
           codeLine: 9,
         });
 

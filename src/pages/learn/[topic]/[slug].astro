@@ -78,7 +78,7 @@ const getSlug = (entry: CollectionEntry<'learn'>): string =>
       <section class="lesson-visual">
         <AlgoVisualizer
           src={lesson.data.visualizer}
-          title={`${lesson.data.title} — Interactive Step-by-Step`}
+          title={`${lesson.data.title}: interactive step-by-step`}
         />
       </section>
     )}
@@ -93,7 +93,7 @@ const getSlug = (entry: CollectionEntry<'learn'>): string =>
       <section class="lesson-diagram">
         <DiagramEmbed
           src={lesson.data.diagram}
-          title={`${lesson.data.title} — Visual Flow`}
+          title={`${lesson.data.title}: visual flow`}
         />
       </section>
     )}
