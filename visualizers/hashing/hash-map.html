@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hash Map Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+
+      .vis-status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+      }
+
+      .vis-status-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+      .vis-pill {
+        background: var(--bg-card);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+      }
+
+      .vis-pill--accent {
+        background: rgba(181, 199, 237, 0.5);
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .vis-canvas {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 0.75rem;
+        min-height: 230px;
+        padding: 1.15rem 1.25rem;
+      }
+
+      .op-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: var(--border-radius-xs);
+        background: rgba(255, 255, 255, 0.42);
+        box-shadow: var(--shadow-clay-pressed);
+      }
+
+      .op-badge {
+        font-family: var(--font-code);
+        font-size: 0.72rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.7);
+        border: var(--border-clay);
+      }
+
+      .op-badge--active {
+        background: #b5c7ed;
+        font-weight: 700;
+      }
+
+      .op-badge--done { opacity: 0.55; }
+
+      .buckets-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+      }
+
+      .bucket-row {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.42rem 0.7rem;
+        border-radius: var(--border-radius-xs);
+        background: rgba(255, 255, 255, 0.48);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        transition: background 250ms ease, transform 250ms ease;
+      }
+
+      .bucket-row--active {
+        background: rgba(181, 199, 237, 0.55);
+        transform: translateX(3px);
+      }
+
+      .bucket-row__idx {
+        font-family: var(--font-code);
+        font-size: 0.74rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        min-width: 34px;
+      }
+
+      .bucket-row__entries {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        flex: 1;
+      }
+
+      .kv-chip {
+        font-family: var(--font-code);
+        font-size: 0.76rem;
+        padding: 0.22rem 0.55rem;
+        border-radius: 7px;
+        background: var(--vis-sorted);
+        box-shadow: var(--shadow-clay-subtle);
+        border: var(--border-clay);
+      }
+
+      .kv-chip--checking { background: var(--vis-comparing); font-weight: 700; }
+      .kv-chip--hit { background: var(--vis-active); font-weight: 700; }
+      .kv-chip--miss { background: var(--vis-swapping); }
+
+      .empty-slot {
+        font-family: var(--font-code);
+        font-size: 0.72rem;
+        color: var(--text-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input
+          type="text"
+          id="opsInput"
+          class="vis-input__field"
+          value="put(amy, 25), put(leo, 40), put(may, 99), get(may), put(amy, 30), get(zoe)"
+          placeholder="Operations: put(k, v), get(k)"
+          aria-label="Hash map operations"
+        />
+        <button id="btnRun" class="vis-btn vis-btn--primary">Run Sequence</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" data-ops="put(amy, 25), put(leo, 40), put(may, 99), get(may), put(amy, 30), get(zoe)">Collision + Update</button>
+        <button class="vis-btn" data-ops="put(a, 10), put(b, 20), put(c, 30), get(b), put(b, 99), get(b)">Overwrite Key</button>
+        <button class="vis-btn" data-ops="put(two, 0), put(sum, 1), get(two), get(four)">Hit & Miss</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn--primary vis-btn-play">▶ Play</button>
+        <button class="vis-btn vis-btn-pause" style="display: none">⏸ Pause</button>
+        <button class="vis-btn vis-btn-step-back">⏮ Step Back</button>
+        <button class="vis-btn vis-btn-step-forward">⏭ Step</button>
+        <button class="vis-btn vis-btn-reset">↺ Reset</button>
+        <span class="vis-step-counter">No steps</span>
+        <div class="vis-speed">
+          <span>Speed</span>
+          <input type="range" class="vis-speed-slider" min="1" max="10" value="6" />
+        </div>
+      </div>
+
+      <div class="vis-status-bar">
+        <div class="vis-status-group">
+          <span class="vis-pill vis-pill--accent" id="pillOp">Op: —</span>
+          <span class="vis-pill" id="pillHash">Hash: —</span>
+        </div>
+        <div class="vis-status-group">
+          <span class="vis-pill" id="pillResult">Result: —</span>
+        </div>
+      </div>
+
+      <div class="vis-canvas">
+        <div class="op-strip" id="opStrip"></div>
+        <div class="buckets-list" id="bucketsList"></div>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: #b5c7ed"></span>Hashed Bucket</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing)"></span>Checking Key</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active)"></span>Inserted / Found</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping)"></span>Key Not Found</span>
+      </div>
+
+      <div class="vis-code" id="codePanel"></div>
+      <div class="vis-info" id="infoBar">Enter put(key, val) and get(key) operations to trace O(1) bucket lookups.</div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const CODE_LINES = [
+        'def _index(self, key: str) -> int:',
+        '    return sum(ord(ch) for ch in key) % self.capacity',
+        '',
+        'def put(self, key: str, value: int) -> None:',
+        '    bucket = self.buckets[self._index(key)]',
+        '    for idx, (k, _) in enumerate(bucket):',
+        '        if k == key:',
+        '            bucket[idx] = (key, value)',
+        '            return',
+        '    bucket.append((key, value))',
+        '',
+        'def get(self, key: str) -> int | None:',
+        '    for k, v in self.buckets[self._index(key)]:',
+        '        if k == key:',
+        '            return v',
+        '    return None',
+      ];
+
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = String(text);
+        return div.innerHTML;
+      }
+
+      const codePanel = document.getElementById('codePanel');
+      codePanel.innerHTML = CODE_LINES.map((line, i) =>
+        `<span class="vis-code__line" data-line="${i}"><span class="vis-code__line-number">${i + 1}</span>${escapeHtml(line)}</span>`
+      ).join('');
+
+      function highlightCode(lineIndex) {
+        codePanel.querySelectorAll('.vis-code__line').forEach((el, idx) => {
+          el.classList.toggle('vis-code__line--active', idx === lineIndex);
+        });
+      }
+
+      function parseOps(text) {
+        const ops = [];
+        const regex = /(put|get)\s*\(\s*([^,)]+?)(?:\s*,\s*([^)]+?))?\s*\)/gi;
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+          const type = match[1].toLowerCase();
+          const key = match[2].replace(/['"]/g, '').trim();
+          const val = match[3] !== undefined ? match[3].replace(/['"]/g, '').trim() : null;
+          if (key) ops.push({ type, key, val: val ?? '0', raw: type === 'put' ? `put(${key}, ${val ?? '0'})` : `get(${key})` });
+        }
+        return ops.slice(0, 12);
+      }
+
+      const CAP = 6;
+      function hashKey(key) {
+        let sum = 0;
+        for (const ch of key) sum += ch.charCodeAt(0);
+        return { sum, idx: sum % CAP };
+      }
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 550,
+        highlightCode,
+        render(step) {
+          const { ops, opIdx, buckets, activeBucket, checkingKey, highlightState, hashText, resultText, description } = step;
+          document.getElementById('pillOp').textContent = opIdx >= 0 ? `Op: ${ops[opIdx].raw}` : 'Op: Ready';
+          document.getElementById('pillHash').textContent = `Hash: ${hashText}`;
+          document.getElementById('pillResult').textContent = `Result: ${resultText}`;
+
+          document.getElementById('opStrip').innerHTML = ops.map((op, i) => {
+            let cls = 'op-badge';
+            if (i === opIdx) cls += ' op-badge--active';
+            else if (i < opIdx) cls += ' op-badge--done';
+            return `<span class="${cls}">${escapeHtml(op.raw)}</span>`;
+          }).join('');
+
+          document.getElementById('bucketsList').innerHTML = buckets.map((bucket, idx) => {
+            const rowCls = idx === activeBucket ? 'bucket-row bucket-row--active' : 'bucket-row';
+            const entriesHtml = bucket.length === 0
+              ? '<span class="empty-slot">empty</span>'
+              : bucket.map(([k, v]) => {
+                  let chipCls = 'kv-chip';
+                  if (idx === activeBucket && k === checkingKey) {
+                    if (highlightState === 'hit') chipCls += ' kv-chip--hit';
+                    else if (highlightState === 'miss') chipCls += ' kv-chip--miss';
+                    else chipCls += ' kv-chip--checking';
+                  }
+                  return `<span class="${chipCls}">${escapeHtml(k)}: ${escapeHtml(v)}</span>`;
+                }).join('');
+            return `<div class="${rowCls}"><span class="bucket-row__idx">[${idx}]</span><div class="bucket-row__entries">${entriesHtml}</div></div>`;
+          }).join('');
+
+          document.getElementById('infoBar').textContent = description;
+        },
+      });
+
+      function buildSteps() {
+        const ops = parseOps(document.getElementById('opsInput').value);
+        if (ops.length === 0) return;
+        viz.reset();
+        const buckets = Array.from({ length: CAP }, () => []);
+        const snap = () => buckets.map((b) => b.map((pair) => [...pair]));
+
+        viz.recordStep({
+          ops, opIdx: -1, buckets: snap(), activeBucket: null, checkingKey: null,
+          highlightState: null, hashText: '—', resultText: '—', codeLine: 0,
+          description: `Created HashMap with ${CAP} empty buckets.`,
+        });
+
+        ops.forEach((op, opIdx) => {
+          const { sum, idx } = hashKey(op.key);
+          const hashText = `sum("${op.key}")=${sum} % ${CAP} = [${idx}]`;
+
+          viz.recordStep({
+            ops, opIdx, buckets: snap(), activeBucket: idx, checkingKey: null,
+            highlightState: null, hashText, resultText: 'jumping…',
+            codeLine: op.type === 'put' ? 4 : 12,
+            description: `${op.raw}: hashed "${op.key}" to bucket [${idx}].`,
+          });
+
+          if (op.type === 'put') {
+            let updated = false;
+            for (let i = 0; i < buckets[idx].length; i++) {
+              const [existingKey] = buckets[idx][i];
+              viz.recordStep({
+                ops, opIdx, buckets: snap(), activeBucket: idx, checkingKey: existingKey,
+                highlightState: 'checking', hashText, resultText: 'scanning bucket',
+                codeLine: 6,
+                description: `Compare bucket entry "${existingKey}" with "${op.key}".`,
+              });
+              if (existingKey === op.key) {
+                buckets[idx][i] = [op.key, op.val];
+                updated = true;
+                viz.recordStep({
+                  ops, opIdx, buckets: snap(), activeBucket: idx, checkingKey: op.key,
+                  highlightState: 'hit', hashText, resultText: `updated ${op.key}=${op.val}`,
+                  codeLine: 7,
+                  description: `Found "${op.key}"! Updated value in place to ${op.val}.`,
+                });
+                break;
+              }
+            }
+            if (!updated) {
+              buckets[idx].push([op.key, op.val]);
+              viz.recordStep({
+                ops, opIdx, buckets: snap(), activeBucket: idx, checkingKey: op.key,
+                highlightState: 'hit', hashText, resultText: `inserted ${op.key}=${op.val}`,
+                codeLine: 9,
+                description: `Key "${op.key}" not present; appended (${op.key}, ${op.val}) to bucket [${idx}].`,
+              });
+            }
+          } else {
+            let found = false;
+            for (const [existingKey, existingVal] of buckets[idx]) {
+              viz.recordStep({
+                ops, opIdx, buckets: snap(), activeBucket: idx, checkingKey: existingKey,
+                highlightState: 'checking', hashText, resultText: 'checking…',
+                codeLine: 13,
+                description: `Checking if "${existingKey}" == "${op.key}".`,
+              });
+              if (existingKey === op.key) {
+                found = true;
+                viz.recordStep({
+                  ops, opIdx, buckets: snap(), activeBucket: idx, checkingKey: op.key,
+                  highlightState: 'hit', hashText, resultText: `returned ${existingVal}`,
+                  codeLine: 14,
+                  description: `Hit! get("${op.key}") returned ${existingVal}.`,
+                });
+                break;
+              }
+            }
+            if (!found) {
+              viz.recordStep({
+                ops, opIdx, buckets: snap(), activeBucket: idx, checkingKey: null,
+                highlightState: 'miss', hashText, resultText: 'None (miss)',
+                codeLine: 15,
+                description: `Miss: "${op.key}" is not in bucket [${idx}], returning None.`,
+              });
+            }
+          }
+        });
+
+        viz.goToStep(0);
+      }
+
+      viz.bindControls();
+      document.getElementById('btnRun').addEventListener('click', buildSteps);
+      document.querySelectorAll('.vis-presets .vis-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.getElementById('opsInput').value = btn.dataset.ops;
+          buildSteps();
+        });
+      });
+
+      buildSteps();
+    </script>
+  </body>
+</html>
