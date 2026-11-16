@@ -1,7 +1,7 @@
 ---
 title: "Longest Palindromic Substring (Interval DP)"
 topic: "dynamic-programming"
-order: 10
+order: 9
 difficulty: "advanced"
 timeComplexity: "O(n²)"
 spaceComplexity: "O(n²)"

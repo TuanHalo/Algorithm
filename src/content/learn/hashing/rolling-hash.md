@@ -1,7 +1,7 @@
 ---
 title: "Rolling Hash (Rabin-Karp)"
 topic: "hashing"
-order: 7
+order: 6
 difficulty: "advanced"
 timeComplexity: "O(n + m)"
 spaceComplexity: "O(1)"

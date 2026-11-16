@@ -1,7 +1,7 @@
 ---
 title: "Huffman Coding"
 topic: "greedy"
-order: 8
+order: 7
 difficulty: "advanced"
 timeComplexity: "O(n log n)"
 spaceComplexity: "O(n)"

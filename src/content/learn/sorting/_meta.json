@@ -2,7 +2,17 @@
   "name": "Sorting",
   "icon": "🔄",
   "color": "#a8e6cf",
-  "order": 1,
-  "description": "Learn how to arrange data in order, from simple swaps to divide-and-conquer."
+  "order": 6,
+  "description": "Learn how to arrange data in order, from simple swaps to divide-and-conquer.",
+  "lessons": [
+    "bubble-sort",
+    "selection-sort",
+    "insertion-sort",
+    "merge-sort",
+    "quick-sort",
+    "heap-sort",
+    "counting-sort",
+    "radix-sort",
+    "bucket-sort"
+  ]
 }
-

@@ -2,6 +2,20 @@
   "name": "Dynamic Programming",
   "icon": "🧩",
   "color": "#ffc8a2",
-  "order": 4,
-  "description": "Break big problems into overlapping subproblems, cache answers, and build optimal solutions step by step."
+  "order": 9,
+  "description": "Break big problems into overlapping subproblems, cache answers, and build optimal solutions step by step.",
+  "lessons": [
+    "what-is-dp",
+    "fibonacci-dp",
+    "coin-change",
+    "longest-increasing-subsequence",
+    "unique-paths",
+    "zero-one-knapsack",
+    "longest-common-subsequence",
+    "edit-distance",
+    "longest-palindromic-substring",
+    "matrix-chain-multiplication",
+    "stock-with-cooldown",
+    "tsp-bitmask"
+  ]
 }

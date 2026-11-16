@@ -1,7 +1,7 @@
 ---
 title: "Longest Common Subsequence (LCS)"
 topic: "dynamic-programming"
-order: 8
+order: 7
 difficulty: "intermediate"
 timeComplexity: "O(m · n)"
 spaceComplexity: "O(m · n)"

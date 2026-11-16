@@ -2,6 +2,14 @@
   "name": "Linked List",
   "icon": "🔗",
   "color": "#f0b6d0",
-  "order": 6,
-  "description": "Nodes chained by pointers for fast insertions, reversals, and cycle detection."
+  "order": 11,
+  "description": "Nodes chained by pointers for fast insertions, reversals, and cycle detection.",
+  "lessons": [
+    "singly-linked-list",
+    "doubly-linked-list",
+    "reverse-linked-list",
+    "fast-slow-pointers",
+    "cycle-detection",
+    "skip-list"
+  ]
 }
