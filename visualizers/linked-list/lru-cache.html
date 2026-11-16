@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LRU Cache Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-input__cap {
+        width: 96px;
+        flex: 0 0 auto;
+        min-width: 82px;
+      }
+
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+
+      .vis-status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+      }
+
+      .vis-status-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+      .vis-pill {
+        background: var(--bg-card);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+      }
+
+      .vis-pill--accent {
+        background: rgba(240, 182, 208, 0.45);
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .vis-canvas {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: center;
+        gap: 0.75rem;
+        min-height: 215px;
+        padding: 1.15rem 1.25rem;
+      }
+
+      .lru-section-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        margin-bottom: 0.35rem;
+      }
+
+      .lru-map {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        min-height: 36px;
+        padding: 0.5rem 0.75rem;
+        border-radius: var(--border-radius-xs);
+        background: rgba(255, 255, 255, 0.42);
+        box-shadow: var(--shadow-clay-pressed);
+        align-items: center;
+      }
+
+      .lru-map-entry {
+        font-family: var(--font-code);
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.25rem 0.55rem;
+        border-radius: 6px;
+        background: var(--vis-sorted);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+      }
+
+      .lru-map-entry--hit { background: var(--vis-active); }
+      .lru-map-entry--miss { background: var(--vis-swapping); }
+
+      .lru-dll {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        padding: 1.7rem 0.75rem 0.95rem;
+        border-radius: var(--border-radius-sm);
+        background: rgba(255, 255, 255, 0.38);
+        box-shadow: var(--shadow-clay-pressed);
+        min-height: 88px;
+      }
+
+      .lru-sentinel {
+        font-family: var(--font-code);
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        padding: 0.38rem 0.55rem;
+        border-radius: var(--border-radius-xs);
+        border: 1.5px dashed rgba(90, 90, 90, 0.3);
+        background: rgba(255, 255, 255, 0.55);
+      }
+
+      .lru-node-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+
+      .lru-badges {
+        position: absolute;
+        top: -22px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 3px;
+        white-space: nowrap;
+      }
+
+      .lru-badge {
+        font-family: var(--font-code);
+        font-size: 0.58rem;
+        font-weight: 700;
+        padding: 2px 5px;
+        border-radius: 5px;
+        box-shadow: var(--shadow-clay-subtle);
+      }
+
+      .lru-badge--mru { background: #a8e6cf; color: #124d36; }
+      .lru-badge--lru { background: #ffc8a2; color: #5c2d0c; }
+
+      .lru-node {
+        padding: 0.42rem 0.65rem;
+        border-radius: var(--border-radius-xs);
+        background: var(--vis-default);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        font-family: var(--font-code);
+        font-size: 0.84rem;
+        font-weight: 700;
+        transition: all 220ms ease;
+      }
+
+      .lru-node--promoted { background: var(--vis-active); transform: translateY(-3px) scale(1.04); }
+      .lru-node--evict { background: var(--vis-swapping); transform: translateY(-3px); }
+
+      .lru-arrow {
+        font-family: var(--font-code);
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+      }
+
+      .ops-chips {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.35rem;
+      }
+
+      .op-chip {
+        font-family: var(--font-code);
+        font-size: 0.72rem;
+        padding: 0.2rem 0.48rem;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.55);
+        border: var(--border-clay);
+        color: var(--text-secondary);
+      }
+
+      .op-chip--done { opacity: 0.45; }
+      .op-chip--current {
+        background: #f0b6d0;
+        color: #521836;
+        font-weight: 700;
+        box-shadow: var(--shadow-clay-subtle);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input
+          id="ops-input"
+          class="vis-input__field"
+          type="text"
+          value="PUT 1 10, PUT 2 20, GET 1, PUT 3 30, GET 2, PUT 4 40"
+          placeholder="PUT k v, GET k (comma-separated)"
+          aria-label="LRU cache operations"
+        />
+        <input
+          id="cap-input"
+          class="vis-input__field vis-input__cap"
+          type="number"
+          min="1"
+          max="5"
+          value="2"
+          title="Cache capacity (1-5)"
+          aria-label="Cache capacity"
+        />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">▶ Load &amp; Run</button>
+        <button id="btn-random" class="vis-btn" type="button">🎲 Random</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Try presets:</span>
+        <button class="vis-btn" type="button" data-cap="2" data-ops="PUT 1 10, PUT 2 20, GET 1, PUT 3 30, GET 2, PUT 4 40">Classic Eviction</button>
+        <button class="vis-btn" type="button" data-cap="3" data-ops="PUT 1 100, PUT 2 200, PUT 3 300, GET 1, PUT 4 400">Hit Promotes</button>
+        <button class="vis-btn" type="button" data-cap="2" data-ops="PUT 1 10, PUT 2 20, PUT 1 99, PUT 3 30, GET 1">Overwrite Key</button>
+        <button class="vis-btn" type="button" data-cap="2" data-ops="GET 5, PUT 5 50, GET 5, PUT 6 60, PUT 7 70">Miss then Fill</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button" title="Jump to start">⏮ Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button" title="Previous step">◀ Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button" title="Play animation">▶ Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" title="Pause animation" style="display: none;">⏸ Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button" title="Next step">Next ▶</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed">
+          <span>Speed</span>
+          <input class="vis-speed-slider" type="range" min="1" max="10" value="6" />
+        </label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Promoted / Inserted (MRU)</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Evicted (LRU) / Miss</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-sorted);"></span> Hash Map Lookup</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-op" class="vis-pill vis-pill--accent">Operation: Ready</span>
+        <div class="vis-status-group">
+          <span id="status-cap" class="vis-pill">Size: 0 / 2</span>
+          <span id="status-ret" class="vis-pill">Last Return: —</span>
+        </div>
+      </div>
+
+      <div id="vis-canvas" class="vis-canvas" aria-live="polite"></div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">
+        Enter <code>PUT k v</code> / <code>GET k</code> operations and press <strong>Play</strong> or <strong>Next</strong>.
+      </div>
+
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'class LRUCache:',
+        '    def get(self, key: int) -> int:',
+        '        if key not in self.cache:',
+        '            return -1',
+        '        node = self.cache[key]',
+        '        self._remove(node); self._insert_mru(node)',
+        '        return node.val',
+        '    def put(self, key: int, value: int) -> None:',
+        '        if key in self.cache:',
+        '            self._remove(self.cache[key])',
+        '        node = DNode(key, value)',
+        '        self.cache[key] = node; self._insert_mru(node)',
+        '        if len(self.cache) > self.capacity:',
+        '            lru = self.head.next  # Oldest sits next to head sentinel',
+        '            self._remove(lru); del self.cache[lru.key]',
+      ];
+
+      const canvasEl = document.getElementById('vis-canvas');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+      const opsInputEl = document.getElementById('ops-input');
+      const capInputEl = document.getElementById('cap-input');
+      const statusOpEl = document.getElementById('status-op');
+      const statusCapEl = document.getElementById('status-cap');
+      const statusRetEl = document.getElementById('status-ret');
+
+      function renderCodePanel() {
+        codeEl.innerHTML = PYTHON_LINES.map((line, index) => (
+          `<span class="vis-code__line" data-line="${index}"><span class="vis-code__line-number">${index + 1}</span>${line}</span>`
+        )).join('');
+      }
+
+      function highlightCodeLine(lineIndex) {
+        codeEl.querySelectorAll('.vis-code__line').forEach((el, idx) => {
+          el.classList.toggle('vis-code__line--active', idx === lineIndex);
+        });
+      }
+
+      function parseInputs() {
+        let cap = Number.parseInt(capInputEl.value, 10);
+        if (!Number.isFinite(cap) || cap < 1) cap = 2;
+        if (cap > 5) cap = 5;
+        capInputEl.value = String(cap);
+
+        const tokens = opsInputEl.value.split(',').map((t) => t.trim()).filter(Boolean);
+        const ops = [];
+        for (const token of tokens.slice(0, 12)) {
+          const parts = token.split(/\s+/);
+          const cmd = parts[0].toUpperCase();
+          if (cmd === 'PUT' && Number.isFinite(Number(parts[1])) && Number.isFinite(Number(parts[2]))) {
+            const k = Number(parts[1]);
+            const v = Number(parts[2]);
+            ops.push({ type: 'PUT', key: k, value: v, label: `PUT ${k} ${v}` });
+          } else if (cmd === 'GET' && Number.isFinite(Number(parts[1]))) {
+            const k = Number(parts[1]);
+            ops.push({ type: 'GET', key: k, label: `GET ${k}` });
+          }
+        }
+        return {
+          cap,
+          ops: ops.length > 0
+            ? ops
+            : [
+                { type: 'PUT', key: 1, value: 10, label: 'PUT 1 10' },
+                { type: 'PUT', key: 2, value: 20, label: 'PUT 2 20' },
+                { type: 'GET', key: 1, label: 'GET 1' },
+              ],
+        };
+      }
+
+      function renderStep(step) {
+        statusOpEl.textContent = `Operation: ${step.opLabel}`;
+        statusCapEl.textContent = `Size: ${step.order.length} / ${step.cap}`;
+        statusRetEl.textContent = `Last Return: ${step.ret}`;
+
+        const mapHtml = step.order.length === 0
+          ? '<span style="font-size: 0.74rem; color: var(--text-muted); font-family: var(--font-code);">{ empty }</span>'
+          : step.order.map((item) => {
+              let cls = '';
+              if (item.key === step.highlightKey) cls = 'lru-map-entry--hit';
+              else if (item.key === step.evictKey) cls = 'lru-map-entry--miss';
+              return `<span class="lru-map-entry ${cls}">${item.key} → (${item.key}:${item.val})</span>`;
+            }).join('');
+
+        // Stored LRU -> MRU so index 0 is LRU (head.next) and last is MRU (tail.prev)
+        const dllItems = step.order.map((item, idx) => {
+          const badges = [];
+          if (idx === 0) badges.push('<span class="lru-badge lru-badge--lru">LRU</span>');
+          if (idx === step.order.length - 1) badges.push('<span class="lru-badge lru-badge--mru">MRU</span>');
+
+          let cls = '';
+          if (item.key === step.highlightKey) cls = 'lru-node--promoted';
+          else if (item.key === step.evictKey) cls = 'lru-node--evict';
+
+          return `
+            <span class="lru-arrow">⇄</span>
+            <div class="lru-node-wrap">
+              ${badges.length > 0 ? `<div class="lru-badges">${badges.join('')}</div>` : ''}
+              <div class="lru-node ${cls}">${item.key}:${item.val}</div>
+            </div>
+          `;
+        }).join('');
+
+        const chipsHtml = step.ops.map((op, idx) => {
+          let cls = '';
+          if (idx < step.opIdx) cls = 'op-chip--done';
+          else if (idx === step.opIdx) cls = 'op-chip--current';
+          return `<span class="op-chip ${cls}">${op.label}</span>`;
+        }).join('');
+
+        canvasEl.innerHTML = `
+          <div>
+            <div class="lru-section-label">Hash Map (O(1) key lookup)</div>
+            <div class="lru-map">${mapHtml}</div>
+          </div>
+          <div>
+            <div class="lru-section-label">Doubly Linked List (LRU on left → MRU on right)</div>
+            <div class="lru-dll">
+              <span class="lru-sentinel">HEAD</span>
+              ${dllItems}
+              <span class="lru-arrow">⇄</span>
+              <span class="lru-sentinel">TAIL</span>
+            </div>
+          </div>
+          <div class="ops-chips">${chipsHtml}</div>
+        `;
+
+        infoEl.innerHTML = step.description;
+      }
+
+      const engine = new VisualizerEngine({
+        render: renderStep,
+        highlightCode: highlightCodeLine,
+        defaultSpeed: 700,
+      });
+
+      function buildSteps(cap, ops) {
+        engine.reset();
+        // order[0] = LRU, order[order.length - 1] = MRU
+        const order = [];
+        let lastRet = '—';
+
+        const snap = (extra) => {
+          engine.recordStep({
+            cap,
+            order: order.map((x) => ({ ...x })),
+            ops,
+            opIdx: extra.opIdx ?? -1,
+            opLabel: extra.opLabel ?? 'Ready',
+            ret: extra.ret ?? lastRet,
+            highlightKey: extra.highlightKey ?? null,
+            evictKey: extra.evictKey ?? null,
+            description: extra.description,
+            codeLine: extra.codeLine,
+          });
+        };
+
+        snap({
+          opLabel: 'Initialize',
+          description: `Initialized <strong>LRUCache(capacity=${cap})</strong> with empty Hash Map and sentinel Doubly Linked List.`,
+          codeLine: 0,
+        });
+
+        ops.forEach((op, idx) => {
+          if (op.type === 'GET') {
+            const pos = order.findIndex((item) => item.key === op.key);
+            if (pos === -1) {
+              lastRet = '-1';
+              snap({
+                opIdx: idx,
+                opLabel: `${op.label} → -1`,
+                description: `Cache miss: key <strong>${op.key}</strong> is not in the hash map, so it returns <strong>-1</strong>.`,
+                codeLine: 3,
+              });
+            } else {
+              const [node] = order.splice(pos, 1);
+              order.push(node);
+              lastRet = String(node.val);
+              snap({
+                opIdx: idx,
+                opLabel: `${op.label} → ${node.val}`,
+                highlightKey: node.key,
+                description: `Cache hit! Looked up <strong>${node.key}:${node.val}</strong> in <strong>O(1)</strong> and promoted it to <strong>MRU</strong>.`,
+                codeLine: 5,
+              });
+            }
+          } else if (op.type === 'PUT') {
+            const existingIdx = order.findIndex((item) => item.key === op.key);
+            if (existingIdx !== -1) {
+              order.splice(existingIdx, 1);
+              order.push({ key: op.key, val: op.value });
+              lastRet = 'None';
+              snap({
+                opIdx: idx,
+                opLabel: op.label,
+                highlightKey: op.key,
+                description: `Key <strong>${op.key}</strong> existed: unlinked old node, updated value to <strong>${op.value}</strong>, and moved to <strong>MRU</strong>.`,
+                codeLine: 11,
+              });
+            } else {
+              order.push({ key: op.key, val: op.value });
+              lastRet = 'None';
+              snap({
+                opIdx: idx,
+                opLabel: op.label,
+                highlightKey: op.key,
+                description: `Inserted <strong>${op.key}:${op.value}</strong> at <strong>MRU</strong> and stored reference in Hash Map.`,
+                codeLine: 11,
+              });
+              if (order.length > cap) {
+                const lru = order[0];
+                snap({
+                  opIdx: idx,
+                  opLabel: `EVICT ${lru.key}`,
+                  evictKey: lru.key,
+                  description: `Capacity (${cap}) reached. Evicting <code>head.next</code> (<strong>LRU ${lru.key}:${lru.val}</strong>).`,
+                  codeLine: 13,
+                });
+                order.shift();
+                snap({
+                  opIdx: idx,
+                  opLabel: `EVICT ${lru.key} done`,
+                  description: `Removed <strong>${lru.key}:${lru.val}</strong> from Doubly Linked List and deleted key <strong>${lru.key}</strong> from Hash Map.`,
+                  codeLine: 14,
+                });
+              }
+            }
+          }
+        });
+
+        engine.goToStep(0);
+      }
+
+      renderCodePanel();
+      engine.bindControls();
+
+      document.getElementById('btn-apply').addEventListener('click', () => {
+        const { cap, ops } = parseInputs();
+        opsInputEl.value = ops.map((o) => o.label).join(', ');
+        buildSteps(cap, ops);
+        engine.play();
+      });
+
+      document.getElementById('btn-random').addEventListener('click', () => {
+        const cap = Math.floor(Math.random() * 2) + 2;
+        const seq = [];
+        for (let i = 0; i < 6; i++) {
+          const k = Math.floor(Math.random() * 4) + 1;
+          if (i < 2 || Math.random() < 0.65) {
+            const v = (Math.floor(Math.random() * 9) + 1) * 10;
+            seq.push(`PUT ${k} ${v}`);
+          } else {
+            seq.push(`GET ${k}`);
+          }
+        }
+        capInputEl.value = String(cap);
+        opsInputEl.value = seq.join(', ');
+        const parsed = parseInputs();
+        buildSteps(parsed.cap, parsed.ops);
+      });
+
+      document.querySelectorAll('[data-ops]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          capInputEl.value = btn.dataset.cap;
+          opsInputEl.value = btn.dataset.ops;
+          const parsed = parseInputs();
+          buildSteps(parsed.cap, parsed.ops);
+        });
+      });
+
+      const initial = parseInputs();
+      buildSteps(initial.cap, initial.ops);
+    </script>
+  </body>
+</html>
