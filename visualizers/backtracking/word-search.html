@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Word Search Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/tree-canvas.css" />
+    <style>
+      .vis-input__word { width: 140px; flex: 0 0 auto; min-width: 110px; text-transform: uppercase; }
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: center; justify-content: flex-start; gap: 0.85rem; min-height: 320px; padding: 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+      .ws-grid { display: grid; gap: 6px; padding: 0.75rem; border-radius: var(--border-radius-sm); background: rgba(255, 255, 255, 0.45); box-shadow: var(--shadow-clay-pressed); }
+      .ws-cell { width: 46px; height: 46px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: var(--font-code); font-size: 1rem; font-weight: 700; background: rgba(255, 255, 255, 0.85); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); transition: all 200ms ease; position: relative; }
+      .ws-cell--path { background: var(--vis-pivot); color: #3b0764; }
+      .ws-cell--active { background: var(--vis-comparing); transform: scale(1.06); border: 2px solid #c2410c; }
+      .ws-cell--conflict { background: var(--vis-swapping); color: #7f1d1d; }
+      .ws-cell--found { background: var(--vis-active); color: #14532d; }
+      .ws-cell__sub { position: absolute; bottom: 2px; right: 5px; font-size: 0.56rem; font-weight: 500; opacity: 0.7; }
+      .ws-word-strip { display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: center; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="board-input" class="vis-input__field" type="text" value="ABCE; SFCS; ADEE" placeholder="Rows separated by ; e.g. ABCE; SFCS; ADEE" aria-label="Grid rows" />
+        <input id="word-input" class="vis-input__field vis-input__word" type="text" value="ABCCED" placeholder="Word" aria-label="Target word" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-board="ABCE; SFCS; ADEE" data-word="ABCCED">ABCCED (Found)</button>
+        <button class="vis-btn" type="button" data-board="ABCE; SFCS; ADEE" data-word="SEE">SEE (Found)</button>
+        <button class="vis-btn" type="button" data-board="ABCE; SFCS; ADEE" data-word="ABCB">ABCB (No reuse)</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Active Cell</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> Marked "#" (On Path)</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Mismatch / Pruned</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Word Matched</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-pos" class="vis-pill">Cell: -</span>
+        <span id="status-match" class="vis-pill">Match Index: 0</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="word-strip" class="ws-word-strip"></div>
+        <div id="grid-stage" class="ws-grid"></div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Cells on the current path are temporarily masked as "#" and restored when backtracking.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def exist(board: list[list[str]], word: str) -> bool:',
+        '    rows, cols = len(board), len(board[0])',
+        '    def dfs(r: int, c: int, idx: int) -> bool:',
+        '        if idx == len(word):',
+        '            return True',
+        '        if r < 0 or r >= rows or c < 0 or c >= cols or board[r][c] != word[idx]:',
+        '            return False',
+        '        saved, board[r][c] = board[r][c], "#"',
+        '        found = (dfs(r + 1, c, idx + 1) or dfs(r - 1, c, idx + 1)',
+        '                 or dfs(r, c + 1, idx + 1) or dfs(r, c - 1, idx + 1))',
+        '        board[r][c] = saved',
+        '        return found',
+        '    return any(dfs(r, c, 0) for r in range(rows) for c in range(cols))',
+      ];
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const boardInput = document.getElementById('board-input');
+      const wordInput = document.getElementById('word-input');
+      const gridStage = document.getElementById('grid-stage');
+      const wordStrip = document.getElementById('word-strip');
+      const posPill = document.getElementById('status-pos');
+      const matchPill = document.getElementById('status-match');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      function parseBoardAndWord() {
+        const rawRows = boardInput.value
+          .split(';')
+          .map((r) => r.trim().toUpperCase().replace(/[^A-Z]/g, ''))
+          .filter(Boolean)
+          .slice(0, 5);
+        const rows = rawRows.length ? rawRows : ['ABCE', 'SFCS', 'ADEE'];
+        const cols = Math.max(1, Math.min(6, Math.max(...rows.map((r) => r.length))));
+        const grid = rows.map((r) => r.padEnd(cols, 'X').slice(0, cols).split(''));
+        const word = (wordInput.value.trim().toUpperCase().replace(/[^A-Z]/g, '') || 'ABCCED').slice(0, 10);
+        return { grid, word };
+      }
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 550,
+        render: (step) => {
+          infoEl.textContent = step.description;
+          posPill.textContent = step.active ? `Cell: (${step.active[0]}, ${step.active[1]})` : 'Cell: -';
+          matchPill.textContent = `Match Index: ${step.idx} / ${step.word.length}`;
+
+          wordStrip.innerHTML = step.word
+            .split('')
+            .map((ch, i) => {
+              let cls = 'bt-chip';
+              if (step.found) cls += ' bt-chip--done';
+              else if (i < step.idx) cls += ' bt-chip--path';
+              else if (i === step.idx) cls += ' bt-chip--active';
+              return `<span class="${cls}">${ch}</span>`;
+            })
+            .join('');
+
+          const cols = step.grid[0].length;
+          gridStage.style.gridTemplateColumns = `repeat(${cols}, 46px)`;
+          let html = '';
+          for (let r = 0; r < step.grid.length; r++) {
+            for (let c = 0; c < cols; c++) {
+              const key = `${r},${c}`;
+              const isActive = step.active && step.active[0] === r && step.active[1] === c;
+              const isConflict = step.conflict && step.conflict[0] === r && step.conflict[1] === c;
+              const isMasked = step.board[r][c] === '#';
+              const isFoundCell = step.found && step.winPath.includes(key);
+              let cls = 'ws-cell';
+              if (isFoundCell) cls += ' ws-cell--found';
+              else if (isConflict) cls += ' ws-cell--conflict';
+              else if (isActive) cls += ' ws-cell--active';
+              else if (isMasked) cls += ' ws-cell--path';
+              const shown = isMasked ? '#' : step.grid[r][c];
+              html += `<div class="${cls}">${shown}<span class="ws-cell__sub">${r},${c}</span></div>`;
+            }
+          }
+          gridStage.innerHTML = html;
+        },
+        highlightCode: renderCode,
+      });
+
+      viz.bindControls();
+
+      function buildSteps() {
+        viz.reset();
+        const { grid, word } = parseBoardAndWord();
+        boardInput.value = grid.map((r) => r.join('')).join('; ');
+        wordInput.value = word;
+
+        const rows = grid.length;
+        const cols = grid[0].length;
+        const board = grid.map((r) => [...r]);
+        const pathKeys = [];
+        let winPath = [];
+        let solved = false;
+
+        const snap = (idx, active, conflict, found, codeLine, description) => {
+          viz.recordStep({
+            grid,
+            board: board.map((r) => [...r]),
+            word,
+            idx,
+            active,
+            conflict,
+            found,
+            winPath: [...winPath],
+            codeLine,
+            description,
+          });
+        };
+
+        function dfs(r, c, idx) {
+          if (idx === word.length) {
+            winPath = [...pathKeys];
+            solved = true;
+            snap(idx, null, null, true, 4, `Matched all ${word.length} letters of "${word}". Return True.`);
+            return true;
+          }
+          if (r < 0 || r >= rows || c < 0 || c >= cols) {
+            snap(idx, null, null, false, 6, `Out of bounds at (${r}, ${c}) while looking for "${word[idx]}". Return False.`);
+            return false;
+          }
+          if (board[r][c] !== word[idx]) {
+            const reason = board[r][c] === '#' ? 'already visited ("#")' : `"${board[r][c]}" != "${word[idx]}"`;
+            snap(idx, [r, c], [r, c], false, 6, `Cell (${r}, ${c}) fails: ${reason}. Return False.`);
+            return false;
+          }
+
+          const saved = board[r][c];
+          board[r][c] = '#';
+          pathKeys.push(`${r},${c}`);
+          snap(idx + 1, [r, c], null, false, 7, `Match "${saved}" at (${r}, ${c}) for word[${idx}]. Mark "#" and check neighbors.`);
+
+          const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+          for (const [dr, dc] of dirs) {
+            if (dfs(r + dr, c + dc, idx + 1)) {
+              board[r][c] = saved;
+              return true;
+            }
+          }
+
+          pathKeys.pop();
+          board[r][c] = saved;
+          snap(idx, [r, c], null, false, 10, `No neighbor matched from (${r}, ${c}). Restore "${saved}" and backtrack.`);
+          return false;
+        }
+
+        snap(0, null, null, false, 0, `Search for "${word}" across the ${rows}x${cols} grid.`);
+        outer: for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (board[r][c] === word[0]) {
+              if (dfs(r, c, 0)) break outer;
+            } else {
+              snap(0, [r, c], [r, c], false, 5, `Skip start (${r}, ${c}): "${board[r][c]}" != "${word[0]}".`);
+            }
+          }
+        }
+        if (!solved) {
+          snap(0, null, null, false, 12, `Finished checking every cell. "${word}" is not on the board.`);
+        }
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', buildSteps);
+      document.querySelectorAll('[data-board]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          boardInput.value = btn.dataset.board;
+          wordInput.value = btn.dataset.word;
+          buildSteps();
+        });
+      });
+
+      renderCode();
+      buildSteps();
+    </script>
+  </body>
+</html>
