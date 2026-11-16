@@ -8,6 +8,7 @@ import SearchingMatrix from '../../../components/SearchingMatrix.astro';
 import StackQueueMatrix from '../../../components/StackQueueMatrix.astro';
 import LinkedListMatrix from '../../../components/LinkedListMatrix.astro';
 import HashingMatrix from '../../../components/HashingMatrix.astro';
+import GraphMatrix from '../../../components/GraphMatrix.astro';
 import { TOPICS } from '../../../utils/topics';
 import type { TopicConfig } from '../../../types/content';
 import { withBase } from '../../../utils/url';
@@ -88,6 +89,7 @@ const lessons = allLessons
     {topic.slug === 'stack-queue' && <StackQueueMatrix />}
     {topic.slug === 'linked-list' && <LinkedListMatrix />}
     {topic.slug === 'hashing' && <HashingMatrix />}
+    {topic.slug === 'graph' && <GraphMatrix />}
   </div>
 </BaseLayout>
 

@@ -1,0 +1,7 @@
+{
+  "name": "Graph",
+  "icon": "🕸️",
+  "color": "#cdb4db",
+  "order": 3,
+  "description": "Navigate networks such as social connections, maps, dependencies, and paths."
+}

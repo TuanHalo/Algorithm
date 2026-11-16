@@ -1,0 +1,215 @@
+---
+import { withBase } from '../utils/url';
+
+interface GraphSummaryRow {
+  readonly slug: string;
+  readonly name: string;
+  readonly time: string;
+  readonly space: string;
+  readonly graphScope: string;
+  readonly coreStructure: string;
+  readonly bestFor: string;
+}
+
+const GRAPH_MATRIX: readonly GraphSummaryRow[] = [
+  {
+    slug: 'graph-representations',
+    name: 'Graph Representations',
+    time: 'O(1) / O(deg)',
+    space: 'O(V + E) / O(V²)',
+    graphScope: 'Any graph',
+    coreStructure: 'Adj list / matrix',
+    bestFor: 'Sparse neighbor iteration (list) or O(1) edge checks (matrix)',
+  },
+  {
+    slug: 'bfs',
+    name: 'Breadth-First Search (BFS)',
+    time: 'O(V + E)',
+    space: 'O(V)',
+    graphScope: 'Unweighted',
+    coreStructure: 'FIFO queue',
+    bestFor: 'Shortest path by hop count and level-order traversal',
+  },
+  {
+    slug: 'dfs',
+    name: 'Depth-First Search (DFS)',
+    time: 'O(V + E)',
+    space: 'O(V)',
+    graphScope: 'Any graph',
+    coreStructure: 'Call stack / stack',
+    bestFor: 'Path exploration, maze solving, and full component visits',
+  },
+  {
+    slug: 'connected-components',
+    name: 'Connected Components',
+    time: 'O(V + E)',
+    space: 'O(V)',
+    graphScope: 'Undirected',
+    coreStructure: 'Visited + DFS/BFS',
+    bestFor: 'Counting islands, isolated clusters, and reachability groups',
+  },
+  {
+    slug: 'cycle-detection',
+    name: 'Cycle Detection in Graphs',
+    time: 'O(V + E)',
+    space: 'O(V)',
+    graphScope: 'Undirected / Directed',
+    coreStructure: 'Parent / 3-color DFS',
+    bestFor: 'Catching feedback loops in dependencies and undirected graphs',
+  },
+  {
+    slug: 'bipartite-check',
+    name: 'Bipartite Graph Check',
+    time: 'O(V + E)',
+    space: 'O(V)',
+    graphScope: 'Undirected',
+    coreStructure: '2-color array + BFS',
+    bestFor: 'Two-team partitioning and odd-length cycle checks',
+  },
+  {
+    slug: 'topological-sort',
+    name: 'Topological Sort',
+    time: 'O(V + E)',
+    space: 'O(V)',
+    graphScope: 'DAG',
+    coreStructure: 'In-degree + queue',
+    bestFor: 'Scheduling tasks, builds, and prerequisites in valid order',
+  },
+  {
+    slug: 'union-find',
+    name: 'Union-Find (Disjoint Set)',
+    time: 'O(α(V))',
+    space: 'O(V)',
+    graphScope: 'Dynamic undirected',
+    coreStructure: 'Parent + rank arrays',
+    bestFor: 'Fast edge merges and same-component queries over streaming edges',
+  },
+  {
+    slug: 'zero-one-bfs',
+    name: '0-1 BFS',
+    time: 'O(V + E)',
+    space: 'O(V)',
+    graphScope: 'Weights in {0, 1}',
+    coreStructure: 'Double-ended queue',
+    bestFor: 'Shortest paths with free (0) and unit-cost (1) moves without a heap',
+  },
+  {
+    slug: 'dijkstra',
+    name: "Dijkstra's Shortest Path",
+    time: 'O((V + E) log V)',
+    space: 'O(V)',
+    graphScope: 'Weights >= 0',
+    coreStructure: 'Min-heap + dist[]',
+    bestFor: 'Single-source shortest paths on road networks with non-negative tolls',
+  },
+  {
+    slug: 'bellman-ford',
+    name: 'Bellman-Ford Shortest Path',
+    time: 'O(V · E)',
+    space: 'O(V)',
+    graphScope: 'Negative weights OK',
+    coreStructure: 'V - 1 edge passes',
+    bestFor: 'Shortest paths with negative edges and spotting negative cycles',
+  },
+  {
+    slug: 'floyd-warshall',
+    name: 'Floyd-Warshall All-Pairs',
+    time: 'O(V³)',
+    space: 'O(V²)',
+    graphScope: 'Small dense graphs',
+    coreStructure: 'V × V DP matrix',
+    bestFor: 'All-pairs shortest paths and transitive closure on up to ~400 nodes',
+  },
+  {
+    slug: 'kruskal-mst',
+    name: "Kruskal's MST",
+    time: 'O(E log E)',
+    space: 'O(V)',
+    graphScope: 'Connected undirected',
+    coreStructure: 'Sorted edges + DSU',
+    bestFor: 'Sparse graphs where sorting edges once beats heap updates',
+  },
+  {
+    slug: 'prim-mst',
+    name: "Prim's MST",
+    time: 'O((V + E) log V)',
+    space: 'O(V)',
+    graphScope: 'Connected undirected',
+    coreStructure: 'Cut min-heap',
+    bestFor: 'Growing one connected minimum-cost tree outward from a start node',
+  },
+  {
+    slug: 'kosaraju-scc',
+    name: "Kosaraju's SCC",
+    time: 'O(V + E)',
+    space: 'O(V + E)',
+    graphScope: 'Directed',
+    coreStructure: 'Finish stack + Gᵀ',
+    bestFor: 'Grouping mutually reachable nodes into a condensation DAG',
+  },
+  {
+    slug: 'bridges-articulation-points',
+    name: 'Bridges & Articulation Points',
+    time: 'O(V + E)',
+    space: 'O(V)',
+    graphScope: 'Undirected',
+    coreStructure: 'Tarjan tin / low',
+    bestFor: 'Finding single-edge and single-node failure points in a network',
+  },
+] as const;
+---
+
+<section class="clay-section graph-matrix">
+  <h2 class="clay-section__title">Graph comparison and decision matrix</h2>
+  <p class="graph-matrix__intro">
+    Compare graph algorithms by edge constraints, core data structures, and runtime tradeoffs.
+  </p>
+  <div class="matrix-scroll">
+    <table class="clay-table">
+      <thead>
+        <tr>
+          <th>Algorithm / Concept</th>
+          <th>Time</th>
+          <th>Space</th>
+          <th>Graph Scope</th>
+          <th>Core Structure</th>
+          <th>Best When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {GRAPH_MATRIX.map((row) => (
+          <tr>
+            <td>
+              <a href={withBase(`/learn/graph/${row.slug}/`)} class="matrix-link">
+                {row.name}
+              </a>
+            </td>
+            <td><code>{row.time}</code></td>
+            <td><code>{row.space}</code></td>
+            <td>{row.graphScope}</td>
+            <td><code>{row.coreStructure}</code></td>
+            <td>{row.bestFor}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+  .graph-matrix {
+    margin-top: var(--space-2xl);
+  }
+
+  .graph-matrix__intro {
+    margin-bottom: var(--space-md);
+  }
+
+  .matrix-scroll {
+    overflow-x: auto;
+  }
+
+  .matrix-link {
+    font-weight: 600;
+  }
+</style>
