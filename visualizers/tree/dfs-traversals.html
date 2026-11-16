@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DFS Tree Traversals Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/binary-tree-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 330px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="tree-input" class="vis-input__field" type="text" value="8, 4, 12, 2, 6, 10, 14" placeholder="Level-order: 8, 4, 12, 2, 6, 10, 14" aria-label="Level-order binary tree" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load Tree</button>
+      </div>
+
+      <div class="t-mode-tabs">
+        <span class="vis-preset-label">Traversal Order:</span>
+        <button class="vis-btn vis-btn--primary" type="button" data-mode="preorder">Preorder (N-L-R)</button>
+        <button class="vis-btn" type="button" data-mode="inorder">Inorder (L-N-R)</button>
+        <button class="vis-btn" type="button" data-mode="postorder">Postorder (L-R-N)</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-tree="8, 4, 12, 2, 6, 10, 14">Full BST</button>
+        <button class="vis-btn" type="button" data-tree="1, 2, 3, 4, null, 5, 6">Sparse Tree</button>
+        <button class="vis-btn" type="button" data-tree="A, B, C, D, E, null, F">Letters</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Active Frame</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> Waiting on Stack</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Recorded in Output</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-mode" class="vis-pill">Mode: Preorder (Node -> Left -> Right)</span>
+        <span id="status-order" class="vis-pill">Output: -</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="tree-stage" class="t-stage-wrap"></div>
+        <div class="t-aux-row">
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">Recursion Call Stack (top on right)</div>
+            <div id="stack-view" class="t-chip-list"></div>
+          </div>
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">Traversal Output</div>
+            <div id="order-view" class="t-chip-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Switch between Preorder, Inorder, and Postorder to see how one line change shifts the output.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/binary-tree-canvas.js"></script>
+    <script>
+      const CODE_BY_MODE = {
+        preorder: [
+          'def dfs_preorder(node: TreeNode | None, order: list) -> None:',
+          '    if node is None:',
+          '        return',
+          '    order.append(node.val)      # 1. Visit Node first',
+          '    dfs_preorder(node.left, order)',
+          '    dfs_preorder(node.right, order)',
+        ],
+        inorder: [
+          'def dfs_inorder(node: TreeNode | None, order: list) -> None:',
+          '    if node is None:',
+          '        return',
+          '    dfs_inorder(node.left, order)',
+          '    order.append(node.val)      # 2. Visit Node between children',
+          '    dfs_inorder(node.right, order)',
+        ],
+        postorder: [
+          'def dfs_postorder(node: TreeNode | None, order: list) -> None:',
+          '    if node is None:',
+          '        return',
+          '    dfs_postorder(node.left, order)',
+          '    dfs_postorder(node.right, order)',
+          '    order.append(node.val)      # 3. Visit Node last',
+        ],
+      };
+
+      const MODE_LABELS = {
+        preorder: 'Preorder (Node -> Left -> Right)',
+        inorder: 'Inorder (Left -> Node -> Right)',
+        postorder: 'Postorder (Left -> Right -> Node)',
+      };
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('tree-input');
+      const stackView = document.getElementById('stack-view');
+      const orderView = document.getElementById('order-view');
+      const modePill = document.getElementById('status-mode');
+      const orderPill = document.getElementById('status-order');
+
+      let mode = 'preorder';
+      let currentRoot = null;
+
+      function renderCode(activeLine = -1) {
+        const lines = CODE_BY_MODE[mode];
+        codeEl.innerHTML = lines.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new BinaryTreeCanvas({
+        containerEl: document.getElementById('tree-stage'),
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 650,
+        render: (step) => {
+          canvas.renderBinary(currentRoot, {
+            nodeStates: step.nodeStates,
+            nodeBadges: step.nodeBadges,
+            edgeStates: step.edgeStates,
+          });
+          infoEl.textContent = step.description;
+          orderPill.textContent = `Output: ${step.order.join(' -> ') || '-'}`;
+          stackView.innerHTML = step.stack.length
+            ? step.stack.map((v, idx) => `<span class="t-chip${idx === step.stack.length - 1 ? ' t-chip--active' : ' t-chip--pivot'}">${v}</span>`).join('')
+            : '<span class="t-empty">empty</span>';
+          orderView.innerHTML = step.order.length
+            ? step.order.map((v, idx) => `<span class="t-chip t-chip--done">#${idx + 1} ${v}</span>`).join('')
+            : '<span class="t-empty">none yet</span>';
+        },
+        highlightCode: renderCode,
+      });
+      viz.bindControls();
+
+      function buildSteps() {
+        viz.reset();
+        renderCode();
+        modePill.textContent = `Mode: ${MODE_LABELS[mode]}`;
+
+        const parsed = BinaryTreeCanvas.parseLevelOrder(inputEl.value);
+        currentRoot = parsed.root;
+        if (!currentRoot) {
+          canvas.renderBinary(null);
+          infoEl.textContent = 'Enter a level-order tree to trace DFS.';
+          return;
+        }
+
+        const stackIds = [];
+        const stackVals = [];
+        const visitedSet = new Set();
+        const order = [];
+        const orderIndex = {};
+
+        const snap = (activeId, activeEdge, codeLine, description) => {
+          const nodeStates = {};
+          const nodeBadges = {};
+          Object.keys(parsed.nodesById).forEach((id) => {
+            if (id === activeId) nodeStates[id] = 'active';
+            else if (visitedSet.has(id)) nodeStates[id] = 'visited';
+            else if (stackIds.includes(id)) nodeStates[id] = 'pivot';
+            if (orderIndex[id] !== undefined) nodeBadges[id] = `#${orderIndex[id]}`;
+          });
+          const edgeStates = {};
+          if (activeEdge) edgeStates[activeEdge] = 'exploring';
+
+          viz.recordStep({
+            stack: [...stackVals],
+            order: [...order],
+            nodeStates,
+            nodeBadges,
+            edgeStates,
+            codeLine,
+            description,
+          });
+        };
+
+        const appendLine = mode === 'preorder' ? 3 : mode === 'inorder' ? 4 : 5;
+        const leftLine = mode === 'preorder' ? 4 : 3;
+        const rightLine = mode === 'postorder' ? 4 : 5;
+
+        const dfs = (node, parent, branch) => {
+          if (!node) {
+            snap(parent ? parent.id : null, null, 1, `Reached None (${branch} child of ${parent ? parent.val : 'root'}) and return.`);
+            return;
+          }
+
+          stackIds.push(node.id);
+          stackVals.push(node.val);
+          const edge = parent ? `${parent.id}->${node.id}` : null;
+          snap(node.id, edge, 0, `Enter dfs(${node.val}).`);
+
+          if (mode === 'preorder') {
+            visitedSet.add(node.id);
+            order.push(node.val);
+            orderIndex[node.id] = order.length;
+            snap(node.id, edge, appendLine, `Preorder: record ${node.val} as #${order.length} before visiting its children.`);
+          }
+
+          snap(node.id, edge, leftLine, `Recurse into left child of ${node.val}.`);
+          dfs(node.left, node, 'left');
+
+          if (mode === 'inorder') {
+            visitedSet.add(node.id);
+            order.push(node.val);
+            orderIndex[node.id] = order.length;
+            snap(node.id, edge, appendLine, `Inorder: left subtree done, record ${node.val} as #${order.length}.`);
+          }
+
+          snap(node.id, edge, rightLine, `Recurse into right child of ${node.val}.`);
+          dfs(node.right, node, 'right');
+
+          if (mode === 'postorder') {
+            visitedSet.add(node.id);
+            order.push(node.val);
+            orderIndex[node.id] = order.length;
+            snap(node.id, edge, appendLine, `Postorder: both subtrees finished, record ${node.val} as #${order.length}.`);
+          }
+
+          stackIds.pop();
+          stackVals.pop();
+          snap(parent ? parent.id : null, null, 0, `Return from ${node.val}.`);
+        };
+
+        dfs(currentRoot, null, 'root');
+        snap(null, null, appendLine, `${mode.charAt(0).toUpperCase() + mode.slice(1)} complete: [${order.join(', ')}].`);
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', buildSteps);
+      document.querySelectorAll('[data-tree]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.tree;
+          buildSteps();
+        });
+      });
+      document.querySelectorAll('[data-mode]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          mode = btn.dataset.mode;
+          document.querySelectorAll('[data-mode]').forEach((b) => {
+            b.classList.toggle('vis-btn--primary', b.dataset.mode === mode);
+          });
+          buildSteps();
+        });
+      });
+
+      renderCode();
+      buildSteps();
+    </script>
+  </body>
+</html>

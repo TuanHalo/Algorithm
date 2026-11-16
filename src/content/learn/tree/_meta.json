@@ -1,0 +1,7 @@
+{
+  "name": "Tree",
+  "icon": "🌳",
+  "color": "#ffd3b6",
+  "order": 5,
+  "description": "Hierarchical data, from file systems and family trees to search engines."
+}

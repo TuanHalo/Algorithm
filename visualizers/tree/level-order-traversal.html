@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Level-Order Traversal (BFS) Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/binary-tree-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 330px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="tree-input" class="vis-input__field" type="text" value="3, 9, 20, null, null, 15, 7" placeholder="Level-order: 3, 9, 20, null, null, 15, 7" aria-label="Level-order binary tree" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load Tree</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-tree="3, 9, 20, null, null, 15, 7">Classic</button>
+        <button class="vis-btn" type="button" data-tree="1, 2, 3, 4, 5, 6, 7">Complete</button>
+        <button class="vis-btn" type="button" data-tree="10, 5, 15, 2, 7, null, 20">BST Shape</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-sorted);"></span> In FIFO Queue</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Current Node</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Level Recorded</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-level" class="vis-pill">Current Level: -</span>
+        <span id="status-levels" class="vis-pill">Levels: []</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="tree-stage" class="t-stage-wrap"></div>
+        <div class="t-aux-row">
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">FIFO Queue (front -> back)</div>
+            <div id="queue-view" class="t-chip-list"></div>
+          </div>
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">Grouped Levels</div>
+            <div id="levels-view" class="t-chip-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Press Play to see BFS scan the tree one depth level at a time.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/binary-tree-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'from collections import deque',
+        'def level_order(root: TreeNode | None) -> list[list[int]]:',
+        '    if root is None:',
+        '        return []',
+        '    levels, queue = [], deque([root])',
+        '    while queue:',
+        '        level = []',
+        '        for _ in range(len(queue)):',
+        '            node = queue.popleft()',
+        '            level.append(node.val)',
+        '            if node.left: queue.append(node.left)',
+        '            if node.right: queue.append(node.right)',
+        '        levels.append(level)',
+        '    return levels',
+      ];
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('tree-input');
+      const queueView = document.getElementById('queue-view');
+      const levelsView = document.getElementById('levels-view');
+      const levelPill = document.getElementById('status-level');
+      const levelsPill = document.getElementById('status-levels');
+
+      let currentRoot = null;
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new BinaryTreeCanvas({
+        containerEl: document.getElementById('tree-stage'),
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 650,
+        render: (step) => {
+          canvas.renderBinary(currentRoot, {
+            nodeStates: step.nodeStates,
+            nodeBadges: step.nodeBadges,
+            edgeStates: step.edgeStates,
+          });
+          infoEl.textContent = step.description;
+          levelPill.textContent = `Current Level: ${step.depthLabel}`;
+          levelsPill.textContent = `Levels: ${JSON.stringify(step.levels)}`;
+          queueView.innerHTML = step.queue.length
+            ? step.queue.map((v, i) => `<span class="t-chip${i === 0 ? ' t-chip--active' : ' t-chip--queued'}">${v}</span>`).join('')
+            : '<span class="t-empty">empty</span>';
+          levelsView.innerHTML = step.levels.length
+            ? step.levels.map((lvl, d) => `<span class="t-chip t-chip--done">L${d}: [${lvl.join(', ')}]</span>`).join('')
+            : '<span class="t-empty">none yet</span>';
+        },
+        highlightCode: renderCode,
+      });
+      viz.bindControls();
+
+      function buildSteps() {
+        viz.reset();
+        const parsed = BinaryTreeCanvas.parseLevelOrder(inputEl.value);
+        currentRoot = parsed.root;
+        if (!currentRoot) {
+          canvas.renderBinary(null);
+          infoEl.textContent = 'Enter a tree to run Level-Order BFS.';
+          return;
+        }
+
+        const queue = [{ node: currentRoot, depth: 0 }];
+        const visitedSet = new Set();
+        const depthMap = { [currentRoot.id]: 0 };
+        const levels = [];
+
+        const snap = (activeId, activeEdge, depthLabel, codeLine, description) => {
+          const queuedIds = new Set(queue.map((q) => q.node.id));
+          const nodeStates = {};
+          const nodeBadges = {};
+          Object.keys(parsed.nodesById).forEach((id) => {
+            if (id === activeId) nodeStates[id] = 'active';
+            else if (queuedIds.has(id)) nodeStates[id] = 'queued';
+            else if (visitedSet.has(id)) nodeStates[id] = 'visited';
+            if (depthMap[id] !== undefined) nodeBadges[id] = `L${depthMap[id]}`;
+          });
+          const edgeStates = {};
+          if (activeEdge) edgeStates[activeEdge] = 'exploring';
+
+          viz.recordStep({
+            queue: queue.map((q) => q.node.val),
+            levels: levels.map((l) => [...l]),
+            depthLabel,
+            nodeStates,
+            nodeBadges,
+            edgeStates,
+            codeLine,
+            description,
+          });
+        };
+
+        snap(null, null, '0', 4, `Push root ${currentRoot.val} into the FIFO queue.`);
+
+        let depth = 0;
+        while (queue.length > 0) {
+          const levelSize = queue.length;
+          const currentLevel = [];
+          snap(null, null, String(depth), 7, `Lock level ${depth} size to ${levelSize} node(s) currently in the queue.`);
+
+          for (let i = 0; i < levelSize; i++) {
+            const { node } = queue.shift();
+            visitedSet.add(node.id);
+            currentLevel.push(node.val);
+            snap(node.id, null, 9, `Pop ${node.val} from queue front and append to level ${depth}.`);
+
+            if (node.left) {
+              depthMap[node.left.id] = depth + 1;
+              queue.push({ node: node.left, depth: depth + 1 });
+              snap(node.id, `${node.id}->${node.left.id}`, 10, `Enqueue left child ${node.left.val} for level ${depth + 1}.`);
+            }
+            if (node.right) {
+              depthMap[node.right.id] = depth + 1;
+              queue.push({ node: node.right, depth: depth + 1 });
+              snap(node.id, `${node.id}->${node.right.id}`, 11, `Enqueue right child ${node.right.val} for level ${depth + 1}.`);
+            }
+          }
+
+          levels.push(currentLevel);
+          snap(null, null, String(depth), 12, `Finished level ${depth}: [${currentLevel.join(', ')}].`);
+          depth += 1;
+        }
+
+        snap(null, null, 'done', 13, `Level-order complete! Collected ${levels.length} level(s).`);
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', buildSteps);
+      document.querySelectorAll('[data-tree]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.tree;
+          buildSteps();
+        });
+      });
+
+      renderCode();
+      buildSteps();
+    </script>
+  </body>
+</html>

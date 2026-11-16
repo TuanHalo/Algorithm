@@ -9,6 +9,7 @@ import StackQueueMatrix from '../../../components/StackQueueMatrix.astro';
 import LinkedListMatrix from '../../../components/LinkedListMatrix.astro';
 import HashingMatrix from '../../../components/HashingMatrix.astro';
 import GraphMatrix from '../../../components/GraphMatrix.astro';
+import TreeMatrix from '../../../components/TreeMatrix.astro';
 import BacktrackingMatrix from '../../../components/BacktrackingMatrix.astro';
 import { TOPICS } from '../../../utils/topics';
 import type { TopicConfig } from '../../../types/content';
@@ -91,6 +92,7 @@ const lessons = allLessons
     {topic.slug === 'linked-list' && <LinkedListMatrix />}
     {topic.slug === 'hashing' && <HashingMatrix />}
     {topic.slug === 'graph' && <GraphMatrix />}
+    {topic.slug === 'tree' && <TreeMatrix />}
     {topic.slug === 'backtracking' && <BacktrackingMatrix />}
   </div>
 </BaseLayout>
