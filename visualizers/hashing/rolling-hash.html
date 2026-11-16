@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rolling Hash (Rabin-Karp) Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-input__pattern {
+        max-width: 170px;
+        min-width: 110px;
+        flex: 0 1 160px;
+      }
+
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+
+      .vis-status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+      }
+
+      .vis-status-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+      .vis-pill {
+        background: var(--bg-card);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+      }
+
+      .vis-pill--accent {
+        background: rgba(181, 199, 237, 0.5);
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .vis-canvas {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: center;
+        gap: 0.9rem;
+        min-height: 225px;
+        padding: 1.15rem 1.25rem;
+      }
+
+      .char-row {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+      }
+
+      .char-box {
+        width: 38px;
+        height: 44px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.55);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-code);
+        transition: transform 250ms ease, background 250ms ease;
+      }
+
+      .char-box--window { background: #b5c7ed; transform: translateY(-3px); font-weight: 700; }
+      .char-box--match { background: var(--vis-active); transform: translateY(-4px); font-weight: 700; }
+      .char-box--spurious { background: var(--vis-comparing); transform: translateY(-3px); }
+      .char-box--outgoing { background: var(--vis-swapping); }
+
+      .char-box__ch { font-size: 0.92rem; }
+      .char-box__idx { font-size: 0.6rem; color: var(--text-muted); }
+
+      .hash-compare {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        font-family: var(--font-code);
+        font-size: 0.8rem;
+        padding: 0.55rem 0.85rem;
+        border-radius: var(--border-radius-xs);
+        background: rgba(255, 255, 255, 0.45);
+        box-shadow: var(--shadow-clay-pressed);
+      }
+
+      .matches-row {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        font-family: var(--font-code);
+        font-size: 0.76rem;
+      }
+
+      .match-badge {
+        padding: 0.2rem 0.55rem;
+        border-radius: 7px;
+        background: var(--vis-active);
+        box-shadow: var(--shadow-clay-subtle);
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input
+          type="text"
+          id="textInput"
+          class="vis-input__field"
+          value="abracadabra"
+          placeholder="Text string"
+          aria-label="Text to search"
+        />
+        <input
+          type="text"
+          id="patternInput"
+          class="vis-input__field vis-input__pattern"
+          value="abra"
+          placeholder="Pattern"
+          aria-label="Pattern to find"
+        />
+        <button id="btnSearch" class="vis-btn vis-btn--primary">Search</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" data-text="abracadabra" data-pattern="abra">abracadabra / abra</button>
+        <button class="vis-btn" data-text="mississippi" data-pattern="issi">Overlapping (issi)</button>
+        <button class="vis-btn" data-text="aaabaaabaa" data-pattern="aab">Sliding Shifts</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn--primary vis-btn-play">▶ Play</button>
+        <button class="vis-btn vis-btn-pause" style="display: none">⏸ Pause</button>
+        <button class="vis-btn vis-btn-step-back">⏮ Step Back</button>
+        <button class="vis-btn vis-btn-step-forward">⏭ Step</button>
+        <button class="vis-btn vis-btn-reset">↺ Reset</button>
+        <span class="vis-step-counter">No steps</span>
+        <div class="vis-speed">
+          <span>Speed</span>
+          <input type="range" class="vis-speed-slider" min="1" max="10" value="6" />
+        </div>
+      </div>
+
+      <div class="vis-status-bar">
+        <div class="vis-status-group">
+          <span class="vis-pill vis-pill--accent" id="pillPatHash">pat_hash: —</span>
+          <span class="vis-pill" id="pillWinHash">win_hash: —</span>
+        </div>
+        <div class="vis-status-group">
+          <span class="vis-pill" id="pillMatches">Matches: []</span>
+        </div>
+      </div>
+
+      <div class="vis-canvas">
+        <div class="char-row" id="charRow"></div>
+        <div class="hash-compare" id="hashCompare">base = 256, mod = 101 (demo prime)</div>
+        <div class="matches-row" id="matchesRow">Matches found: none yet</div>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: #b5c7ed"></span>Sliding Window</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active)"></span>Hash + Char Match</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing)"></span>Spurious Hash Collision</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping)"></span>Rolling Shift</span>
+      </div>
+
+      <div class="vis-code" id="codePanel"></div>
+      <div class="vis-info" id="infoBar">Enter text and a pattern to watch Rabin-Karp roll the hash in O(1) per shift.</div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const CODE_LINES = [
+        'def rabin_karp(text: str, pattern: str) -> list[int]:',
+        '    n, m = len(text), len(pattern)',
+        '    base, mod = 256, 1_000_000_007',
+        '    high_pow = pow(base, m - 1, mod)',
+        '    pat_hash = win_hash = 0',
+        '    for i in range(m):',
+        '        pat_hash = (pat_hash * base + ord(pattern[i])) % mod',
+        '        win_hash = (win_hash * base + ord(text[i])) % mod',
+        '    matches = []',
+        '    for i in range(n - m + 1):',
+        '        if win_hash == pat_hash and text[i : i + m] == pattern:',
+        '            matches.append(i)',
+        '        if i + m < n:',
+        '            win_hash = ((win_hash - ord(text[i]) * high_pow) * base + ord(text[i + m])) % mod',
+        '    return matches',
+      ];
+
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = String(text);
+        return div.innerHTML;
+      }
+
+      const codePanel = document.getElementById('codePanel');
+      codePanel.innerHTML = CODE_LINES.map((line, i) =>
+        `<span class="vis-code__line" data-line="${i}"><span class="vis-code__line-number">${i + 1}</span>${escapeHtml(line)}</span>`
+      ).join('');
+
+      function highlightCode(lineIndex) {
+        codePanel.querySelectorAll('.vis-code__line').forEach((el, idx) => {
+          el.classList.toggle('vis-code__line--active', idx === lineIndex);
+        });
+      }
+
+      // Small demo prime (101) makes spurious hash collisions visible while staying true to mod arithmetic
+      const BASE = 256;
+      const MOD = 101;
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 600,
+        highlightCode,
+        render(step) {
+          const { text, m, winStart, patHash, winHash, status, outgoingIdx, matches, formula, description } = step;
+          document.getElementById('pillPatHash').textContent = `pat_hash: ${patHash}`;
+          document.getElementById('pillWinHash').textContent = `win_hash: ${winHash}`;
+          document.getElementById('pillMatches').textContent = `Matches: [${matches.join(', ')}]`;
+          document.getElementById('hashCompare').textContent = formula;
+
+          document.getElementById('charRow').innerHTML = [...text].map((ch, idx) => {
+            let cls = 'char-box';
+            if (idx === outgoingIdx) {
+              cls += ' char-box--outgoing';
+            } else if (winStart >= 0 && idx >= winStart && idx < winStart + m) {
+              if (status === 'match') cls += ' char-box--match';
+              else if (status === 'spurious') cls += ' char-box--spurious';
+              else cls += ' char-box--window';
+            }
+            return `<div class="${cls}"><span class="char-box__ch">${escapeHtml(ch)}</span><span class="char-box__idx">${idx}</span></div>`;
+          }).join('');
+
+          const matchesRow = document.getElementById('matchesRow');
+          matchesRow.innerHTML = matches.length === 0
+            ? '<span>Matches found: none yet</span>'
+            : '<span>Matches at indices:</span>' + matches.map((idx) => `<span class="match-badge">@ ${idx}</span>`).join('');
+
+          document.getElementById('infoBar').textContent = description;
+        },
+      });
+
+      function buildSteps() {
+        const text = document.getElementById('textInput').value.trim().slice(0, 18);
+        const pattern = document.getElementById('patternInput').value.trim().slice(0, 8);
+        if (!text || !pattern || pattern.length > text.length) return;
+
+        viz.reset();
+        const n = text.length;
+        const m = pattern.length;
+        let highPow = 1;
+        for (let i = 0; i < m - 1; i++) highPow = (highPow * BASE) % MOD;
+
+        let patHash = 0;
+        let winHash = 0;
+        for (let i = 0; i < m; i++) {
+          patHash = (patHash * BASE + pattern.charCodeAt(i)) % MOD;
+          winHash = (winHash * BASE + text.charCodeAt(i)) % MOD;
+        }
+
+        const matches = [];
+        viz.recordStep({
+          text, m, winStart: 0, patHash, winHash, status: 'window', outgoingIdx: -1,
+          matches: [],
+          formula: `Initial window [0..${m - 1}] = "${text.slice(0, m)}" | pat_hash=${patHash}, win_hash=${winHash} (mod ${MOD})`,
+          codeLine: 7,
+          description: `Computed initial hashes for pattern "${pattern}" (${patHash}) and first window "${text.slice(0, m)}" (${winHash}).`,
+        });
+
+        for (let i = 0; i <= n - m; i++) {
+          const slice = text.slice(i, i + m);
+          if (winHash === patHash) {
+            if (slice === pattern) {
+              matches.push(i);
+              viz.recordStep({
+                text, m, winStart: i, patHash, winHash, status: 'match', outgoingIdx: -1,
+                matches: [...matches],
+                formula: `Hash match (${winHash} == ${patHash}) & exact chars "${slice}" == "${pattern}"!`,
+                codeLine: 11,
+                description: `Match confirmed at index ${i}! Both hash and characters match "${pattern}".`,
+              });
+            } else {
+              viz.recordStep({
+                text, m, winStart: i, patHash, winHash, status: 'spurious', outgoingIdx: -1,
+                matches: [...matches],
+                formula: `Spurious hit! ${winHash} == ${patHash}, but "${slice}" != "${pattern}"`,
+                codeLine: 10,
+                description: `Spurious hash collision at index ${i}: hashes tied (${winHash}), but characters "${slice}" != "${pattern}".`,
+              });
+            }
+          } else {
+            viz.recordStep({
+              text, m, winStart: i, patHash, winHash, status: 'window', outgoingIdx: -1,
+              matches: [...matches],
+              formula: `Window "${slice}": win_hash=${winHash} != pat_hash=${patHash} (skip char check)`,
+              codeLine: 10,
+              description: `Hashes differ (${winHash} != ${patHash}) at index ${i} — skipped character comparison in O(1)!`,
+            });
+          }
+
+          if (i + m < n) {
+            const outCode = text.charCodeAt(i);
+            const inCode = text.charCodeAt(i + m);
+            const nextHash = (((winHash - outCode * highPow) % MOD + MOD) * BASE + inCode) % MOD;
+            viz.recordStep({
+              text, m, winStart: i + 1, patHash, winHash: nextHash, status: 'window', outgoingIdx: i,
+              matches: [...matches],
+              formula: `Roll: drop '${text[i]}' (${outCode}), shift ×${BASE}, add '${text[i + m]}' (${inCode}) → ${nextHash}`,
+              codeLine: 13,
+              description: `Rolled window to [${i + 1}..${i + m}] in O(1): dropped '${text[i]}', added '${text[i + m]}' → new hash ${nextHash}.`,
+            });
+            winHash = nextHash;
+          }
+        }
+
+        viz.recordStep({
+          text, m, winStart: -1, patHash, winHash, status: 'done', outgoingIdx: -1,
+          matches: [...matches],
+          formula: `Finished! Found "${pattern}" at index(es): [${matches.join(', ') || 'none'}]`,
+          codeLine: 14,
+          description: `Search complete. Found ${matches.length} match(es) at [${matches.join(', ')}].`,
+        });
+
+        viz.goToStep(0);
+      }
+
+      viz.bindControls();
+      document.getElementById('btnSearch').addEventListener('click', buildSteps);
+      document.querySelectorAll('.vis-presets .vis-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.getElementById('textInput').value = btn.dataset.text;
+          document.getElementById('patternInput').value = btn.dataset.pattern;
+          buildSteps();
+        });
+      });
+
+      buildSteps();
+    </script>
+  </body>
+</html>

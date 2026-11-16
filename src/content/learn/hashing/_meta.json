@@ -1,0 +1,7 @@
+{
+  "name": "Hashing",
+  "icon": "🗝️",
+  "color": "#b5c7ed",
+  "order": 8,
+  "description": "Instant lookups by turning any key into a fast address."
+}

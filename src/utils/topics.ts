@@ -103,7 +103,15 @@ export const TOPICS: readonly TopicConfig[] = [
     color: 'var(--color-hashing)',
     order: 8,
     description: 'Instant lookups by turning any key into a fast address.',
-    previewAlgorithms: ['Hash Map', 'Hash Set', 'Collision Handling'],
+    previewAlgorithms: [
+      'Hash Functions & Load Factor',
+      'Hash Map',
+      'Hash Set',
+      'Separate Chaining',
+      'Open Addressing',
+      'Prefix Sum + Hash Map',
+      'Rolling Hash',
+    ],
   },
   {
     slug: 'greedy',
