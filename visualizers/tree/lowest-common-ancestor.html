@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lowest Common Ancestor (LCA) Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/binary-tree-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 330px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+      .vis-small-input { max-width: 72px; min-width: 58px !important; flex: 0 0 auto !important; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="tree-input" class="vis-input__field" type="text" value="10, 5, 15, 2, 7, 12, 20, null, null, 6, 9" placeholder="Level-order tree" aria-label="Level-order tree" />
+        <input id="p-input" class="vis-input__field vis-small-input" type="text" value="2" aria-label="Target p" />
+        <input id="q-input" class="vis-input__field vis-small-input" type="text" value="9" aria-label="Target q" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Find LCA</button>
+      </div>
+
+      <div class="t-mode-tabs">
+        <span class="vis-preset-label">Algorithm:</span>
+        <button class="vis-btn vis-btn--primary" type="button" data-mode="bt">Binary Tree (Bottom-Up DFS)</button>
+        <button class="vis-btn" type="button" data-mode="bst">BST (Top-Down Split)</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-tree="10, 5, 15, 2, 7, 12, 20, null, null, 6, 9" data-p="2" data-q="9">Split at 5</button>
+        <button class="vis-btn" type="button" data-tree="10, 5, 15, 2, 7, 12, 20" data-p="5" data-q="7">Ancestor is p (5)</button>
+        <button class="vis-btn" type="button" data-tree="10, 5, 15, 2, 7, 12, 20" data-p="2" data-q="20">Split at Root (10)</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Inspecting</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-sorted);"></span> Target p / q</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> Bubble Match</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> LCA Split Node</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-targets" class="vis-pill">p = 2, q = 9</span>
+        <span id="status-lca" class="vis-pill">LCA: searching...</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="tree-stage" class="t-stage-wrap"></div>
+        <div class="t-aux-row">
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">Node Return Signals</div>
+            <div id="signals-view" class="t-chip-list"></div>
+          </div>
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">LCA Result</div>
+            <div id="result-view" class="t-chip-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Compare general Binary Tree bottom-up DFS vs. O(h) top-down BST split point.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/binary-tree-canvas.js"></script>
+    <script>
+      const CODE_BY_MODE = {
+        bt: [
+          'def lca_binary_tree(root: TreeNode | None, p: int, q: int):',
+          '    if root is None or root.val in (p, q):',
+          '        return root',
+          '    left = lca_binary_tree(root.left, p, q)',
+          '    right = lca_binary_tree(root.right, p, q)',
+          '    if left and right:',
+          '        return root  # p and q split across both sides',
+          '    return left or right',
+        ],
+        bst: [
+          'def lca_bst(root: TreeNode | None, p: int, q: int):',
+          '    curr = root',
+          '    while curr is not None:',
+          '        if p < curr.val and q < curr.val:',
+          '            curr = curr.left',
+          '        elif p > curr.val and q > curr.val:',
+          '            curr = curr.right',
+          '        else:',
+          '            return curr  # Split point or equal to p/q',
+        ],
+      };
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('tree-input');
+      const pEl = document.getElementById('p-input');
+      const qEl = document.getElementById('q-input');
+      const targetsPill = document.getElementById('status-targets');
+      const lcaPill = document.getElementById('status-lca');
+      const signalsView = document.getElementById('signals-view');
+      const resultView = document.getElementById('result-view');
+
+      let mode = 'bt';
+      let currentRoot = null;
+
+      function renderCode(activeLine = -1) {
+        const lines = CODE_BY_MODE[mode];
+        codeEl.innerHTML = lines.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new BinaryTreeCanvas({
+        containerEl: document.getElementById('tree-stage'),
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 680,
+        render: (step) => {
+          canvas.renderBinary(currentRoot, {
+            nodeStates: step.nodeStates,
+            nodeBadges: step.nodeBadges,
+            edgeStates: step.edgeStates,
+          });
+          infoEl.textContent = step.description;
+          lcaPill.textContent = step.lcaLabel;
+          signalsView.innerHTML = step.signals.length
+            ? step.signals.map((s) => `<span class="t-chip">${s}</span>`).join('')
+            : '<span class="t-empty">none</span>';
+          resultView.innerHTML = step.lcaVal !== null
+            ? `<span class="t-chip t-chip--done">LCA = ${step.lcaVal}</span>`
+            : '<span class="t-empty">searching...</span>';
+        },
+        highlightCode: renderCode,
+      });
+      viz.bindControls();
+
+      function buildSteps() {
+        viz.reset();
+        renderCode();
+        const parsed = BinaryTreeCanvas.parseLevelOrder(inputEl.value);
+        currentRoot = parsed.root;
+        if (!currentRoot) {
+          canvas.renderBinary(null);
+          return;
+        }
+
+        const pVal = Number.isNaN(Number(pEl.value)) ? pEl.value.trim() : Number(pEl.value);
+        const qVal = Number.isNaN(Number(qEl.value)) ? qEl.value.trim() : Number(qEl.value);
+        targetsPill.textContent = `p = ${pVal}, q = ${qVal}`;
+
+        const targetIds = new Set();
+        Object.values(parsed.nodesById).forEach((n) => {
+          if (n.val === pVal || n.val === qVal) targetIds.add(n.id);
+        });
+
+        const returnedMap = {};
+        let lcaId = null;
+
+        const snap = (activeId, activeEdge, signals, lcaVal, codeLine, description) => {
+          const nodeStates = {};
+          const nodeBadges = {};
+          Object.keys(parsed.nodesById).forEach((id) => {
+            if (id === lcaId) nodeStates[id] = 'visited';
+            else if (id === activeId) nodeStates[id] = 'active';
+            else if (targetIds.has(id)) nodeStates[id] = 'queued';
+            else if (returnedMap[id]) nodeStates[id] = 'pivot';
+            if (returnedMap[id]) nodeBadges[id] = `ret:${returnedMap[id]}`;
+          });
+          const edgeStates = {};
+          if (activeEdge) edgeStates[activeEdge] = lcaId ? 'path' : 'exploring';
+
+          viz.recordStep({
+            signals,
+            lcaVal,
+            lcaLabel: lcaVal !== null ? `LCA: ${lcaVal}` : 'LCA: searching...',
+            nodeStates,
+            nodeBadges,
+            edgeStates,
+            codeLine,
+            description,
+          });
+        };
+
+        if (mode === 'bt') {
+          const dfs = (node, parent) => {
+            if (!node) return null;
+            const edge = parent ? `${parent.id}->${node.id}` : null;
+            snap(node.id, edge, [`visiting ${node.val}`], null, 0, `Visit node ${node.val}.`);
+
+            if (node.val === pVal || node.val === qVal) {
+              returnedMap[node.id] = String(node.val);
+              snap(node.id, edge, [`matched target ${node.val}`, `return ${node.val}`], null, 2, `Node ${node.val} matches target! Return ${node.val} upward immediately.`);
+              return node;
+            }
+
+            const left = dfs(node.left, node);
+            const right = dfs(node.right, node);
+
+            if (left && right) {
+              lcaId = node.id;
+              returnedMap[node.id] = String(node.val);
+              snap(node.id, edge, [`left=${left.val}`, `right=${right.val}`, `LCA=${node.val}`], node.val, 6, `Both sides of ${node.val} found a target (${left.val} and ${right.val}). ${node.val} is the LCA!`);
+              return node;
+            }
+
+            const up = left || right;
+            if (up) {
+              returnedMap[node.id] = String(up.val);
+              snap(node.id, edge, [`pass up ${up.val}`], lcaId ? parsed.nodesById[lcaId].val : null, 7, `Only one branch under ${node.val} returned ${up.val}; bubble ${up.val} up.`);
+            } else {
+              snap(node.id, edge, [`left=None`, `right=None`], null, 7, `Neither target under ${node.val}; return None.`);
+            }
+            return up;
+          };
+
+          const ans = dfs(currentRoot, null);
+          if (ans && !lcaId) {
+            lcaId = ans.id;
+            snap(null, null, [`ancestor is target ${ans.val}`], ans.val, 2, `Target ${ans.val} is an ancestor of the other target, so LCA = ${ans.val}.`);
+          }
+        } else {
+          let curr = currentRoot;
+          let parent = null;
+          snap(null, null, [`start at root ${currentRoot.val}`], null, 1, `Start top-down BST walk for (${pVal}, ${qVal}).`);
+          while (curr) {
+            const edge = parent ? `${parent.id}->${curr.id}` : null;
+            if (pVal < curr.val && qVal < curr.val) {
+              snap(curr.id, edge, [`${pVal},${qVal} < ${curr.val}`, 'go left'], null, 4, `Both ${pVal} and ${qVal} are smaller than ${curr.val}; step left.`);
+              parent = curr;
+              curr = curr.left;
+            } else if (pVal > curr.val && qVal > curr.val) {
+              snap(curr.id, edge, [`${pVal},${qVal} > ${curr.val}`, 'go right'], null, 6, `Both ${pVal} and ${qVal} are larger than ${curr.val}; step right.`);
+              parent = curr;
+              curr = curr.right;
+            } else {
+              lcaId = curr.id;
+              returnedMap[curr.id] = 'LCA';
+              snap(curr.id, edge, [`split at ${curr.val}`], curr.val, 8, `Targets diverge or match at ${curr.val}. LCA is ${curr.val}!`);
+              break;
+            }
+          }
+        }
+
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', buildSteps);
+      document.querySelectorAll('[data-mode]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          mode = btn.dataset.mode;
+          document.querySelectorAll('[data-mode]').forEach((b) => {
+            b.classList.toggle('vis-btn--primary', b.dataset.mode === mode);
+          });
+          buildSteps();
+        });
+      });
+      document.querySelectorAll('[data-tree]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.tree;
+          pEl.value = btn.dataset.p;
+          qEl.value = btn.dataset.q;
+          buildSteps();
+        });
+      });
+
+      renderCode();
+      buildSteps();
+    </script>
+  </body>
+</html>

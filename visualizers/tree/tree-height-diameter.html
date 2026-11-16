@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tree Height, Diameter & Balance Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/binary-tree-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 330px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="tree-input" class="vis-input__field" type="text" value="1, 2, 3, 4, 5, null, null, 8, null, 9" placeholder="Level-order: 1, 2, 3, 4, 5" aria-label="Level-order binary tree" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load Tree</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-tree="1, 2, 3, 4, 5, null, null, 8, null, 9">Diameter inside Left</button>
+        <button class="vis-btn" type="button" data-tree="10, 5, 15, 2, 7, 12, 20">Balanced</button>
+        <button class="vis-btn" type="button" data-tree="1, 2, 3, 4, null, null, null, 5">Unbalanced</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Current Node</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Balanced Height Computed</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> Best Diameter Peak</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Imbalance (|L-R| &gt; 1)</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-diameter" class="vis-pill">Best Diameter: 0 edges</span>
+        <span id="status-balanced" class="vis-pill">Height-Balanced: yes</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="tree-stage" class="t-stage-wrap"></div>
+        <div class="t-aux-row">
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">Current Node Computation</div>
+            <div id="calc-view" class="t-chip-list"></div>
+          </div>
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">Global Metrics</div>
+            <div id="metrics-view" class="t-chip-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Watch bottom-up postorder DFS compute subtree heights, update diameter, and detect balance violations in one pass.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/binary-tree-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def analyze_tree(root: TreeNode | None) -> tuple[int, int, bool]:',
+        '    diameter = 0',
+        '    balanced = True',
+        '    def height(node: TreeNode | None) -> int:',
+        '        nonlocal diameter, balanced',
+        '        if node is None:',
+        '            return 0',
+        '        left_h = height(node.left)',
+        '        right_h = height(node.right)',
+        '        diameter = max(diameter, left_h + right_h)',
+        '        if abs(left_h - right_h) > 1:',
+        '            balanced = False',
+        '        return 1 + max(left_h, right_h)',
+        '    return height(root), diameter, balanced',
+      ];
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('tree-input');
+      const diameterPill = document.getElementById('status-diameter');
+      const balancedPill = document.getElementById('status-balanced');
+      const calcView = document.getElementById('calc-view');
+      const metricsView = document.getElementById('metrics-view');
+
+      let currentRoot = null;
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new BinaryTreeCanvas({
+        containerEl: document.getElementById('tree-stage'),
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 650,
+        render: (step) => {
+          canvas.renderBinary(currentRoot, {
+            nodeStates: step.nodeStates,
+            nodeBadges: step.nodeBadges,
+            edgeStates: step.edgeStates,
+          });
+          infoEl.textContent = step.description;
+          diameterPill.textContent = `Best Diameter: ${step.diameter} edges`;
+          balancedPill.textContent = `Height-Balanced: ${step.balanced ? 'yes' : 'no'}`;
+          calcView.innerHTML = step.calcChips.length
+            ? step.calcChips.map((c) => `<span class="t-chip">${c}</span>`).join('')
+            : '<span class="t-empty">none</span>';
+          metricsView.innerHTML = [
+            `<span class="t-chip t-chip--pivot">diameter: ${step.diameter}</span>`,
+            `<span class="t-chip ${step.balanced ? 't-chip--done' : 't-chip--warn'}">balanced: ${step.balanced}</span>`,
+          ].join('');
+        },
+        highlightCode: renderCode,
+      });
+      viz.bindControls();
+
+      function buildSteps() {
+        viz.reset();
+        const parsed = BinaryTreeCanvas.parseLevelOrder(inputEl.value);
+        currentRoot = parsed.root;
+        if (!currentRoot) {
+          canvas.renderBinary(null);
+          infoEl.textContent = 'Enter a tree to compute height, diameter, and balance.';
+          return;
+        }
+
+        let diameter = 0;
+        let peakId = null;
+        let balanced = true;
+        const heights = {};
+        const unbalancedIds = new Set();
+
+        const snap = (activeId, activeEdge, calcChips, codeLine, description) => {
+          const nodeStates = {};
+          const nodeBadges = {};
+          Object.keys(parsed.nodesById).forEach((id) => {
+            if (id === activeId) nodeStates[id] = 'active';
+            else if (unbalancedIds.has(id)) nodeStates[id] = 'violation';
+            else if (id === peakId) nodeStates[id] = 'pivot';
+            else if (heights[id] !== undefined) nodeStates[id] = 'visited';
+            if (heights[id] !== undefined) {
+              nodeBadges[id] = { text: `h=${heights[id]}`, warn: unbalancedIds.has(id) };
+            }
+          });
+          const edgeStates = {};
+          if (activeEdge) edgeStates[activeEdge] = 'exploring';
+
+          viz.recordStep({
+            diameter,
+            balanced,
+            calcChips,
+            nodeStates,
+            nodeBadges,
+            edgeStates,
+            codeLine,
+            description,
+          });
+        };
+
+        snap(null, null, ['starting at root'], 0, `Start bottom-up DFS at root ${currentRoot.val}.`);
+
+        const dfs = (node, parent) => {
+          if (!node) return 0;
+          const edge = parent ? `${parent.id}->${node.id}` : null;
+          snap(node.id, edge, [`node: ${node.val}`], 7, `Visit ${node.val}: measure left subtree height first.`);
+          const lh = dfs(node.left, node);
+          snap(node.id, edge, [`node: ${node.val}`, `left_h: ${lh}`], 8, `Left height of ${node.val} is ${lh}; now measure right subtree.`);
+          const rh = dfs(node.right, node);
+
+          const localDia = lh + rh;
+          if (localDia > diameter) {
+            diameter = localDia;
+            peakId = node.id;
+          }
+          const diff = Math.abs(lh - rh);
+          if (diff > 1) {
+            balanced = false;
+            unbalancedIds.add(node.id);
+          }
+
+          const h = 1 + Math.max(lh, rh);
+          heights[node.id] = h;
+          const msg = diff > 1
+            ? `At ${node.val}: left_h=${lh}, right_h=${rh} -> |${lh}-${rh}|=${diff} > 1 (UNBALANCED!), local diameter=${localDia}, return h=${h}.`
+            : `At ${node.val}: left_h=${lh}, right_h=${rh} -> local diameter=${localDia}, return h=${h}.`;
+          snap(node.id, edge, [`left_h: ${lh}`, `right_h: ${rh}`, `path: ${localDia}`, `h: ${h}`], diff > 1 ? 11 : 12, msg);
+          return h;
+        };
+
+        const totalH = dfs(currentRoot, null);
+        snap(null, null, [`root height: ${totalH}`, `diameter: ${diameter}`, `balanced: ${balanced}`], 13, `Finished! Tree height is ${totalH}, diameter is ${diameter} edge(s), balanced = ${balanced}.`);
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', buildSteps);
+      document.querySelectorAll('[data-tree]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.tree;
+          buildSteps();
+        });
+      });
+
+      renderCode();
+      buildSteps();
+    </script>
+  </body>
+</html>

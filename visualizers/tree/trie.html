@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trie (Prefix Tree) Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/binary-tree-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 330px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+      .vis-small-input { max-width: 130px; min-width: 90px !important; flex: 0 0 auto !important; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="words-input" class="vis-input__field" type="text" value="app, apple, bat, ball" placeholder="Dictionary: app, apple, bat, ball" aria-label="Trie dictionary words" />
+        <input id="query-input" class="vis-input__field vis-small-input" type="text" value="app" aria-label="Query word or prefix" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Run Op</button>
+      </div>
+
+      <div class="t-mode-tabs">
+        <span class="vis-preset-label">Operation:</span>
+        <button class="vis-btn vis-btn--primary" type="button" data-op="insert">Insert Words</button>
+        <button class="vis-btn" type="button" data-op="search">search(word)</button>
+        <button class="vis-btn" type="button" data-op="starts_with">starts_with(prefix)</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-words="app, apple, bat, ball" data-query="app">Shared Prefix (app / apple)</button>
+        <button class="vis-btn" type="button" data-words="cat, car, cart, dog" data-query="ca">Prefix Query (ca)</button>
+        <button class="vis-btn" type="button" data-words="tea, ten, to, inn" data-query="te">Short Dictionary</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Current Char</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Matched / Created</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Missing Branch</span>
+        <span class="vis-legend__item">◎ Double Ring = Word End</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-op" class="vis-pill">Op: Insert Dictionary</span>
+        <span id="status-res" class="vis-pill">Result: -</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="tree-stage" class="t-stage-wrap"></div>
+        <div class="t-aux-row">
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">Characters Traversed</div>
+            <div id="chars-view" class="t-chip-list"></div>
+          </div>
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">Stored Words</div>
+            <div id="words-view" class="t-chip-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Each edge represents one character, and double-ring nodes mark complete words.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/binary-tree-canvas.js"></script>
+    <script>
+      const CODE_BY_OP = {
+        insert: [
+          'def insert(self, word: str) -> None:',
+          '    node = self.root',
+          '    for ch in word:',
+          '        if ch not in node.children:',
+          '            node.children[ch] = TrieNode()',
+          '        node = node.children[ch]',
+          '    node.is_end = True',
+        ],
+        search: [
+          'def search(self, word: str) -> bool:',
+          '    node = self.root',
+          '    for ch in word:',
+          '        if ch not in node.children:',
+          '            return False',
+          '        node = node.children[ch]',
+          '    return node.is_end',
+        ],
+        starts_with: [
+          'def starts_with(self, prefix: str) -> bool:',
+          '    node = self.root',
+          '    for ch in prefix:',
+          '        if ch not in node.children:',
+          '            return False',
+          '        node = node.children[ch]',
+          '    return True',
+        ],
+      };
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const wordsEl = document.getElementById('words-input');
+      const queryEl = document.getElementById('query-input');
+      const opPill = document.getElementById('status-op');
+      const resPill = document.getElementById('status-res');
+      const charsView = document.getElementById('chars-view');
+      const wordsView = document.getElementById('words-view');
+
+      let op = 'insert';
+
+      function renderCode(activeLine = -1) {
+        const lines = CODE_BY_OP[op];
+        codeEl.innerHTML = lines.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new BinaryTreeCanvas({
+        containerEl: document.getElementById('tree-stage'),
+        nodeRadius: 18,
+        levelGap: 66,
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 650,
+        render: (step) => {
+          canvas.renderNary(step.trie, {
+            nodeStates: step.nodeStates,
+            edgeStates: step.edgeStates,
+          });
+          infoEl.textContent = step.description;
+          resPill.textContent = `Result: ${step.resultText}`;
+          charsView.innerHTML = step.chars.length
+            ? step.chars.map((c, idx) => `<span class="t-chip ${idx === step.chars.length - 1 ? 't-chip--active' : 't-chip--done'}">${c}</span>`).join('')
+            : '<span class="t-empty">root</span>';
+          wordsView.innerHTML = step.stored.length
+            ? step.stored.map((w) => `<span class="t-chip t-chip--done">${w}</span>`).join('')
+            : '<span class="t-empty">none yet</span>';
+        },
+        highlightCode: renderCode,
+      });
+      viz.bindControls();
+
+      function cloneTrie(node) {
+        return {
+          id: node.id,
+          label: node.label,
+          endOfWord: node.endOfWord,
+          children: node.children.map((c) => ({ edgeLabel: c.edgeLabel, node: cloneTrie(c.node) })),
+        };
+      }
+
+      function buildSteps() {
+        viz.reset();
+        renderCode();
+
+        const words = wordsEl.value
+          .split(/[\s,;]+/)
+          .map((w) => w.trim().toLowerCase())
+          .filter(Boolean);
+        const query = (queryEl.value || '').trim().toLowerCase();
+
+        let nextId = 0;
+        const root = { id: 'root', label: '∅', endOfWord: false, children: [] };
+        const stored = [];
+
+        const snap = (nodeStates, edgeStates, chars, resultText, codeLine, description) => {
+          viz.recordStep({
+            trie: cloneTrie(root),
+            nodeStates,
+            edgeStates,
+            chars: [...chars],
+            stored: [...stored],
+            resultText,
+            codeLine,
+            description,
+          });
+        };
+
+        const insertWord = (word, record) => {
+          let curr = root;
+          const chars = [];
+          const edges = {};
+          if (record) snap({ [root.id]: 'active' }, {}, [], 'inserting...', 1, `Insert "${word}" starting at the root.`);
+          for (const ch of word) {
+            let child = curr.children.find((c) => c.edgeLabel === ch);
+            let created = false;
+            if (!child) {
+              const newNode = { id: `t${nextId++}`, label: ch, endOfWord: false, children: [] };
+              child = { edgeLabel: ch, node: newNode };
+              curr.children.push(child);
+              curr.children.sort((a, b) => a.edgeLabel.localeCompare(b.edgeLabel));
+              created = true;
+            }
+            edges[`${curr.id}->${child.node.id}`] = 'path';
+            curr = child.node;
+            chars.push(ch);
+            if (record) {
+              snap(
+                { [curr.id]: created ? 'active' : 'visited' },
+                { ...edges },
+                chars,
+                'inserting...',
+                created ? 4 : 5,
+                created ? `Create new node for '${ch}'.` : `Reuse existing '${ch}' branch.`
+              );
+            }
+          }
+          curr.endOfWord = true;
+          if (!stored.includes(word)) stored.push(word);
+          if (record) {
+            snap({ [curr.id]: 'visited' }, edges, chars, `inserted "${word}"`, 6, `Mark node '${curr.label}' with end-of-word ring for "${word}".`);
+          }
+        };
+
+        if (op === 'insert') {
+          opPill.textContent = 'Op: Insert Dictionary';
+          for (const w of words) insertWord(w, true);
+          snap({}, {}, [], `${stored.length} words`, 6, `Trie built with ${stored.length} word(s): ${stored.join(', ')}.`);
+        } else {
+          for (const w of words) insertWord(w, false);
+          opPill.textContent = `Op: ${op}("${query}")`;
+          let curr = root;
+          const chars = [];
+          const edges = {};
+          snap({ [root.id]: 'active' }, {}, [], 'checking...', 1, `Run ${op}("${query}") from the root.`);
+          let failed = false;
+          for (const ch of query) {
+            const child = curr.children.find((c) => c.edgeLabel === ch);
+            if (!child) {
+              failed = true;
+              snap({ [curr.id]: 'violation' }, edges, chars, 'False', 4, `No edge labeled '${ch}' from current node -> return False.`);
+              break;
+            }
+            edges[`${curr.id}->${child.node.id}`] = 'path';
+            curr = child.node;
+            chars.push(ch);
+            snap({ [curr.id]: 'active' }, { ...edges }, chars, 'matching...', 5, `Follow edge '${ch}'.`);
+          }
+          if (!failed) {
+            if (op === 'search') {
+              const ok = curr.endOfWord;
+              snap(
+                { [curr.id]: ok ? 'visited' : 'violation' },
+                edges,
+                chars,
+                ok ? 'True' : 'False',
+                6,
+                ok ? `Reached end-of-word marker for "${query}" -> return True!` : `Prefix "${query}" exists, but is_end is False -> return False.`
+              );
+            } else {
+              snap({ [curr.id]: 'visited' }, edges, chars, 'True', 6, `All characters of prefix "${query}" matched -> return True!`);
+            }
+          }
+        }
+
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', buildSteps);
+      document.querySelectorAll('[data-op]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          op = btn.dataset.op;
+          document.querySelectorAll('[data-op]').forEach((b) => {
+            b.classList.toggle('vis-btn--primary', b.dataset.op === op);
+          });
+          buildSteps();
+        });
+      });
+      document.querySelectorAll('[data-words]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          wordsEl.value = btn.dataset.words;
+          queryEl.value = btn.dataset.query;
+          buildSteps();
+        });
+      });
+
+      renderCode();
+      buildSteps();
+    </script>
+  </body>
+</html>

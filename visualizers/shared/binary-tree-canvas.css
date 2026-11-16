@@ -1,0 +1,270 @@
+/* ============================================
+   Algorithm Hub — Binary & Prefix Tree Canvas
+   Shared Claymorphism SVG tree renderer & helpers
+   ============================================ */
+
+.t-stage-wrap {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 360px;
+  border-radius: var(--border-radius-sm);
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: var(--shadow-clay-pressed);
+  padding: 0.5rem;
+}
+
+.t-svg {
+  display: block;
+  margin: 0 auto;
+  min-width: 100%;
+  user-select: none;
+}
+
+.t-edge {
+  fill: none;
+  stroke: rgba(90, 90, 90, 0.35);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  transition: stroke 200ms ease, stroke-width 200ms ease;
+}
+
+.t-edge--exploring {
+  stroke: #d97706;
+  stroke-width: 3.2;
+}
+
+.t-edge--active {
+  stroke: #7c5295;
+  stroke-width: 3;
+}
+
+.t-edge--path {
+  stroke: #15803d;
+  stroke-width: 3.2;
+}
+
+.t-edge--violation {
+  stroke: #b91c1c;
+  stroke-dasharray: 5 4;
+  stroke-width: 2.6;
+}
+
+.t-edge-label-bg {
+  fill: rgba(255, 255, 255, 0.92);
+  stroke: rgba(0, 0, 0, 0.12);
+  stroke-width: 1;
+}
+
+.t-edge-label {
+  font-family: var(--font-code);
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--text-primary);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.t-node {
+  transition: transform 200ms ease;
+}
+
+.t-node--clickable {
+  cursor: pointer;
+}
+
+.t-node-shape {
+  fill: rgba(255, 255, 255, 0.9);
+  stroke: rgba(90, 90, 90, 0.32);
+  stroke-width: 1.8;
+  transition: fill 200ms ease, stroke 200ms ease, stroke-width 200ms ease;
+}
+
+.t-node--clickable:hover .t-node-shape {
+  stroke: #2d2d2d;
+  stroke-width: 2.3;
+}
+
+.t-node--active .t-node-shape {
+  fill: var(--vis-comparing);
+  stroke: #c2410c;
+  stroke-width: 2.6;
+}
+
+.t-node--visited .t-node-shape {
+  fill: var(--vis-active);
+  stroke: #15803d;
+  stroke-width: 2.2;
+}
+
+.t-node--queued .t-node-shape {
+  fill: var(--vis-sorted);
+  stroke: #0369a1;
+  stroke-width: 2.2;
+}
+
+.t-node--pivot .t-node-shape {
+  fill: var(--vis-pivot);
+  stroke: #6b21a8;
+  stroke-width: 2.6;
+}
+
+.t-node--violation .t-node-shape {
+  fill: var(--vis-swapping);
+  stroke: #b91c1c;
+  stroke-width: 2.6;
+}
+
+.t-node-ring {
+  fill: none;
+  stroke: #15803d;
+  stroke-width: 1.8;
+}
+
+.t-node-label {
+  font-family: var(--font-code);
+  font-size: 12.5px;
+  font-weight: 700;
+  fill: var(--text-primary);
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.t-node-sub {
+  font-family: var(--font-code);
+  font-size: 9.5px;
+  font-weight: 600;
+  fill: var(--text-secondary);
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.t-badge-bg {
+  fill: rgba(255, 255, 255, 0.94);
+  stroke: rgba(90, 90, 90, 0.22);
+  stroke-width: 1;
+}
+
+.t-badge-text {
+  font-family: var(--font-code);
+  font-size: 9.5px;
+  font-weight: 600;
+  fill: var(--text-secondary);
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.t-badge-text--warn {
+  fill: #b91c1c;
+  font-weight: 700;
+}
+
+/* --- Auxiliary Panels, Tabs & Array Strips --- */
+.t-mode-tabs {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.t-aux-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.t-aux-box {
+  background: rgba(255, 255, 255, 0.55);
+  border: var(--border-clay);
+  box-shadow: var(--shadow-clay-subtle);
+  border-radius: var(--border-radius-sm);
+  padding: 0.6rem 0.85rem;
+}
+
+.t-aux-box__title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.45rem;
+}
+
+.t-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-height: 24px;
+  align-items: center;
+}
+
+.t-chip {
+  font-family: var(--font-code);
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.18rem 0.52rem;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.82);
+  border: var(--border-clay);
+  box-shadow: var(--shadow-clay-subtle);
+  color: var(--text-primary);
+}
+
+.t-chip--active { background: var(--vis-comparing); }
+.t-chip--done { background: var(--vis-active); }
+.t-chip--queued { background: var(--vis-sorted); }
+.t-chip--pivot { background: var(--vis-pivot); }
+.t-chip--warn { background: var(--vis-swapping); }
+
+.t-array-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: flex-end;
+}
+
+.t-array-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.t-array-box {
+  min-width: 34px;
+  height: 30px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.85);
+  border: var(--border-clay);
+  box-shadow: var(--shadow-clay-subtle);
+  font-family: var(--font-code);
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 200ms ease, transform 200ms ease;
+}
+
+.t-array-box--active { background: var(--vis-comparing); transform: translateY(-2px); }
+.t-array-box--visited { background: var(--vis-active); }
+.t-array-box--queued { background: var(--vis-sorted); }
+.t-array-box--pivot { background: var(--vis-pivot); }
+.t-array-box--violation { background: var(--vis-swapping); }
+
+.t-array-idx {
+  font-family: var(--font-code);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.t-empty {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
