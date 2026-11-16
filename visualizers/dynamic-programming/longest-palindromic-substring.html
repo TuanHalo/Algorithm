@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Longest Palindromic Substring (Interval DP) Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/dp-canvas.css" />
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <span class="vis-input__label">String:</span>
+        <input type="text" id="strInput" class="vis-input__field" value="babad" maxlength="8" aria-label="Input string" />
+        <button id="btnRun" class="vis-btn vis-btn--primary" type="button">Find Longest</button>
+      </div>
+
+      <div class="dp-presets">
+        <span class="dp-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-str="babad">babad ("bab")</button>
+        <button class="vis-btn" type="button" data-str="cbbd">cbbd ("bb")</button>
+        <button class="vis-btn" type="button" data-str="abacdfg">abacdfg ("aba")</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="7" /></label>
+      </div>
+
+      <div class="dp-status-bar">
+        <div class="dp-status-group">
+          <span id="pillLen" class="dp-pill dp-pill--accent">Span: -</span>
+        </div>
+        <span id="pillBest" class="dp-pill dp-pill--answer">Best: -</span>
+      </div>
+
+      <div class="vis-canvas dp-canvas">
+        <div id="formulaBar" class="dp-formula-bar">dp[l][r] = (s[l] == s[r]) and (r - l &lt;= 2 or dp[l + 1][r - 1])</div>
+        <div id="charsArea"></div>
+        <div id="gridArea"></div>
+      </div>
+
+      <div class="vis-legend">
+        <div class="vis-legend__item"><span class="vis-legend__dot" style="background: #ffc8a2;"></span>Active [l, r]</div>
+        <div class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-sorted);"></span>Inner [l+1, r-1]</div>
+        <div class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span>Palindrome (T)</div>
+        <div class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span>Longest Found</div>
+      </div>
+
+      <div id="visInfo" class="vis-info" style="margin-bottom: 1rem;">Fill the upper-right triangle diagonal by diagonal: length 1, 2, 3, ...</div>
+      <div id="visCode" class="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/dp-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def longest_palindrome(s: str) -> str:',
+        '    n = len(s)',
+        '    dp = [[False] * n for _ in range(n)]',
+        '    best = (0, 0)',
+        '    for length in range(1, n + 1):',
+        '        for left in range(n - length + 1):',
+        '            right = left + length - 1',
+        '            if s[left] == s[right] and (length <= 2 or dp[left + 1][right - 1]):',
+        '                dp[left][right] = True',
+        '                best = (left, right)',
+        '    return s[best[0] : best[1] + 1]',
+      ];
+
+      const strInput = document.getElementById('strInput');
+      const pillLen = document.getElementById('pillLen');
+      const pillBest = document.getElementById('pillBest');
+      const formulaBar = document.getElementById('formulaBar');
+      const charsArea = document.getElementById('charsArea');
+      const gridArea = document.getElementById('gridArea');
+      const visInfo = document.getElementById('visInfo');
+      const visCode = document.getElementById('visCode');
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 420,
+        render: (step) => {
+          pillLen.textContent = step.spanLabel;
+          pillBest.textContent = step.bestLabel;
+          formulaBar.textContent = step.formula;
+          visInfo.textContent = step.description;
+
+          DPCanvas.render1D(charsArea, {
+            title: 'Characters (s[0..n-1])',
+            values: step.chars,
+            labels: step.chars.map((_, i) => `[${i}]`),
+            active: step.activeChars || [],
+            path: step.bestChars || [],
+          });
+
+          DPCanvas.render2D(gridArea, {
+            title: 'Interval Palindrome Table (dp[left][right])',
+            matrix: step.grid,
+            rowHeaders: step.chars.map((c, i) => `${i}:${c}`),
+            colHeaders: step.chars.map((c, i) => `${i}:${c}`),
+            cornerLabel: 'l\\r',
+            active: step.active || [],
+            deps: step.deps || [],
+            updated: step.updated || [],
+            path: step.path || [],
+            isUnused: (r, c) => r > c,
+          });
+        },
+        highlightCode: (line) => DPCanvas.renderCode(visCode, PYTHON_LINES, line),
+      });
+      viz.bindControls();
+
+      function run() {
+        const s = (strInput.value.trim() || 'babad').slice(0, 8);
+        strInput.value = s;
+        const n = s.length;
+        const chars = s.split('');
+        const clone = (g) => g.map((r) => [...r]);
+
+        viz.reset();
+        const grid = Array.from({ length: n }, () => Array(n).fill(null));
+        let best = [0, 0];
+
+        viz.recordStep({
+          chars,
+          grid: clone(grid),
+          spanLabel: 'Init',
+          bestLabel: `Best: "${s[0]}"`,
+          formula: 'Fill intervals [l, r] from length 1 up to n so inner [l+1, r-1] is already known',
+          description: 'Start with an empty n × n upper-triangular interval table.',
+          codeLine: 2,
+          bestChars: [0],
+        });
+
+        for (let len = 1; len <= n; len++) {
+          for (let l = 0; l <= n - len; l++) {
+            const r = l + len - 1;
+            const inner = len > 2 ? [[l + 1, r - 1]] : [];
+            const endpointsMatch = s[l] === s[r];
+            const innerPal = len <= 2 ? true : Boolean(grid[l + 1][r - 1]);
+            const isPal = endpointsMatch && innerPal;
+
+            viz.recordStep({
+              chars,
+              grid: clone(grid),
+              spanLabel: `len=${len} [${l}, ${r}] "${s.slice(l, r + 1)}"`,
+              bestLabel: `Best: "${s.slice(best[0], best[1] + 1)}"`,
+              formula: len <= 2
+                ? `s[${l}]('${s[l]}') == s[${r}]('${s[r]}') -> ${endpointsMatch}`
+                : `s[${l}]('${s[l]}') == s[${r}]('${s[r]}') and dp[${l + 1}][${r - 1}](${innerPal ? 'T' : 'F'})`,
+              description: `Check substring "${s.slice(l, r + 1)}" (indices ${l}..${r}).`,
+              codeLine: 7,
+              activeChars: l === r ? [l] : [l, r],
+              active: [[l, r]],
+              deps: inner,
+            });
+
+            grid[l][r] = isPal;
+            if (isPal && r - l >= best[1] - best[0]) {
+              best = [l, r];
+            }
+
+            viz.recordStep({
+              chars,
+              grid: clone(grid),
+              spanLabel: `len=${len} [${l}, ${r}]`,
+              bestLabel: `Best: "${s.slice(best[0], best[1] + 1)}"`,
+              formula: `dp[${l}][${r}] = ${isPal ? 'True' : 'False'}`,
+              description: isPal
+                ? `"${s.slice(l, r + 1)}" is a palindrome! Best is now "${s.slice(best[0], best[1] + 1)}".`
+                : `"${s.slice(l, r + 1)}" is not a palindrome.`,
+              codeLine: isPal ? 9 : 7,
+              activeChars: isPal ? Array.from({ length: len }, (_, k) => l + k) : [],
+              updated: isPal ? [[l, r]] : [],
+              active: isPal ? [] : [[l, r]],
+              deps: inner,
+            });
+          }
+        }
+
+        const bestSpan = Array.from({ length: best[1] - best[0] + 1 }, (_, k) => best[0] + k);
+        viz.recordStep({
+          chars,
+          grid: clone(grid),
+          spanLabel: `Done [${best[0]}, ${best[1]}]`,
+          bestLabel: `Best: "${s.slice(best[0], best[1] + 1)}"`,
+          formula: `Return "${s.slice(best[0], best[1] + 1)}" (length ${best[1] - best[0] + 1})`,
+          description: `Done! Longest palindromic substring is "${s.slice(best[0], best[1] + 1)}".`,
+          codeLine: 10,
+          bestChars: bestSpan,
+          path: [best],
+        });
+
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btnRun').addEventListener('click', run);
+      document.querySelectorAll('.dp-presets [data-str]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          strInput.value = btn.dataset.str;
+          run();
+        });
+      });
+
+      run();
+    </script>
+  </body>
+</html>

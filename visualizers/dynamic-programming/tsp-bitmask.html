@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Traveling Salesperson (Bitmask DP) Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/dp-canvas.css" />
+    <style>
+      .tsp-tour-strip {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+      }
+      .tsp-badge {
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 0.3rem 0.65rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.72);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+      }
+      .tsp-badge--active { background: #ffc8a2; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <span class="vis-input__label">Distance Matrix (rows):</span>
+        <input type="text" id="matInput" class="vis-input__field" value="0 10 15 20; 10 0 35 25; 15 35 0 30; 20 25 30 0" aria-label="Distance matrix rows separated by semicolons" />
+        <button id="btnRun" class="vis-btn vis-btn--primary" type="button">Solve Tour</button>
+      </div>
+
+      <div class="dp-presets">
+        <span class="dp-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-mat="0 10 15 20; 10 0 35 25; 15 35 0 30; 20 25 30 0">4 Cities Classic (80)</button>
+        <button class="vis-btn" type="button" data-mat="0 4 8; 4 0 5; 8 5 0">3 Cities Triangle (17)</button>
+        <button class="vis-btn" type="button" data-mat="0 2 9 10; 1 0 6 4; 15 7 0 8; 6 3 12 0">Asymmetric 4 Cities (21)</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="7" /></label>
+      </div>
+
+      <div class="dp-status-bar">
+        <div class="dp-status-group">
+          <span id="pillMask" class="dp-pill dp-pill--accent">Mask: 0001</span>
+        </div>
+        <span id="pillAns" class="dp-pill dp-pill--answer">Min Tour: -</span>
+      </div>
+
+      <div class="vis-canvas dp-canvas">
+        <div id="formulaBar" class="dp-formula-bar">dp[mask | (1 &lt;&lt; nxt)][nxt] = min(..., dp[mask][u] + dist[u][nxt])</div>
+        <div id="citiesArea"></div>
+        <div id="gridArea"></div>
+      </div>
+
+      <div class="vis-legend">
+        <div class="vis-legend__item"><span class="vis-legend__dot" style="background: #ffc8a2;"></span>Target State (nextMask, nxt)</div>
+        <div class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-sorted);"></span>Source State (mask, u)</div>
+        <div class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span>Improved</div>
+        <div class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span>Optimal Tour</div>
+      </div>
+
+      <div id="visInfo" class="vis-info" style="margin-bottom: 1rem;">Each bit in mask tracks whether city i has been visited yet, starting and ending at city 0.</div>
+      <div id="visCode" class="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/dp-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def tsp_bitmask(dist: list[list[int]]) -> int:',
+        '    n = len(dist)',
+        '    INF = 10**9',
+        '    dp = [[INF] * n for _ in range(1 << n)]',
+        '    dp[1][0] = 0  # Start at city 0 with only bit 0 set',
+        '    for mask in range(1, 1 << n):',
+        '        for u in range(n):',
+        '            if not (mask & (1 << u)) or dp[mask][u] == INF: continue',
+        '            for nxt in range(n):',
+        '                if not (mask & (1 << nxt)):',
+        '                    nmask = mask | (1 << nxt)',
+        '                    dp[nmask][nxt] = min(dp[nmask][nxt], dp[mask][u] + dist[u][nxt])',
+        '    full = (1 << n) - 1',
+        '    return min(dp[full][u] + dist[u][0] for u in range(n))',
+      ];
+
+      const matInput = document.getElementById('matInput');
+      const pillMask = document.getElementById('pillMask');
+      const pillAns = document.getElementById('pillAns');
+      const formulaBar = document.getElementById('formulaBar');
+      const citiesArea = document.getElementById('citiesArea');
+      const gridArea = document.getElementById('gridArea');
+      const visInfo = document.getElementById('visInfo');
+      const visCode = document.getElementById('visCode');
+
+      function parseMatrix(raw) {
+        const rows = raw
+          .split(';')
+          .map((r) => r.trim().split(/[\s,]+/).map(Number).filter((x) => !Number.isNaN(x)))
+          .filter((r) => r.length > 0);
+        const n = Math.max(3, Math.min(4, rows.length));
+        if (rows.length < 3 || rows.some((r) => r.length < n)) {
+          return [[0, 10, 15, 20], [10, 0, 35, 25], [15, 35, 0, 30], [20, 25, 30, 0]];
+        }
+        return rows.slice(0, n).map((r) => r.slice(0, n));
+      }
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 420,
+        render: (step) => {
+          pillMask.textContent = step.maskLabel;
+          pillAns.textContent = step.ansLabel;
+          formulaBar.textContent = step.formula;
+          visInfo.textContent = step.description;
+
+          citiesArea.innerHTML = `<div class="dp-section-label">Visited Cities Bitmask</div><div class="tsp-tour-strip">${step.cityBadges
+            .map((b) => `<span class="tsp-badge${b.active ? ' tsp-badge--active' : ''}">${DPCanvas.escapeHtml(b.text)}</span>`)
+            .join('')}</div>`;
+
+          DPCanvas.render2D(gridArea, {
+            title: 'Bitmask DP Table (rows = subset mask, cols = last city)',
+            matrix: step.grid.map((row) => row.map((v) => (v >= 1e8 ? 'INF' : v))),
+            rowHeaders: step.rowHeaders,
+            colHeaders: step.colHeaders,
+            cornerLabel: 'mask\\u',
+            active: step.active || [],
+            deps: step.deps || [],
+            updated: step.updated || [],
+            path: step.path || [],
+          });
+        },
+        highlightCode: (line) => DPCanvas.renderCode(visCode, PYTHON_LINES, line),
+      });
+      viz.bindControls();
+
+      function run() {
+        const dist = parseMatrix(matInput.value);
+        const n = dist.length;
+        const totalMasks = 1 << n;
+        const INF = 1e9;
+        const rowHeaders = Array.from({ length: totalMasks }, (_, m) => m.toString(2).padStart(n, '0'));
+        const colHeaders = Array.from({ length: n }, (_, u) => `C${u}`);
+        const clone = (g) => g.map((r) => [...r]);
+
+        const badgesFor = (mask, activeCity = -1) =>
+          Array.from({ length: n }, (_, i) => ({
+            text: `C${i}: ${(mask & (1 << i)) ? '✓' : '·'}`,
+            active: i === activeCity,
+          }));
+
+        viz.reset();
+        const dp = Array.from({ length: totalMasks }, () => Array(n).fill(INF));
+        const parent = Array.from({ length: totalMasks }, () => Array(n).fill(-1));
+        dp[1][0] = 0;
+
+        viz.recordStep({
+          grid: clone(dp),
+          rowHeaders,
+          colHeaders,
+          cityBadges: badgesFor(1, 0),
+          maskLabel: `Mask: ${rowHeaders[1]}`,
+          ansLabel: 'Min Tour: ...',
+          formula: 'dp[0001][0] = 0 (start at city 0)',
+          description: 'Start at city 0: only bit 0 is set, with cost 0.',
+          codeLine: 4,
+          updated: [[1, 0]],
+        });
+
+        for (let mask = 1; mask < totalMasks; mask++) {
+          for (let u = 0; u < n; u++) {
+            if (!(mask & (1 << u)) || dp[mask][u] >= INF) continue;
+            for (let nxt = 0; nxt < n; nxt++) {
+              if (mask & (1 << nxt)) continue;
+              const nmask = mask | (1 << nxt);
+              const cand = dp[mask][u] + dist[u][nxt];
+              const oldStr = dp[nmask][nxt] >= INF ? '∞' : dp[nmask][nxt];
+
+              viz.recordStep({
+                grid: clone(dp),
+                rowHeaders,
+                colHeaders,
+                cityBadges: badgesFor(nmask, nxt),
+                maskLabel: `Mask ${rowHeaders[mask]} -> ${rowHeaders[nmask]}`,
+                ansLabel: 'Min Tour: ...',
+                formula: `C${u}->C${nxt} (cost ${dist[u][nxt]}): min(${oldStr}, ${dp[mask][u]} + ${dist[u][nxt]} = ${cand})`,
+                description: `Extend subset ${rowHeaders[mask]} ending at C${u} to unvisited city C${nxt}.`,
+                codeLine: 11,
+                active: [[nmask, nxt]],
+                deps: [[mask, u]],
+              });
+
+              if (cand < dp[nmask][nxt]) {
+                dp[nmask][nxt] = cand;
+                parent[nmask][nxt] = u;
+                viz.recordStep({
+                  grid: clone(dp),
+                  rowHeaders,
+                  colHeaders,
+                  cityBadges: badgesFor(nmask, nxt),
+                  maskLabel: `Mask ${rowHeaders[nmask]}`,
+                  ansLabel: 'Min Tour: ...',
+                  formula: `Updated dp[${rowHeaders[nmask]}][C${nxt}] = ${cand}`,
+                  description: `New shortest path for subset ${rowHeaders[nmask]} ending at C${nxt} is ${cand}.`,
+                  codeLine: 11,
+                  updated: [[nmask, nxt]],
+                  deps: [[mask, u]],
+                });
+              }
+            }
+          }
+        }
+
+        const full = totalMasks - 1;
+        let bestCost = INF;
+        let lastCity = 0;
+        for (let u = 1; u < n; u++) {
+          const total = dp[full][u] + dist[u][0];
+          if (total < bestCost) {
+            bestCost = total;
+            lastCity = u;
+          }
+        }
+
+        const path = [];
+        const tour = [0];
+        let m = full;
+        let cur = lastCity;
+        const rev = [];
+        while (cur !== -1) {
+          path.push([m, cur]);
+          rev.push(cur);
+          const prev = parent[m][cur];
+          m = m ^ (1 << cur);
+          cur = prev;
+        }
+        rev.reverse();
+        const fullTour = [...rev, 0];
+
+        viz.recordStep({
+          grid: clone(dp),
+          rowHeaders,
+          colHeaders,
+          cityBadges: badgesFor(full, 0),
+          maskLabel: `Tour: ${fullTour.map((c) => 'C' + c).join(' → ')}`,
+          ansLabel: `Min Tour: ${bestCost}`,
+          formula: `Best cycle ${fullTour.map((c) => 'C' + c).join(' -> ')} = ${bestCost}`,
+          description: `Done! Shortest tour visiting all ${n} cities and returning to C0 costs ${bestCost}.`,
+          codeLine: 13,
+          path,
+        });
+
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btnRun').addEventListener('click', run);
+      document.querySelectorAll('.dp-presets [data-mat]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          matInput.value = btn.dataset.mat;
+          run();
+        });
+      });
+
+      run();
+    </script>
+  </body>
+</html>
