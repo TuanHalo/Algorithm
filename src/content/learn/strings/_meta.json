@@ -1,0 +1,5 @@
+{
+  "name": "String Algorithms",
+  "order": 2,
+  "description": "String representations, rolling hash, and pattern matching."
+}

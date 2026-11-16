@@ -1,0 +1,5 @@
+{
+  "name": "Recursion & Divide-and-Conquer",
+  "order": 3,
+  "description": "Call stack frames, base cases, Master Theorem, and divide-and-conquer."
+}
