@@ -1,0 +1,7 @@
+{
+  "name": "Dynamic Programming",
+  "icon": "🧩",
+  "color": "#ffc8a2",
+  "order": 4,
+  "description": "Break big problems into overlapping subproblems, cache answers, and build optimal solutions step by step."
+}
