@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Floyd-Warshall All-Pairs Shortest Path Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/graph-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 360px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="graph-input" class="vis-input__field" type="text" value="A->B:3, A->C:8, B->C:2, B->D:5, C->D:1, D->A:2" placeholder="Directed weighted edges: A->B:3, B->C:2" aria-label="Directed weighted edges" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-edges="A->B:3, A->C:8, B->C:2, B->D:5, C->D:1, D->A:2">4-Node Ring</button>
+        <button class="vis-btn" type="button" data-edges="A->B:5, A->D:10, B->C:3, C->D:1">Transitive Shortcut</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="7" /></label>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-pivot" class="vis-pill">Intermediate Pivot k: -</span>
+        <span id="status-formula" class="vis-pill">dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j])</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="graph-toolbar" class="g-toolbar"></div>
+        <div id="graph-stage"></div>
+        <div class="g-aux-row">
+          <div class="g-aux-box">
+            <div class="g-aux-box__title">All-Pairs Distance Matrix</div>
+            <div id="matrix-view"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Each step tests whether routing through pivot k shortens dist[i][j].</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/graph-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def floyd_warshall(n: int, dist: list[list[float]]) -> list[list[float]]:',
+        '    for k in range(n):',
+        '        for i in range(n):',
+        '            for j in range(n):',
+        '                if dist[i][k] + dist[k][j] < dist[i][j]:',
+        '                    dist[i][j] = dist[i][k] + dist[k][j]',
+        '    return dist',
+      ];
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('graph-input');
+      const matrixView = document.getElementById('matrix-view');
+      const pivotPill = document.getElementById('status-pivot');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new GraphCanvas({
+        stageEl: document.getElementById('graph-stage'),
+        toolbarEl: document.getElementById('graph-toolbar'),
+        directed: true,
+        weighted: true,
+        allowNegative: true,
+        defaultWeight: 2,
+        onChange: (serialized) => { inputEl.value = serialized; buildSteps(); },
+        onSelectNode: () => { buildSteps(); },
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 550,
+        render: (step) => {
+          canvas.render(step.graphState);
+          infoEl.textContent = step.description;
+          pivotPill.textContent = step.kLabel;
+
+          const nodes = step.nodes;
+          const head = `<tr><th></th>${nodes.map((n) => `<th>${n}</th>`).join('')}</tr>`;
+          const rows = nodes
+            .map((rowNode, r) => {
+              const cells = nodes
+                .map((colNode, c) => {
+                  const val = step.dist[r][c];
+                  const txt = val === Infinity ? '∞' : val;
+                  let cls = '';
+                  if (step.updatedCell && step.updatedCell[0] === r && step.updatedCell[1] === c) cls = 'g-mini-cell--updated';
+                  else if (step.kIdx === r || step.kIdx === c) cls = 'g-mini-cell--pivot';
+                  else if (step.activeCell && step.activeCell[0] === r && step.activeCell[1] === c) cls = 'g-mini-cell--active';
+                  return `<td class="${cls}">${txt}</td>`;
+                })
+                .join('');
+              return `<tr><th>${rowNode}</th>${cells}</tr>`;
+            })
+            .join('');
+          matrixView.innerHTML = `<table class="g-mini-table"><thead>${head}</thead><tbody>${rows}</tbody></table>`;
+        },
+        highlightCode: renderCode,
+      });
+
+      viz.bindControls();
+
+      function buildSteps() {
+        viz.reset();
+        const nodes = canvas.nodes.map((n) => n.id);
+        const n = nodes.length;
+        if (!n) return;
+
+        const idx = {};
+        nodes.forEach((id, i) => { idx[id] = i; });
+        const dist = Array.from({ length: n }, (_, i) =>
+          Array.from({ length: n }, (__, j) => (i === j ? 0 : Infinity))
+        );
+        canvas.edges.forEach((e) => {
+          const w = Number(e.weight ?? 1);
+          dist[idx[e.from]][idx[e.to]] = Math.min(dist[idx[e.from]][idx[e.to]], w);
+        });
+
+        const snap = (kIdx, activeCell, updatedCell, codeLine, description) => {
+          const nodeStates = {};
+          const nodeBadges = {};
+          if (kIdx !== null) {
+            nodeStates[nodes[kIdx]] = 'visiting';
+            nodeBadges[nodes[kIdx]] = 'pivot k';
+          }
+          if (activeCell) {
+            const [i, j] = activeCell;
+            if (i !== kIdx) nodeStates[nodes[i]] = 'active';
+            if (j !== kIdx) nodeStates[nodes[j]] = 'queued';
+          }
+          const edgeStates = {};
+          if (activeCell && kIdx !== null) {
+            const u = nodes[activeCell[0]];
+            const kNode = nodes[kIdx];
+            const v = nodes[activeCell[1]];
+            edgeStates[GraphCanvas.edgeKey(u, kNode, true)] = 'exploring';
+            edgeStates[GraphCanvas.edgeKey(kNode, v, true)] = 'exploring';
+          }
+
+          viz.recordStep({
+            nodes,
+            dist: dist.map((r) => [...r]),
+            kIdx,
+            kLabel: kIdx !== null ? `Intermediate Pivot k: ${nodes[kIdx]}` : 'Intermediate Pivot k: -',
+            activeCell,
+            updatedCell,
+            graphState: { nodeStates, nodeBadges, edgeStates },
+            codeLine,
+            description,
+          });
+        };
+
+        snap(null, null, null, 0, 'Initialize matrix with direct edge weights (0 on diagonal, ∞ for missing edges).');
+
+        for (let k = 0; k < n; k++) {
+          snap(k, null, null, 1, `Allow paths to pass through intermediate pivot ${nodes[k]}.`);
+          for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+              if (i === j || i === k || j === k) continue;
+              if (dist[i][k] === Infinity || dist[k][j] === Infinity) continue;
+              const viaK = dist[i][k] + dist[k][j];
+              if (viaK < dist[i][j]) {
+                const oldTxt = dist[i][j] === Infinity ? '∞' : dist[i][j];
+                dist[i][j] = viaK;
+                snap(k, [i, j], [i, j], 5,
+                  `Shortcut found: ${nodes[i]} -> ${nodes[k]} -> ${nodes[j]} costs ${viaK}, beating ${oldTxt}.`);
+              } else {
+                snap(k, [i, j], null, 4,
+                  `Route ${nodes[i]} -> ${nodes[k]} -> ${nodes[j]} (${viaK}) is not shorter than ${dist[i][j] === Infinity ? '∞' : dist[i][j]}.`);
+              }
+            }
+          }
+        }
+
+        snap(null, null, null, 6, 'Floyd-Warshall complete. Every cell holds the shortest distance for that pair.');
+        viz.goToStep(0);
+      }
+
+      function loadFromInput() {
+        const parsed = GraphCanvas.parseEdgeList(inputEl.value, { directed: true, weighted: true, defaultWeight: 1 });
+        canvas.loadGraph(parsed.nodes, parsed.edges);
+        buildSteps();
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', loadFromInput);
+      document.querySelectorAll('[data-edges]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.edges;
+          loadFromInput();
+        });
+      });
+
+      renderCode();
+      loadFromInput();
+    </script>
+  </body>
+</html>

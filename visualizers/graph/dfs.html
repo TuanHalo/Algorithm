@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Depth-First Search (DFS) Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/graph-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 330px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="graph-input" class="vis-input__field" type="text" value="A-B, A-C, B-D, B-E, C-F, D-E" placeholder="Edges: A-B, A-C, B-D" aria-label="Graph edges" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-edges="A-B, A-C, B-D, B-E, C-F, D-E">Branching Maze</button>
+        <button class="vis-btn" type="button" data-edges="A-B, B-C, C-D, D-E, A-E">Cycle Ring</button>
+        <button class="vis-btn" type="button" data-edges="A-B, B-C, A-D, D-E, E-F">Two Arms</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Active</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> On Call Stack</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Finished</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-start" class="vis-pill">Start: A (click any node to change)</span>
+        <span id="status-order" class="vis-pill">Order: -</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="graph-toolbar" class="g-toolbar"></div>
+        <div id="graph-stage"></div>
+        <div class="g-aux-row">
+          <div class="g-aux-box">
+            <div class="g-aux-box__title">Recursion Call Stack (bottom -> top)</div>
+            <div id="stack-view" class="g-chip-list"></div>
+          </div>
+          <div class="g-aux-box">
+            <div class="g-aux-box__title">Discovery Order</div>
+            <div id="order-view" class="g-chip-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Click any node to set the DFS starting point, or press Play.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/graph-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def dfs(adj: dict[str, list[str]], node: str, visited: set[str], order: list[str]) -> None:',
+        '    visited.add(node)',
+        '    order.append(node)',
+        '    for neighbor in adj[node]:',
+        '        if neighbor not in visited:',
+        '            dfs(adj, neighbor, visited, order)',
+      ];
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('graph-input');
+      const stackView = document.getElementById('stack-view');
+      const orderView = document.getElementById('order-view');
+      const startPill = document.getElementById('status-start');
+      const orderPill = document.getElementById('status-order');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new GraphCanvas({
+        stageEl: document.getElementById('graph-stage'),
+        toolbarEl: document.getElementById('graph-toolbar'),
+        directed: false,
+        weighted: false,
+        onChange: (serialized) => {
+          inputEl.value = serialized;
+          buildSteps();
+        },
+        onSelectNode: () => {
+          buildSteps();
+        },
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 650,
+        render: (step) => {
+          canvas.render(step.graphState);
+          infoEl.textContent = step.description;
+          orderPill.textContent = `Order: ${step.order.join(' -> ') || '-'}`;
+          stackView.innerHTML = step.stack.length
+            ? step.stack.map((n, i) => `<span class="g-chip${i === step.stack.length - 1 ? ' g-chip--active' : ' g-chip--accent'}">${n}</span>`).join('')
+            : '<span style="color:var(--text-muted);font-size:0.72rem;">empty</span>';
+          orderView.innerHTML = step.order.length
+            ? step.order.map((n, i) => `<span class="g-chip g-chip--done">${i + 1}. ${n}</span>`).join('')
+            : '<span style="color:var(--text-muted);font-size:0.72rem;">none yet</span>';
+        },
+        highlightCode: renderCode,
+      });
+
+      viz.bindControls();
+
+      function buildSteps() {
+        viz.reset();
+        const nodes = canvas.nodes.map((n) => n.id);
+        if (!nodes.length) return;
+        const start = canvas.startNode || nodes[0];
+        startPill.textContent = `Start: ${start} (click any node to change)`;
+
+        const adj = {};
+        nodes.forEach((n) => { adj[n] = []; });
+        canvas.edges.forEach((e) => {
+          adj[e.from].push(e.to);
+          adj[e.to].push(e.from);
+        });
+        Object.values(adj).forEach((list) => list.sort());
+
+        const visited = new Set();
+        const stack = [];
+        const order = [];
+        const done = new Set();
+        const treeEdges = new Set();
+
+        const snap = (current, exploringEdge, codeLine, description) => {
+          const nodeStates = {};
+          const nodeBadges = {};
+          nodes.forEach((n) => {
+            if (n === current) nodeStates[n] = 'active';
+            else if (stack.includes(n)) nodeStates[n] = 'visiting';
+            else if (done.has(n)) nodeStates[n] = 'visited';
+            const ordIdx = order.indexOf(n);
+            if (ordIdx !== -1) nodeBadges[n] = `#${ordIdx + 1}`;
+          });
+          const edgeStates = {};
+          treeEdges.forEach((k) => { edgeStates[k] = 'mst'; });
+          if (exploringEdge) edgeStates[exploringEdge] = 'exploring';
+
+          viz.recordStep({
+            stack: [...stack],
+            order: [...order],
+            graphState: { nodeStates, nodeBadges, edgeStates },
+            codeLine,
+            description,
+          });
+        };
+
+        function runDfs(u) {
+          stack.push(u);
+          visited.add(u);
+          order.push(u);
+          snap(u, null, 2, `Enter ${u}, mark it visited, and append it to the discovery order.`);
+
+          for (const v of adj[u]) {
+            const key = GraphCanvas.edgeKey(u, v, false);
+            if (!visited.has(v)) {
+              treeEdges.add(key);
+              snap(u, key, 5, `Edge ${u} - ${v} leads to unvisited node ${v}. Recurse deeper.`);
+              runDfs(v);
+              snap(u, null, 3, `Backtrack to ${u} after finishing the branch from ${v}.`);
+            } else {
+              snap(u, key, 4, `Skip ${v} from ${u} because ${v} is already visited.`);
+            }
+          }
+          stack.pop();
+          done.add(u);
+          snap(stack[stack.length - 1] || null, null, 5, `Finish exploring all neighbors of ${u} and pop its call frame.`);
+        }
+
+        snap(null, null, 0, `Ready to start DFS from ${start}.`);
+        runDfs(start);
+        snap(null, null, 5, `DFS finished. Visited ${order.length} node(s): ${order.join(', ')}.`);
+        viz.goToStep(0);
+      }
+
+      function loadFromInput() {
+        const parsed = GraphCanvas.parseEdgeList(inputEl.value, { directed: false, weighted: false });
+        canvas.loadGraph(parsed.nodes, parsed.edges);
+        buildSteps();
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', loadFromInput);
+      document.querySelectorAll('[data-edges]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.edges;
+          loadFromInput();
+        });
+      });
+
+      renderCode();
+      loadFromInput();
+    </script>
+  </body>
+</html>

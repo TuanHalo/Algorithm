@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bellman-Ford Shortest Path Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/graph-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 340px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="graph-input" class="vis-input__field" type="text" value="A->B:4, A->C:5, B->C:-2, C->D:3, B->D:6" placeholder="Directed weighted edges: A->B:4, B->C:-2" aria-label="Directed weighted edges" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-edges="A->B:4, A->C:5, B->C:-2, C->D:3, B->D:6">Negative Edge (Safe)</button>
+        <button class="vis-btn" type="button" data-edges="A->B:2, B->C:3, C->D:-6, D->B:1">Negative Cycle</button>
+        <button class="vis-btn" type="button" data-edges="A->B:6, A->C:7, B->D:5, B->E:-4, C->D:-3, D->B:-2">CLRS Classic</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="7" /></label>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-start" class="vis-pill">Start: A (click any node to change)</span>
+        <span id="status-pass" class="vis-pill">Pass: 0</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="graph-toolbar" class="g-toolbar"></div>
+        <div id="graph-stage"></div>
+        <div class="g-aux-row">
+          <div class="g-aux-box">
+            <div class="g-aux-box__title">dist[] Table</div>
+            <div id="dist-view"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Add negative weights on the canvas or try the Negative Cycle preset to watch the V-th pass catch it.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/graph-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def bellman_ford(nodes: list[str], edges: list[tuple[str, str, int]], start: str) -> dict[str, float] | None:',
+        '    dist = {u: float("inf") for u in nodes}',
+        '    dist[start] = 0',
+        '    for _ in range(len(nodes) - 1):',
+        '        for u, v, w in edges:',
+        '            if dist[u] != float("inf") and dist[u] + w < dist[v]:',
+        '                dist[v] = dist[u] + w',
+        '    for u, v, w in edges:',
+        '        if dist[u] != float("inf") and dist[u] + w < dist[v]:',
+        '            return None  # Negative weight cycle reachable',
+        '    return dist',
+      ];
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('graph-input');
+      const distView = document.getElementById('dist-view');
+      const startPill = document.getElementById('status-start');
+      const passPill = document.getElementById('status-pass');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new GraphCanvas({
+        stageEl: document.getElementById('graph-stage'),
+        toolbarEl: document.getElementById('graph-toolbar'),
+        directed: true,
+        weighted: true,
+        allowNegative: true,
+        defaultWeight: -2,
+        onChange: (serialized) => { inputEl.value = serialized; buildSteps(); },
+        onSelectNode: () => { buildSteps(); },
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 550,
+        render: (step) => {
+          canvas.render(step.graphState);
+          infoEl.textContent = step.description;
+          passPill.textContent = step.passLabel;
+
+          const keys = Object.keys(step.dist);
+          distView.innerHTML = `<table class="g-mini-table"><thead><tr>${keys.map((k) => `<th>${k}</th>`).join('')}</tr></thead><tbody><tr>${keys
+            .map((k) => {
+              const v = step.dist[k] === Infinity ? '∞' : step.dist[k];
+              const cls = k === step.updated ? 'g-mini-cell--updated' : '';
+              return `<td class="${cls}">${v}</td>`;
+            })
+            .join('')}</tr></tbody></table>`;
+        },
+        highlightCode: renderCode,
+      });
+
+      viz.bindControls();
+
+      function buildSteps() {
+        viz.reset();
+        const nodes = canvas.nodes.map((n) => n.id);
+        if (!nodes.length) return;
+        const start = canvas.startNode || nodes[0];
+        startPill.textContent = `Start: ${start} (click any node to change)`;
+
+        const edges = canvas.edges.map((e) => ({ from: e.from, to: e.to, weight: Number(e.weight ?? 1) }));
+        const dist = {};
+        nodes.forEach((n) => { dist[n] = Infinity; });
+        dist[start] = 0;
+
+        const snap = (passLabel, activePair, updated, edgeKey, edgeKind, codeLine, description) => {
+          const nodeStates = {};
+          const nodeBadges = {};
+          nodes.forEach((n) => {
+            if (edgeKind === 'cycle' && activePair && activePair.includes(n)) nodeStates[n] = 'conflict';
+            else if (activePair && activePair[0] === n) nodeStates[n] = 'active';
+            else if (updated === n) nodeStates[n] = 'queued';
+            else if (dist[n] < Infinity) nodeStates[n] = 'visited';
+            nodeBadges[n] = dist[n] === Infinity ? '∞' : String(dist[n]);
+          });
+          const edgeStates = {};
+          if (edgeKey) edgeStates[edgeKey] = edgeKind;
+
+          viz.recordStep({
+            passLabel,
+            dist: { ...dist },
+            updated,
+            graphState: { nodeStates, nodeBadges, edgeStates },
+            codeLine,
+            description,
+          });
+        };
+
+        snap(`Init (V=${nodes.length})`, [start], start, null, 'default', 2, `Set dist[${start}] = 0 and all other distances to infinity.`);
+
+        for (let pass = 1; pass <= Math.max(0, nodes.length - 1); pass++) {
+          let improved = false;
+          for (const e of edges) {
+            const key = GraphCanvas.edgeKey(e.from, e.to, true);
+            if (dist[e.from] !== Infinity && dist[e.from] + e.weight < dist[e.to]) {
+              dist[e.to] = dist[e.from] + e.weight;
+              improved = true;
+              snap(`Pass ${pass} / ${nodes.length - 1}`, [e.from, e.to], e.to, key, 'relaxed', 6,
+                `Pass ${pass}: relax ${e.from} -> ${e.to} (${e.weight}), updating dist[${e.to}] = ${dist[e.to]}.`);
+            } else {
+              snap(`Pass ${pass} / ${nodes.length - 1}`, [e.from, e.to], null, key, 'exploring', 5,
+                `Pass ${pass}: check ${e.from} -> ${e.to} (${e.weight}), no improvement.`);
+            }
+          }
+          if (!improved) {
+            snap(`Pass ${pass} (converged)`, null, null, null, 'default', 3, `No distance improved during pass ${pass}; early stop possible.`);
+            break;
+          }
+        }
+
+        let negCycle = false;
+        for (const e of edges) {
+          const key = GraphCanvas.edgeKey(e.from, e.to, true);
+          if (dist[e.from] !== Infinity && dist[e.from] + e.weight < dist[e.to]) {
+            negCycle = true;
+            snap('Negative Cycle Check', [e.from, e.to], e.to, key, 'cycle', 9,
+              `Edge ${e.from} -> ${e.to} (${e.weight}) still improves dist[${e.to}] after V-1 passes. Negative cycle detected!`);
+            break;
+          }
+        }
+
+        if (!negCycle) {
+          snap('Complete (No Negative Cycle)', null, null, null, 'default', 10,
+            'V-th pass found no further improvements. All shortest distances are final.');
+        }
+        viz.goToStep(0);
+      }
+
+      function loadFromInput() {
+        const parsed = GraphCanvas.parseEdgeList(inputEl.value, { directed: true, weighted: true, defaultWeight: 1 });
+        canvas.loadGraph(parsed.nodes, parsed.edges);
+        buildSteps();
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', loadFromInput);
+      document.querySelectorAll('[data-edges]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.edges;
+          loadFromInput();
+        });
+      });
+
+      renderCode();
+      loadFromInput();
+    </script>
+  </body>
+</html>

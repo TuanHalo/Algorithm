@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Union-Find (Disjoint Set) Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/graph-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 340px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="graph-input" class="vis-input__field" type="text" value="A-B, C-D, B-D, E-F, A-E" placeholder="Union edge stream: A-B, C-D, B-D" aria-label="Union operations edge stream" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-edges="A-B, C-D, B-D, E-F, A-E">Union by Rank</button>
+        <button class="vis-btn" type="button" data-edges="A-B, B-C, C-D, A-D, E-F">Cycle Check via DSU</button>
+        <button class="vis-btn" type="button" data-edges="A-B, C-D, E-F, B-D, D-F">Path Compression</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-groups" class="vis-pill">Disjoint Sets: -</span>
+        <span id="status-hint" class="vis-pill">Arrows show current parent pointers</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="graph-toolbar" class="g-toolbar"></div>
+        <div id="graph-stage"></div>
+        <div class="g-aux-row">
+          <div class="g-aux-box">
+            <div class="g-aux-box__title">parent[] and rank[] Table</div>
+            <div id="dsu-table-view"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Add edges with "+ Edge" on the canvas or type an edge stream to watch roots merge and paths compress.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/graph-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'class UnionFind:',
+        '    def __init__(self, nodes: list[str]) -> None:',
+        '        self.parent = {u: u for u in nodes}',
+        '        self.rank = {u: 0 for u in nodes}',
+        '    def find(self, x: str) -> str:',
+        '        if self.parent[x] != x:',
+        '            self.parent[x] = self.find(self.parent[x])  # Path compression',
+        '        return self.parent[x]',
+        '    def union(self, a: str, b: str) -> bool:',
+        '        ra, rb = self.find(a), self.find(b)',
+        '        if ra == rb: return False',
+        '        if self.rank[ra] < self.rank[rb]: ra, rb = rb, ra',
+        '        self.parent[rb] = ra',
+        '        if self.rank[ra] == self.rank[rb]: self.rank[ra] += 1',
+        '        return True',
+      ];
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('graph-input');
+      const tableView = document.getElementById('dsu-table-view');
+      const groupsPill = document.getElementById('status-groups');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new GraphCanvas({
+        stageEl: document.getElementById('graph-stage'),
+        toolbarEl: document.getElementById('graph-toolbar'),
+        directed: false,
+        weighted: false,
+        onChange: (serialized) => { inputEl.value = serialized; buildSteps(); },
+        onSelectNode: () => { buildSteps(); },
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 700,
+        render: (step) => {
+          canvas.render(step.graphState);
+          infoEl.textContent = step.description;
+          groupsPill.textContent = `Disjoint Sets: ${step.setsCount}`;
+
+          const keys = Object.keys(step.parent);
+          tableView.innerHTML = `<table class="g-mini-table"><thead><tr><th>Node</th>${keys.map((k) => `<th>${k}</th>`).join('')}</tr></thead><tbody>
+            <tr><td><strong>parent</strong></td>${keys.map((k) => `<td class="${step.changed.includes(k) ? 'g-mini-cell--updated' : ''}">${step.parent[k]}</td>`).join('')}</tr>
+            <tr><td><strong>rank</strong></td>${keys.map((k) => `<td>${step.rank[k]}</td>`).join('')}</tr>
+          </tbody></table>`;
+        },
+        highlightCode: renderCode,
+      });
+
+      viz.bindControls();
+
+      function buildSteps() {
+        viz.reset();
+        const nodes = canvas.nodes.map((n) => n.id);
+        if (!nodes.length) return;
+
+        const parent = {};
+        const rank = {};
+        nodes.forEach((n) => { parent[n] = n; rank[n] = 0; });
+
+        const snap = (activePair, changed, statusEdge, codeLine, description) => {
+          const roots = new Set();
+          const rootOf = (x) => {
+            let cur = x;
+            while (parent[cur] !== cur) cur = parent[cur];
+            return cur;
+          };
+          nodes.forEach((n) => roots.add(rootOf(n)));
+          const rootList = Array.from(roots);
+
+          const nodeStates = {};
+          const nodeBadges = {};
+          nodes.forEach((n) => {
+            const r = rootOf(n);
+            nodeStates[n] = activePair && activePair.includes(n) ? 'active' : `comp${rootList.indexOf(r) % 5}`;
+            nodeBadges[n] = parent[n] === n ? `root (r=${rank[n]})` : `p=${parent[n]}`;
+          });
+
+          const overrideEdges = [];
+          nodes.forEach((n) => {
+            if (parent[n] !== n) overrideEdges.push({ from: n, to: parent[n] });
+          });
+          const edgeStates = {};
+          if (statusEdge) {
+            overrideEdges.push({ from: statusEdge.from, to: statusEdge.to });
+            edgeStates[`${statusEdge.from}->${statusEdge.to}`] = statusEdge.kind;
+          }
+
+          viz.recordStep({
+            parent: { ...parent },
+            rank: { ...rank },
+            changed,
+            setsCount: rootList.length,
+            graphState: {
+              nodeStates,
+              nodeBadges,
+              edgeStates,
+              overrideEdges,
+              overrideDirected: true,
+            },
+            codeLine,
+            description,
+          });
+        };
+
+        function findWithSteps(x) {
+          const trail = [];
+          let cur = x;
+          while (parent[cur] !== cur) {
+            trail.push(cur);
+            cur = parent[cur];
+          }
+          const root = cur;
+          for (const node of trail) {
+            if (parent[node] !== root) {
+              parent[node] = root;
+              snap([node, root], [node], null, 6, `Path compression on find(${x}): point ${node} directly to root ${root}.`);
+            }
+          }
+          return root;
+        }
+
+        snap(null, [], null, 3, `Start with ${nodes.length} single-node sets where each node is its own parent.`);
+
+        for (const edge of canvas.edges) {
+          const { from: a, to: b } = edge;
+          snap([a, b], [], { from: a, to: b, kind: 'exploring' }, 9, `Call union(${a}, ${b}): find roots of ${a} and ${b}.`);
+          let ra = findWithSteps(a);
+          let rb = findWithSteps(b);
+
+          if (ra === rb) {
+            snap([a, b], [], { from: a, to: b, kind: 'cycle' }, 10, `${a} and ${b} share root ${ra}, so they are already connected (cycle if adding edge).`);
+            continue;
+          }
+
+          if (rank[ra] < rank[rb]) {
+            [ra, rb] = [rb, ra];
+          }
+          parent[rb] = ra;
+          let rankMsg = '';
+          if (rank[ra] === rank[rb]) {
+            rank[ra] += 1;
+            rankMsg = ` and increment rank[${ra}] to ${rank[ra]}`;
+          }
+          snap([ra, rb], [rb], null, 12, `Attach smaller tree ${rb} under root ${ra}${rankMsg}.`);
+        }
+
+        snap(null, [], null, 14, 'All union operations complete.');
+        viz.goToStep(0);
+      }
+
+      function loadFromInput() {
+        const parsed = GraphCanvas.parseEdgeList(inputEl.value, { directed: false, weighted: false });
+        canvas.loadGraph(parsed.nodes, parsed.edges);
+        buildSteps();
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', loadFromInput);
+      document.querySelectorAll('[data-edges]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.edges;
+          loadFromInput();
+        });
+      });
+
+      renderCode();
+      loadFromInput();
+    </script>
+  </body>
+</html>

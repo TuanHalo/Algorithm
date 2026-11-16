@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Connected Components Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/graph-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 330px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="graph-input" class="vis-input__field" type="text" value="A-B, B-C, D-E, F" placeholder="Edges and isolated nodes: A-B, C-D, E" aria-label="Graph edges" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-edges="A-B, B-C, D-E, F">3 Components</button>
+        <button class="vis-btn" type="button" data-edges="A-B, A-C, B-C, D-E, E-F, F-D">2 Triangles</button>
+        <button class="vis-btn" type="button" data-edges="A-B, B-C, C-D, D-E">1 Component</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-count" class="vis-pill">Components found: 0</span>
+        <span id="status-scan" class="vis-pill">Scanning outer loop...</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="graph-toolbar" class="g-toolbar"></div>
+        <div id="graph-stage"></div>
+        <div class="g-aux-row">
+          <div class="g-aux-box">
+            <div class="g-aux-box__title">Discovered Groups</div>
+            <div id="groups-view" class="g-chip-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Add or remove edges on the canvas to merge or split components, then press Play.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/graph-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def count_components(nodes: list[str], adj: dict[str, list[str]]) -> list[list[str]]:',
+        '    visited: set[str] = set()',
+        '    groups: list[list[str]] = []',
+        '    for start in nodes:',
+        '        if start in visited:',
+        '            continue',
+        '        comp, stack = [], [start]',
+        '        visited.add(start)',
+        '        while stack:',
+        '            u = stack.pop()',
+        '            comp.append(u)',
+        '            for v in adj[u]:',
+        '                if v not in visited:',
+        '                    visited.add(v)',
+        '                    stack.append(v)',
+        '        groups.append(comp)',
+        '    return groups',
+      ];
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('graph-input');
+      const groupsView = document.getElementById('groups-view');
+      const countPill = document.getElementById('status-count');
+      const scanPill = document.getElementById('status-scan');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new GraphCanvas({
+        stageEl: document.getElementById('graph-stage'),
+        toolbarEl: document.getElementById('graph-toolbar'),
+        directed: false,
+        weighted: false,
+        onChange: (serialized) => {
+          inputEl.value = serialized;
+          buildSteps();
+        },
+        onSelectNode: () => { buildSteps(); },
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 650,
+        render: (step) => {
+          canvas.render(step.graphState);
+          infoEl.textContent = step.description;
+          countPill.textContent = `Components found: ${step.groups.length}`;
+          scanPill.textContent = step.scanText;
+          groupsView.innerHTML = step.groups.length
+            ? step.groups.map((g, i) => `<span class="g-chip g-chip--done">C${i + 1}: [${g.join(', ')}]</span>`).join('')
+            : '<span style="color:var(--text-muted);font-size:0.72rem;">none yet</span>';
+        },
+        highlightCode: renderCode,
+      });
+
+      viz.bindControls();
+
+      function buildSteps() {
+        viz.reset();
+        const nodes = canvas.nodes.map((n) => n.id);
+        if (!nodes.length) return;
+
+        const adj = {};
+        nodes.forEach((n) => { adj[n] = []; });
+        canvas.edges.forEach((e) => {
+          adj[e.from].push(e.to);
+          adj[e.to].push(e.from);
+        });
+        Object.values(adj).forEach((l) => l.sort());
+
+        const visited = new Set();
+        const compOf = {};
+        const groups = [];
+
+        const snap = (activeNode, exploringEdge, scanText, codeLine, description) => {
+          const nodeStates = {};
+          const nodeBadges = {};
+          nodes.forEach((n) => {
+            if (n === activeNode) nodeStates[n] = 'active';
+            else if (compOf[n] !== undefined) nodeStates[n] = `comp${compOf[n] % 5}`;
+            if (compOf[n] !== undefined) nodeBadges[n] = `C${compOf[n] + 1}`;
+          });
+          const edgeStates = {};
+          if (exploringEdge) edgeStates[exploringEdge] = 'exploring';
+
+          viz.recordStep({
+            groups: groups.map((g) => [...g]),
+            scanText,
+            graphState: { nodeStates, nodeBadges, edgeStates },
+            codeLine,
+            description,
+          });
+        };
+
+        snap(null, null, 'Ready to scan all nodes', 3, 'Scan each node in order; every unvisited node starts a new component.');
+
+        for (const start of nodes) {
+          if (visited.has(start)) {
+            snap(start, null, `Outer loop: ${start} already visited`, 4, `${start} already belongs to component C${compOf[start] + 1}, so skip it.`);
+            continue;
+          }
+          const compIdx = groups.length;
+          const comp = [];
+          const stack = [start];
+          visited.add(start);
+          compOf[start] = compIdx;
+          groups.push(comp);
+          snap(start, null, `New component C${compIdx + 1} from ${start}`, 7, `${start} is unvisited, so start component C${compIdx + 1}.`);
+
+          while (stack.length > 0) {
+            const u = stack.pop();
+            comp.push(u);
+            snap(u, null, `Exploring C${compIdx + 1} at ${u}`, 10, `Pop ${u} and assign it to component C${compIdx + 1}.`);
+            for (const v of adj[u]) {
+              const key = GraphCanvas.edgeKey(u, v, false);
+              if (!visited.has(v)) {
+                visited.add(v);
+                compOf[v] = compIdx;
+                stack.push(v);
+                snap(u, key, `Exploring C${compIdx + 1}`, 14, `Neighbor ${v} is reachable from ${u}, so add it to C${compIdx + 1}.`);
+              }
+            }
+          }
+        }
+
+        snap(null, null, `Done (${groups.length} components)`, 16, `Finished scanning. Found ${groups.length} connected component(s).`);
+        viz.goToStep(0);
+      }
+
+      function loadFromInput() {
+        const parsed = GraphCanvas.parseEdgeList(inputEl.value, { directed: false, weighted: false });
+        canvas.loadGraph(parsed.nodes, parsed.edges);
+        buildSteps();
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', loadFromInput);
+      document.querySelectorAll('[data-edges]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.edges;
+          loadFromInput();
+        });
+      });
+
+      renderCode();
+      loadFromInput();
+    </script>
+  </body>
+</html>
