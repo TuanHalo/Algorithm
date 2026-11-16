@@ -70,7 +70,14 @@ export const TOPICS: readonly TopicConfig[] = [
     color: 'var(--color-linked-list)',
     order: 6,
     description: 'Nodes chained by pointers for fast insertions, reversals, and cycle detection.',
-    previewAlgorithms: ['Singly Linked List', 'Fast & Slow Pointers', 'Reverse List'],
+    previewAlgorithms: [
+      'Singly Linked List',
+      'Doubly Linked List',
+      'Reverse Linked List',
+      'Fast & Slow Pointers',
+      "Floyd's Cycle Detection",
+      'LRU Cache',
+    ],
   },
   {
     slug: 'stack-queue',

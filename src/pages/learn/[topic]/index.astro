@@ -6,6 +6,7 @@ import ComplexityBadge from '../../../components/ComplexityBadge.astro';
 import SortingMatrix from '../../../components/SortingMatrix.astro';
 import SearchingMatrix from '../../../components/SearchingMatrix.astro';
 import StackQueueMatrix from '../../../components/StackQueueMatrix.astro';
+import LinkedListMatrix from '../../../components/LinkedListMatrix.astro';
 import { TOPICS } from '../../../utils/topics';
 import type { TopicConfig } from '../../../types/content';
 import { withBase } from '../../../utils/url';
@@ -84,6 +85,7 @@ const lessons = allLessons
     {topic.slug === 'sorting' && <SortingMatrix />}
     {topic.slug === 'searching' && <SearchingMatrix />}
     {topic.slug === 'stack-queue' && <StackQueueMatrix />}
+    {topic.slug === 'linked-list' && <LinkedListMatrix />}
   </div>
 </BaseLayout>
 
