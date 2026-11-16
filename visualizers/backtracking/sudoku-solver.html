@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sudoku Solver Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/tree-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: center; justify-content: flex-start; gap: 0.85rem; min-height: 380px; padding: 1rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+      .sdk-board { display: grid; grid-template-columns: repeat(9, 34px); background: rgba(45, 45, 45, 0.25); gap: 1px; padding: 3px; border-radius: 10px; box-shadow: var(--shadow-clay-subtle); }
+      .sdk-cell { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; font-family: var(--font-code); font-size: 0.88rem; font-weight: 600; background: rgba(255, 255, 255, 0.9); color: var(--text-primary); transition: background 140ms ease; }
+      .sdk-cell--box-r { border-right: 2px solid rgba(45, 45, 45, 0.45); }
+      .sdk-cell--box-b { border-bottom: 2px solid rgba(45, 45, 45, 0.45); }
+      .sdk-cell--fixed { background: rgba(240, 230, 211, 0.92); color: #3f3f46; font-weight: 700; }
+      .sdk-cell--placed { background: rgba(168, 230, 207, 0.78); color: #14532d; }
+      .sdk-cell--active { background: var(--vis-comparing); color: #9a3412; font-weight: 700; }
+      .sdk-cell--conflict { background: var(--vis-swapping); color: #7f1d1d; }
+      @media (max-width: 440px) {
+        .sdk-board { grid-template-columns: repeat(9, 28px); }
+        .sdk-cell { width: 28px; height: 28px; font-size: 0.76rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="puzzle-input" class="vis-input__field" type="text" value="534678912672195348198342567859761423426853791713924856961537284287419635345286179" placeholder="81 digits (0 or . for blank)" aria-label="81-character Sudoku string" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-puzzle="530070000600195000098000060800060003400803001700020006060000280000419005000080079">Classic (Backtracks visible)</button>
+        <button class="vis-btn" type="button" data-puzzle="534078912672195308198342567809761423426803791713924056961537280287419635345286109">Quick (8 blanks)</button>
+        <button class="vis-btn" type="button" data-puzzle="034678912672190348198342560859061423426853791713924806960537284287419035345206179">Medium (9 blanks)</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="7" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Testing Digit</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Row/Col/Box Conflict</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Placed Digit</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-cell" class="vis-pill">Cell: -</span>
+        <span id="status-stats" class="vis-pill">Filled: 0 / 0 | Backtracks: 0</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="board-stage" class="sdk-board"></div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Pick an empty cell, try digits 1 to 9 that satisfy row, column, and 3x3 box sets, and undo on dead ends.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def solve_sudoku(board: list[list[str]]) -> bool:',
+        '    rows = [set() for _ in range(9)]',
+        '    cols = [set() for _ in range(9)]',
+        '    boxes = [set() for _ in range(9)]',
+        '    empties: list[tuple[int, int]] = []',
+        '    for r in range(9):',
+        '        for c in range(9):',
+        '            ch = board[r][c]',
+        '            if ch == ".": empties.append((r, c))',
+        '            else: rows[r].add(ch); cols[c].add(ch); boxes[(r // 3) * 3 + c // 3].add(ch)',
+        '    def backtrack(idx: int) -> bool:',
+        '        if idx == len(empties): return True',
+        '        r, c = empties[idx]',
+        '        box = (r // 3) * 3 + c // 3',
+        '        for ch in "123456789":',
+        '            if ch in rows[r] or ch in cols[c] or ch in boxes[box]: continue',
+        '            board[r][c] = ch',
+        '            rows[r].add(ch); cols[c].add(ch); boxes[box].add(ch)',
+        '            if backtrack(idx + 1): return True',
+        '            board[r][c] = "."',
+        '            rows[r].remove(ch); cols[c].remove(ch); boxes[box].remove(ch)',
+        '        return False',
+        '    return backtrack(0)',
+      ];
+
+      const DEFAULT_PUZZLE = '530070000600195000098000060800060003400803001700020006060000280000419005000080079';
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const puzzleInput = document.getElementById('puzzle-input');
+      const boardStage = document.getElementById('board-stage');
+      const cellPill = document.getElementById('status-cell');
+      const statsPill = document.getElementById('status-stats');
+
+      puzzleInput.value = DEFAULT_PUZZLE;
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 280,
+        render: (step) => {
+          infoEl.textContent = step.description;
+          cellPill.textContent = step.active ? `Cell: (${step.active[0]}, ${step.active[1]})` : 'Cell: -';
+          statsPill.textContent = `Filled: ${step.filled} / ${step.totalEmpties} | Backtracks: ${step.backtracks}`;
+
+          let html = '';
+          for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+              const val = step.board[r][c];
+              const isFixed = step.fixed[r][c];
+              const isActive = step.active && step.active[0] === r && step.active[1] === c;
+              const isConflict = step.conflict && step.conflict[0] === r && step.conflict[1] === c;
+              let cls = 'sdk-cell';
+              if (c === 2 || c === 5) cls += ' sdk-cell--box-r';
+              if (r === 2 || r === 5) cls += ' sdk-cell--box-b';
+              if (isFixed) cls += ' sdk-cell--fixed';
+              else if (isConflict) cls += ' sdk-cell--conflict';
+              else if (isActive) cls += ' sdk-cell--active';
+              else if (val !== '.') cls += ' sdk-cell--placed';
+              html += `<div class="${cls}">${val === '.' ? '' : val}</div>`;
+            }
+          }
+          boardStage.innerHTML = html;
+        },
+        highlightCode: renderCode,
+      });
+
+      viz.bindControls();
+
+      function parsePuzzle() {
+        const clean = puzzleInput.value.replace(/[^0-9.]/g, '').slice(0, 81).padEnd(81, '0');
+        const board = [];
+        const fixed = [];
+        for (let r = 0; r < 9; r++) {
+          const row = [];
+          const fRow = [];
+          for (let c = 0; c < 9; c++) {
+            const ch = clean[r * 9 + c];
+            const empty = ch === '0' || ch === '.';
+            row.push(empty ? '.' : ch);
+            fRow.push(!empty);
+          }
+          board.push(row);
+          fixed.push(fRow);
+        }
+        return { board, fixed, clean };
+      }
+
+      function buildSteps() {
+        viz.reset();
+        const { board, fixed, clean } = parsePuzzle();
+        puzzleInput.value = clean;
+
+        const rows = Array.from({ length: 9 }, () => new Set());
+        const cols = Array.from({ length: 9 }, () => new Set());
+        const boxes = Array.from({ length: 9 }, () => new Set());
+        const empties = [];
+
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            const ch = board[r][c];
+            if (ch === '.') empties.push([r, c]);
+            else {
+              rows[r].add(ch);
+              cols[c].add(ch);
+              boxes[Math.floor(r / 3) * 3 + Math.floor(c / 3)].add(ch);
+            }
+          }
+        }
+
+        // Order empties by minimum remaining candidates (MRV) so classic 51-blank boards solve within ~150 steps
+        empties.sort((a, b) => {
+          const boxA = Math.floor(a[0] / 3) * 3 + Math.floor(a[1] / 3);
+          const boxB = Math.floor(b[0] / 3) * 3 + Math.floor(b[1] / 3);
+          let cntA = 0, cntB = 0;
+          for (let d = 1; d <= 9; d++) {
+            const ch = String(d);
+            if (!rows[a[0]].has(ch) && !cols[a[1]].has(ch) && !boxes[boxA].has(ch)) cntA++;
+            if (!rows[b[0]].has(ch) && !cols[b[1]].has(ch) && !boxes[boxB].has(ch)) cntB++;
+          }
+          return cntA - cntB;
+        });
+
+        let backtracks = 0;
+        let filled = 0;
+        const MAX_STEPS = 450;
+
+        const snap = (active, conflict, codeLine, description) => {
+          if (viz.steps.length >= MAX_STEPS) return;
+          viz.recordStep({
+            board: board.map((r) => [...r]),
+            fixed,
+            active,
+            conflict,
+            filled,
+            totalEmpties: empties.length,
+            backtracks,
+            codeLine,
+            description,
+          });
+        };
+
+        function backtrack(idx) {
+          if (idx === empties.length) return true;
+          const [r, c] = empties[idx];
+          const box = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+
+          for (let d = 1; d <= 9; d++) {
+            const ch = String(d);
+            if (rows[r].has(ch) || cols[c].has(ch) || boxes[box].has(ch)) {
+              continue;
+            }
+            board[r][c] = ch;
+            rows[r].add(ch);
+            cols[c].add(ch);
+            boxes[box].add(ch);
+            filled++;
+            snap([r, c], null, 16, `Place ${ch} at (${r}, ${c}); valid in row, column, and box.`);
+
+            if (backtrack(idx + 1)) return true;
+
+            board[r][c] = '.';
+            rows[r].delete(ch);
+            cols[c].delete(ch);
+            boxes[box].delete(ch);
+            filled--;
+            backtracks++;
+            snap([r, c], [r, c], 19, `Dead end after (${r}, ${c}) = ${ch}. Undo and try next digit.`);
+          }
+          return false;
+        }
+
+        snap(null, null, 0, `Loaded puzzle with ${empties.length} empty cells.`);
+        const ok = backtrack(0);
+        snap(null, null, ok ? 11 : 21, ok ? `Solved Sudoku with ${backtracks} backtrack(s).` : 'No valid solution exists for this board.');
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', buildSteps);
+      document.querySelectorAll('[data-puzzle]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          puzzleInput.value = btn.dataset.puzzle;
+          buildSteps();
+        });
+      });
+
+      renderCode();
+      buildSteps();
+    </script>
+  </body>
+</html>

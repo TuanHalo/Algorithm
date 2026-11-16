@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Generate Parentheses Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/tree-canvas.css" />
+    <style>
+      .vis-input__num { width: 110px; flex: 0 0 auto; min-width: 90px; }
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.75rem; min-height: 360px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <label for="pairs-input" style="font-size:0.85rem;font-weight:500;">Pairs (n, 1 to 3):</label>
+        <input id="pairs-input" class="vis-input__field vis-input__num" type="number" min="1" max="3" value="3" aria-label="Number of parenthesis pairs" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-n="1">n = 1 (1 result)</button>
+        <button class="vis-btn" type="button" data-n="2">n = 2 (2 results)</button>
+        <button class="vis-btn" type="button" data-n="3">n = 3 (5 results)</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Active Node</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> On Path</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Pruned Invalid Choice</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Valid String</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-counts" class="vis-pill">open: 0 / 3 | close: 0 / 0</span>
+        <span id="status-found" class="vis-pill">Valid Strings: 0</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="tree-stage" class="bt-stage-wrap"></div>
+        <div class="bt-aux-row">
+          <div class="bt-aux-box">
+            <div class="bt-aux-box__title">Current String Buffer</div>
+            <div id="path-view" class="bt-chip-list"></div>
+          </div>
+          <div class="bt-aux-box">
+            <div class="bt-aux-box__title">Valid Combinations</div>
+            <div id="result-view" class="bt-chip-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Add "(" while open &lt; n, and add ")" only when close &lt; open.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/tree-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def generate_parenthesis(n: int) -> list[str]:',
+        '    result: list[str] = []',
+        '    path: list[str] = []',
+        '    def backtrack(open_cnt: int, close_cnt: int) -> None:',
+        '        if len(path) == 2 * n:',
+        '            result.append("".join(path))',
+        '            return',
+        '        if open_cnt < n:',
+        '            path.append("(")',
+        '            backtrack(open_cnt + 1, close_cnt)',
+        '            path.pop()',
+        '        if close_cnt < open_cnt:',
+        '            path.append(")")',
+        '            backtrack(open_cnt, close_cnt + 1)',
+        '            path.pop()',
+        '    backtrack(0, 0)',
+        '    return result',
+      ];
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('pairs-input');
+      const pathView = document.getElementById('path-view');
+      const resultView = document.getElementById('result-view');
+      const countsPill = document.getElementById('status-counts');
+      const foundPill = document.getElementById('status-found');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const treeCanvas = new TreeCanvas({
+        containerEl: document.getElementById('tree-stage'),
+        nodeWidth: 68,
+        gapX: 12,
+        levelGap: 60,
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 650,
+        render: (step) => {
+          treeCanvas.render(step.tree);
+          infoEl.textContent = step.description;
+          countsPill.textContent = `open: ${step.open} / ${step.n} | close: ${step.close} / ${step.open}`;
+          foundPill.textContent = `Valid Strings: ${step.results.length}`;
+          pathView.innerHTML = step.path.length
+            ? step.path.map((ch) => `<span class="bt-chip bt-chip--path">${ch}</span>`).join('')
+            : '<span class="bt-chip">""</span>';
+          resultView.innerHTML = step.results.length
+            ? step.results.map((s) => `<span class="bt-chip bt-chip--done">${s}</span>`).join('')
+            : '<span style="color:var(--text-muted);font-size:0.72rem;">none yet</span>';
+        },
+        highlightCode: renderCode,
+      });
+
+      viz.bindControls();
+
+      function buildSteps() {
+        viz.reset();
+        const n = Math.max(1, Math.min(3, parseInt(inputEl.value, 10) || 3));
+        inputEl.value = String(n);
+
+        let nextId = 1;
+        const root = { id: 'n0', label: '""', edgeLabel: '', finalState: 'default', children: [] };
+        const path = [];
+        const results = [];
+        const stackIds = new Set();
+
+        function cloneTree(node, activeId) {
+          let state = node.finalState || 'default';
+          if (node.id === activeId) state = 'active';
+          else if (stackIds.has(node.id)) state = 'on-path';
+          return {
+            id: node.id,
+            label: node.label,
+            edgeLabel: node.edgeLabel,
+            state,
+            children: node.children.map((c) => cloneTree(c, activeId)),
+          };
+        }
+
+        const snap = (open, close, activeId, codeLine, description) => {
+          viz.recordStep({
+            n,
+            open,
+            close,
+            path: [...path],
+            results: [...results],
+            tree: cloneTree(root, activeId),
+            codeLine,
+            description,
+          });
+        };
+
+        function explore(open, close, node) {
+          stackIds.add(node.id);
+          const cur = path.join('') || '""';
+          snap(open, close, node.id, 3, `Enter backtrack(open=${open}, close=${close}) with "${path.join('')}".`);
+
+          if (path.length === 2 * n) {
+            const str = path.join('');
+            results.push(str);
+            node.finalState = 'solution';
+            snap(open, close, node.id, 5, `Length reached ${2 * n}. Save "${str}" and return.`);
+            stackIds.delete(node.id);
+            return;
+          }
+
+          if (open < n) {
+            path.push('(');
+            const child = { id: `n${nextId++}`, label: path.join(''), edgeLabel: '+(', finalState: 'default', children: [] };
+            node.children.push(child);
+            snap(open, close, node.id, 8, `open (${open}) < n (${n}): append "(" and recurse.`);
+            explore(open + 1, close, child);
+            path.pop();
+            snap(open, close, node.id, 10, `Pop "(" to restore "${path.join('')}" before checking ")".`);
+          } else {
+            const prunedOpen = { id: `n${nextId++}`, label: 'open==n', edgeLabel: 'skip (', finalState: 'pruned', children: [] };
+            node.children.push(prunedOpen);
+            snap(open, close, prunedOpen.id, 7, `Prune "(": open (${open}) already equals n (${n}).`);
+          }
+
+          if (close < open) {
+            path.push(')');
+            const child = { id: `n${nextId++}`, label: path.join(''), edgeLabel: '+)', finalState: 'default', children: [] };
+            node.children.push(child);
+            snap(open, close, node.id, 12, `close (${close}) < open (${open}): append ")" and recurse.`);
+            explore(open, close + 1, child);
+            path.pop();
+            snap(open, close, node.id, 14, `Pop ")" to restore "${path.join('')}".`);
+          } else {
+            const prunedClose = { id: `n${nextId++}`, label: 'close==open', edgeLabel: 'skip )', finalState: 'pruned', children: [] };
+            node.children.push(prunedClose);
+            snap(open, close, prunedClose.id, 11, `Prune ")": close (${close}) is not less than open (${open}).`);
+          }
+
+          node.finalState = 'backtracked';
+          stackIds.delete(node.id);
+          snap(open, close, node.id, 3, `Finish frame ${cur} and return to parent.`);
+        }
+
+        snap(0, 0, null, 15, `Ready to generate valid parentheses for n = ${n}.`);
+        explore(0, 0, root);
+        snap(0, 0, null, 16, `Finished. Generated ${results.length} valid strings.`);
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', buildSteps);
+      document.querySelectorAll('[data-n]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.n;
+          buildSteps();
+        });
+      });
+
+      renderCode();
+      buildSteps();
+    </script>
+  </body>
+</html>

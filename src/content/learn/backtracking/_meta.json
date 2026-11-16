@@ -1,0 +1,7 @@
+{
+  "name": "Backtracking",
+  "icon": "🔙",
+  "color": "#bae1ff",
+  "order": 10,
+  "description": "Try a path and undo what does not work to explore all possibilities."
+}

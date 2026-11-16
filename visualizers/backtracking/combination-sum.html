@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Combination Sum Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/tree-canvas.css" />
+    <style>
+      .vis-input__target { width: 108px; flex: 0 0 auto; min-width: 90px; }
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.75rem; min-height: 360px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+      .vis-pill--warn { background: var(--vis-swapping); font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="cands-input" class="vis-input__field" type="text" value="2, 3, 6, 7" placeholder="Candidates: 2, 3, 6, 7" aria-label="Candidate numbers" />
+        <input id="target-input" class="vis-input__field vis-input__target" type="number" min="1" max="15" value="7" aria-label="Target sum" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-cands="2, 3, 6, 7" data-target="7">[2, 3, 6, 7], target 7</button>
+        <button class="vis-btn" type="button" data-cands="2, 3, 5" data-target="8">[2, 3, 5], target 8</button>
+        <button class="vis-btn" type="button" data-cands="3, 4, 8" data-target="6">[3, 4, 8], target 6</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Active</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> On Path</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Pruned (cand &gt; rem)</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Target Hit</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-rem" class="vis-pill">Remaining: 7</span>
+        <span id="status-start" class="vis-pill">Start Index: 0</span>
+        <span id="status-count" class="vis-pill">Matches: 0</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="tree-stage" class="bt-stage-wrap"></div>
+        <div class="bt-aux-row">
+          <div class="bt-aux-box">
+            <div class="bt-aux-box__title">Sorted Candidates &amp; Start</div>
+            <div id="cands-view" class="bt-chip-list"></div>
+          </div>
+          <div class="bt-aux-box">
+            <div class="bt-aux-box__title">Current Path</div>
+            <div id="path-view" class="bt-chip-list"></div>
+          </div>
+          <div class="bt-aux-box">
+            <div class="bt-aux-box__title">Valid Combinations</div>
+            <div id="result-view" class="bt-chip-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Candidates are sorted so the loop can stop early once a number exceeds remaining.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/tree-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def combination_sum(candidates: list[int], target: int) -> list[list[int]]:',
+        '    candidates.sort()',
+        '    result: list[list[int]] = []',
+        '    path: list[int] = []',
+        '    def backtrack(start: int, rem: int) -> None:',
+        '        if rem == 0:',
+        '            result.append(path.copy())',
+        '            return',
+        '        for i in range(start, len(candidates)):',
+        '            if candidates[i] > rem:',
+        '                break',
+        '            path.append(candidates[i])',
+        '            backtrack(i, rem - candidates[i])',
+        '            path.pop()',
+        '    backtrack(0, target)',
+        '    return result',
+      ];
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const candsEl = document.getElementById('cands-input');
+      const targetEl = document.getElementById('target-input');
+      const candsView = document.getElementById('cands-view');
+      const pathView = document.getElementById('path-view');
+      const resultView = document.getElementById('result-view');
+      const remPill = document.getElementById('status-rem');
+      const startPill = document.getElementById('status-start');
+      const countPill = document.getElementById('status-count');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const treeCanvas = new TreeCanvas({
+        containerEl: document.getElementById('tree-stage'),
+        nodeWidth: 70,
+        gapX: 12,
+        levelGap: 62,
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 650,
+        render: (step) => {
+          treeCanvas.render(step.tree);
+          infoEl.textContent = step.description;
+          remPill.textContent = `Remaining: ${step.rem}`;
+          remPill.className = step.pruned ? 'vis-pill vis-pill--warn' : 'vis-pill';
+          startPill.textContent = `Start Index: ${step.start}`;
+          countPill.textContent = `Matches: ${step.results.length}`;
+          candsView.innerHTML = step.cands
+            .map((v, i) => `<span class="bt-chip${i < step.start ? ' bt-chip--pruned' : i === step.activeIdx ? ' bt-chip--active' : ''}">${v}</span>`)
+            .join('');
+          pathView.innerHTML = step.path.length
+            ? step.path.map((v) => `<span class="bt-chip bt-chip--path">${v}</span>`).join('')
+            : '<span class="bt-chip">[]</span>';
+          resultView.innerHTML = step.results.length
+            ? step.results.map((r) => `<span class="bt-chip bt-chip--done">[${r.join(', ')}]</span>`).join('')
+            : '<span style="color:var(--text-muted);font-size:0.72rem;">none yet</span>';
+        },
+        highlightCode: renderCode,
+      });
+
+      viz.bindControls();
+
+      function parseInputs() {
+        const nums = candsEl.value
+          .split(/[,\s]+/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .map(Number)
+          .filter((n) => Number.isFinite(n) && n >= 1);
+        const cands = [...new Set(nums)].sort((a, b) => a - b).slice(0, 5);
+        const target = Math.max(1, Math.min(12, parseInt(targetEl.value, 10) || 7));
+        return { cands: cands.length ? cands : [2, 3, 6, 7], target };
+      }
+
+      function buildSteps() {
+        viz.reset();
+        const { cands, target } = parseInputs();
+        candsEl.value = cands.join(', ');
+        targetEl.value = String(target);
+
+        let nextId = 1;
+        const root = { id: 'n0', label: `rem=${target}`, edgeLabel: '', finalState: 'default', children: [] };
+        const path = [];
+        const results = [];
+        const stackIds = new Set();
+
+        function cloneTree(node, activeId) {
+          let state = node.finalState || 'default';
+          if (node.id === activeId) state = 'active';
+          else if (stackIds.has(node.id)) state = 'on-path';
+          return {
+            id: node.id,
+            label: node.label,
+            edgeLabel: node.edgeLabel,
+            state,
+            children: node.children.map((c) => cloneTree(c, activeId)),
+          };
+        }
+
+        const snap = (start, rem, activeIdx, activeId, pruned, codeLine, description) => {
+          viz.recordStep({
+            cands,
+            start,
+            rem,
+            activeIdx,
+            pruned,
+            path: [...path],
+            results: results.map((r) => [...r]),
+            tree: cloneTree(root, activeId),
+            codeLine,
+            description,
+          });
+        };
+
+        function explore(start, rem, node) {
+          stackIds.add(node.id);
+          snap(start, rem, -1, node.id, false, 4, `Enter backtrack(start=${start}, rem=${rem}) with path [${path.join(', ')}].`);
+
+          if (rem === 0) {
+            results.push([...path]);
+            node.finalState = 'solution';
+            snap(start, rem, -1, node.id, false, 6, `Remaining is 0. Save [${path.join(', ')}] and return.`);
+            stackIds.delete(node.id);
+            return;
+          }
+
+          for (let i = start; i < cands.length; i++) {
+            const val = cands[i];
+            if (val > rem) {
+              const prunedNode = { id: `n${nextId++}`, label: `${val}>${rem}`, edgeLabel: `+${val}`, finalState: 'pruned', children: [] };
+              node.children.push(prunedNode);
+              snap(start, rem, i, prunedNode.id, true, 10, `Prune: ${val} > rem (${rem}). Sorted order means later items also exceed ${rem}, so break.`);
+              break;
+            }
+
+            path.push(val);
+            const nextRem = rem - val;
+            const child = { id: `n${nextId++}`, label: `rem=${nextRem}`, edgeLabel: `+${val}`, finalState: 'default', children: [] };
+            node.children.push(child);
+            snap(start, rem, i, node.id, false, 11, `Pick ${val} (reuse allowed at index ${i}) -> remaining becomes ${nextRem}.`);
+
+            explore(i, nextRem, child);
+
+            path.pop();
+            snap(start, rem, i, node.id, false, 13, `Pop ${val} to backtrack and try the next candidate.`);
+          }
+
+          if (node.finalState !== 'solution') node.finalState = 'backtracked';
+          stackIds.delete(node.id);
+          snap(start, rem, -1, node.id, false, 4, `Finish loop at rem=${rem} and return.`);
+        }
+
+        snap(0, target, -1, null, false, 1, `Sort candidates to [${cands.join(', ')}] and start with target ${target}.`);
+        explore(0, target, root);
+        snap(0, target, -1, null, false, 15, `Finished. Found ${results.length} valid combination(s).`);
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', buildSteps);
+      document.querySelectorAll('[data-cands]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          candsEl.value = btn.dataset.cands;
+          targetEl.value = btn.dataset.target;
+          buildSteps();
+        });
+      });
+
+      renderCode();
+      buildSteps();
+    </script>
+  </body>
+</html>
