@@ -146,7 +146,16 @@ export const TOPICS: readonly TopicConfig[] = [
     color: 'var(--color-backtracking)',
     order: 10,
     description: 'Try a path and undo what does not work to explore all possibilities.',
-    previewAlgorithms: ['N-Queens', 'Sudoku', 'Permutations'],
+    previewAlgorithms: [
+      'Subsets (Power Set)',
+      'Permutations',
+      'Combination Sum',
+      'Subsets II (Duplicate Pruning)',
+      'Generate Parentheses',
+      'Word Search (Grid Backtracking)',
+      'N-Queens',
+      'Sudoku Solver',
+    ],
   },
 ] as const;
 
