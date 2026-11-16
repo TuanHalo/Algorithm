@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kosaraju's Strongly Connected Components Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/graph-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 340px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="graph-input" class="vis-input__field" type="text" value="A->B, B->C, C->A, B->D, D->E, E->F, F->D" placeholder="Directed edges: A->B, B->C, C->A" aria-label="Directed graph edges" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-edges="A->B, B->C, C->A, B->D, D->E, E->F, F->D">Two 3-Cycles</button>
+        <button class="vis-btn" type="button" data-edges="A->B, B->A, B->C, C->D, D->C, D->E">Chain of SCCs</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-phase" class="vis-pill">Phase 1: Record Finish Order</span>
+        <span id="status-sccs" class="vis-pill">SCCs Found: 0</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="graph-toolbar" class="g-toolbar"></div>
+        <div id="graph-stage"></div>
+        <div class="g-aux-row">
+          <div class="g-aux-box">
+            <div class="g-aux-box__title">Finish-Order Stack</div>
+            <div id="finish-view" class="g-chip-list"></div>
+          </div>
+          <div class="g-aux-box">
+            <div class="g-aux-box__title">Strongly Connected Components</div>
+            <div id="scc-view" class="g-chip-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Pass 1 pushes nodes by finish time; Pass 2 reverses every arrow and pops the stack to isolate each SCC.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/graph-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def kosaraju_scc(nodes: list[str], adj: dict[str, list[str]], rev: dict[str, list[str]]) -> list[list[str]]:',
+        '    seen, order = set(), []',
+        '    def dfs1(u: str) -> None:',
+        '        seen.add(u)',
+        '        for v in adj[u]:',
+        '            if v not in seen: dfs1(v)',
+        '        order.append(u)',
+        '    for u in nodes:',
+        '        if u not in seen: dfs1(u)',
+        '    seen.clear()',
+        '    sccs = []',
+        '    for u in reversed(order):',
+        '        if u not in seen:',
+        '            comp, stack = [], [u]; seen.add(u)',
+        '            while stack:',
+        '                curr = stack.pop(); comp.append(curr)',
+        '                for v in rev[curr]:',
+        '                    if v not in seen: seen.add(v); stack.append(v)',
+        '            sccs.append(comp)',
+        '    return sccs',
+      ];
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('graph-input');
+      const finishView = document.getElementById('finish-view');
+      const sccView = document.getElementById('scc-view');
+      const phasePill = document.getElementById('status-phase');
+      const sccsPill = document.getElementById('status-sccs');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new GraphCanvas({
+        stageEl: document.getElementById('graph-stage'),
+        toolbarEl: document.getElementById('graph-toolbar'),
+        directed: true,
+        weighted: false,
+        onChange: (serialized) => { inputEl.value = serialized; buildSteps(); },
+        onSelectNode: () => { buildSteps(); },
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 650,
+        render: (step) => {
+          canvas.render(step.graphState);
+          infoEl.textContent = step.description;
+          phasePill.textContent = step.phase;
+          sccsPill.textContent = `SCCs Found: ${step.sccs.length}`;
+          finishView.innerHTML = step.order.length
+            ? step.order.map((n) => `<span class="g-chip g-chip--accent">${n}</span>`).join('')
+            : '<span style="color:var(--text-muted);font-size:0.72rem;">empty</span>';
+          sccView.innerHTML = step.sccs.length
+            ? step.sccs.map((g, i) => `<span class="g-chip g-chip--done">SCC${i + 1}: [${g.join(', ')}]</span>`).join('')
+            : '<span style="color:var(--text-muted);font-size:0.72rem;">waiting for Pass 2</span>';
+        },
+        highlightCode: renderCode,
+      });
+
+      viz.bindControls();
+
+      function buildSteps() {
+        viz.reset();
+        const nodes = canvas.nodes.map((n) => n.id);
+        if (!nodes.length) return;
+
+        const adj = {};
+        const rev = {};
+        nodes.forEach((n) => { adj[n] = []; rev[n] = []; });
+        canvas.edges.forEach((e) => {
+          adj[e.from].push(e.to);
+          rev[e.to].push(e.from);
+        });
+        Object.values(adj).forEach((l) => l.sort());
+        Object.values(rev).forEach((l) => l.sort());
+        const revEdges = canvas.edges.map((e) => ({ from: e.to, to: e.from }));
+
+        const seen1 = new Set();
+        const order = [];
+
+        const snap1 = (active, codeLine, description) => {
+          const nodeStates = {};
+          const nodeBadges = {};
+          nodes.forEach((n) => {
+            if (n === active) nodeStates[n] = 'active';
+            else if (order.includes(n)) nodeStates[n] = 'visited';
+            else if (seen1.has(n)) nodeStates[n] = 'visiting';
+            const fIdx = order.indexOf(n);
+            if (fIdx !== -1) nodeBadges[n] = `f=${fIdx + 1}`;
+          });
+          viz.recordStep({
+            phase: 'Phase 1: DFS on G (Finish Order)',
+            order: [...order],
+            sccs: [],
+            graphState: { nodeStates, nodeBadges, edgeStates: {} },
+            codeLine,
+            description,
+          });
+        };
+
+        function dfs1(u) {
+          seen1.add(u);
+          snap1(u, 3, `Pass 1: visit ${u}.`);
+          for (const v of adj[u]) {
+            if (!seen1.has(v)) dfs1(v);
+          }
+          order.push(u);
+          snap1(u, 6, `Pass 1: ${u} finished exploring, push ${u} onto the finish stack.`);
+        }
+
+        for (const u of nodes) {
+          if (!seen1.has(u)) dfs1(u);
+        }
+
+        const seen2 = new Set();
+        const sccs = [];
+        const sccOf = {};
+
+        const snap2 = (active, exploringKey, codeLine, description) => {
+          const nodeStates = {};
+          const nodeBadges = {};
+          nodes.forEach((n) => {
+            if (n === active) nodeStates[n] = 'active';
+            else if (sccOf[n] !== undefined) nodeStates[n] = `comp${sccOf[n] % 5}`;
+            if (sccOf[n] !== undefined) nodeBadges[n] = `SCC${sccOf[n] + 1}`;
+          });
+          const edgeStates = {};
+          revEdges.forEach((e) => {
+            edgeStates[`${e.from}->${e.to}`] = 'transposed';
+          });
+          if (exploringKey) edgeStates[exploringKey] = 'exploring';
+
+          viz.recordStep({
+            phase: 'Phase 2: DFS on Gᵀ (Reversed Edges)',
+            order: [...order],
+            sccs: sccs.map((g) => [...g]),
+            graphState: {
+              nodeStates,
+              nodeBadges,
+              edgeStates,
+              overrideEdges: revEdges,
+              overrideDirected: true,
+            },
+            codeLine,
+            description,
+          });
+        };
+
+        snap2(null, null, 9, 'Reverse all directed edges to form Gᵀ and pop nodes in reverse finish order.');
+
+        for (let i = order.length - 1; i >= 0; i--) {
+          const root = order[i];
+          if (seen2.has(root)) continue;
+          const idx = sccs.length;
+          const comp = [];
+          const stack = [root];
+          seen2.add(root);
+          sccOf[root] = idx;
+          sccs.push(comp);
+          snap2(root, null, 13, `Pop ${root} from finish stack to start SCC #${idx + 1}.`);
+
+          while (stack.length > 0) {
+            const curr = stack.pop();
+            comp.push(curr);
+            snap2(curr, null, 15, `Add ${curr} to SCC #${idx + 1}.`);
+            for (const v of rev[curr]) {
+              const key = `${curr}->${v}`;
+              if (!seen2.has(v)) {
+                seen2.add(v);
+                sccOf[v] = idx;
+                stack.push(v);
+                snap2(curr, key, 17, `Follow reversed edge ${curr} -> ${v} into SCC #${idx + 1}.`);
+              }
+            }
+          }
+        }
+
+        snap2(null, null, 19, `Kosaraju complete! Found ${sccs.length} strongly connected component(s).`);
+        viz.goToStep(0);
+      }
+
+      function loadFromInput() {
+        const parsed = GraphCanvas.parseEdgeList(inputEl.value, { directed: true, weighted: false });
+        canvas.loadGraph(parsed.nodes, parsed.edges);
+        buildSteps();
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', loadFromInput);
+      document.querySelectorAll('[data-edges]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.edges;
+          loadFromInput();
+        });
+      });
+
+      renderCode();
+      loadFromInput();
+    </script>
+  </body>
+</html>

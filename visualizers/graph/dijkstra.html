@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dijkstra's Shortest Path Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/graph-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 340px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="graph-input" class="vis-input__field" type="text" value="A-B:4, A-C:2, B-C:1, B-D:5, C-D:8, C-E:10, D-E:2, D-F:6, E-F:3" placeholder="Weighted edges: A-B:4, A-C:2" aria-label="Weighted graph edges" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-edges="A-B:4, A-C:2, B-C:1, B-D:5, C-D:8, C-E:10, D-E:2, D-F:6, E-F:3">City Roads</button>
+        <button class="vis-btn" type="button" data-edges="A-B:10, A-C:3, C-B:4, B-D:2, C-D:8, C-E:2, E-D:3">Indirect Shortcut</button>
+        <button class="vis-btn" type="button" data-edges="A-B:2, A-C:5, B-D:3, C-D:1, D-E:4">Diamond</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Popped (Min)</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-sorted);"></span> In Heap</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Settled</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-start" class="vis-pill">Start: A (click any node to change)</span>
+        <span id="status-settled" class="vis-pill">Settled: -</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="graph-toolbar" class="g-toolbar"></div>
+        <div id="graph-stage"></div>
+        <div class="g-aux-row">
+          <div class="g-aux-box">
+            <div class="g-aux-box__title">Min-Heap (dist, node)</div>
+            <div id="heap-view" class="g-chip-list"></div>
+          </div>
+          <div class="g-aux-box">
+            <div class="g-aux-box__title">dist[] &amp; prev[] Table</div>
+            <div id="dist-view"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Click any node to change the source, or edit weights and edges directly on the canvas.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/graph-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'import heapq',
+        'def dijkstra(nodes: list[str], adj: dict[str, list[tuple[str, int]]], start: str) -> dict[str, float]:',
+        '    dist = {u: float("inf") for u in nodes}',
+        '    dist[start] = 0',
+        '    heap: list[tuple[int, str]] = [(0, start)]',
+        '    while heap:',
+        '        d, u = heapq.heappop(heap)',
+        '        if d > dist[u]:',
+        '            continue  # Skip stale heap entry',
+        '        for v, w in adj[u]:',
+        '            if d + w < dist[v]:',
+        '                dist[v] = d + w',
+        '                heapq.heappush(heap, (dist[v], v))',
+        '    return dist',
+      ];
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('graph-input');
+      const heapView = document.getElementById('heap-view');
+      const distView = document.getElementById('dist-view');
+      const startPill = document.getElementById('status-start');
+      const settledPill = document.getElementById('status-settled');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new GraphCanvas({
+        stageEl: document.getElementById('graph-stage'),
+        toolbarEl: document.getElementById('graph-toolbar'),
+        directed: false,
+        weighted: true,
+        defaultWeight: 4,
+        onChange: (serialized) => { inputEl.value = serialized; buildSteps(); },
+        onSelectNode: () => { buildSteps(); },
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 650,
+        render: (step) => {
+          canvas.render(step.graphState);
+          infoEl.textContent = step.description;
+          settledPill.textContent = `Settled: ${step.settled.join(', ') || '-'}`;
+
+          const sortedHeap = [...step.heap].sort((a, b) => a[0] - b[0] || a[1].localeCompare(b[1]));
+          heapView.innerHTML = sortedHeap.length
+            ? sortedHeap.map(([d, n], i) => `<span class="g-chip${i === 0 ? ' g-chip--active' : ''}">(${d}, ${n})</span>`).join('')
+            : '<span style="color:var(--text-muted);font-size:0.72rem;">empty</span>';
+
+          const keys = Object.keys(step.dist);
+          distView.innerHTML = `<table class="g-mini-table"><thead><tr><th>Node</th>${keys.map((k) => `<th>${k}</th>`).join('')}</tr></thead><tbody>
+            <tr><td><strong>dist</strong></td>${keys.map((k) => `<td class="${k === step.updated ? 'g-mini-cell--updated' : ''}">${step.dist[k] === Infinity ? '∞' : step.dist[k]}</td>`).join('')}</tr>
+            <tr><td><strong>prev</strong></td>${keys.map((k) => `<td>${step.prev[k] || '-'}</td>`).join('')}</tr>
+          </tbody></table>`;
+        },
+        highlightCode: renderCode,
+      });
+
+      viz.bindControls();
+
+      function buildSteps() {
+        viz.reset();
+        const nodes = canvas.nodes.map((n) => n.id);
+        if (!nodes.length) return;
+        const start = canvas.startNode || nodes[0];
+        startPill.textContent = `Start: ${start} (click any node to change)`;
+
+        const adj = {};
+        nodes.forEach((n) => { adj[n] = []; });
+        canvas.edges.forEach((e) => {
+          const w = Math.max(0, Number(e.weight ?? 1));
+          adj[e.from].push([e.to, w]);
+          adj[e.to].push([e.from, w]);
+        });
+        Object.values(adj).forEach((l) => l.sort((a, b) => a[0].localeCompare(b[0])));
+
+        const dist = {};
+        const prev = {};
+        nodes.forEach((n) => { dist[n] = Infinity; prev[n] = null; });
+        dist[start] = 0;
+
+        const heap = [[0, start]];
+        const settled = [];
+        const parentEdge = {};
+
+        const snap = (current, updated, exploringEdge, codeLine, description) => {
+          const queuedSet = new Set(heap.map((item) => item[1]));
+          const nodeStates = {};
+          const nodeBadges = {};
+          nodes.forEach((n) => {
+            if (n === current) nodeStates[n] = 'active';
+            else if (settled.includes(n)) nodeStates[n] = 'settled';
+            else if (queuedSet.has(n)) nodeStates[n] = 'queued';
+            nodeBadges[n] = dist[n] === Infinity ? '∞' : String(dist[n]);
+          });
+          const edgeStates = {};
+          Object.values(parentEdge).forEach((k) => { edgeStates[k] = 'relaxed'; });
+          if (exploringEdge) edgeStates[exploringEdge] = 'exploring';
+
+          viz.recordStep({
+            heap: heap.map((x) => [...x]),
+            dist: { ...dist },
+            prev: { ...prev },
+            settled: [...settled],
+            updated,
+            graphState: { nodeStates, nodeBadges, edgeStates },
+            codeLine,
+            description,
+          });
+        };
+
+        snap(null, start, null, 4, `Initialize dist[${start}] = 0 and push (0, ${start}) to the min-heap.`);
+
+        while (heap.length > 0) {
+          heap.sort((a, b) => a[0] - b[0] || a[1].localeCompare(b[1]));
+          const [d, u] = heap.shift();
+          if (d > dist[u]) {
+            snap(u, null, null, 8, `Pop stale entry (${d}, ${u}) because dist[${u}] is already ${dist[u]}.`);
+            continue;
+          }
+          if (!settled.includes(u)) settled.push(u);
+          snap(u, null, null, 6, `Pop (${d}, ${u}) from the min-heap. Distance to ${u} is now final.`);
+
+          for (const [v, w] of adj[u]) {
+            const key = GraphCanvas.edgeKey(u, v, false);
+            if (d + w < dist[v]) {
+              dist[v] = d + w;
+              prev[v] = u;
+              parentEdge[v] = key;
+              heap.push([dist[v], v]);
+              snap(u, v, key, 12, `Relax ${u} - ${v} (w=${w}): ${d} + ${w} < old dist, so update dist[${v}] = ${dist[v]}.`);
+            } else {
+              snap(u, null, key, 10, `Check ${u} - ${v} (w=${w}): ${d + w} does not improve dist[${v}] = ${dist[v] === Infinity ? '∞' : dist[v]}.`);
+            }
+          }
+        }
+
+        snap(null, null, null, 13, `Dijkstra finished from ${start}. Shortest paths are locked in.`);
+        viz.goToStep(0);
+      }
+
+      function loadFromInput() {
+        const parsed = GraphCanvas.parseEdgeList(inputEl.value, { directed: false, weighted: true, defaultWeight: 1 });
+        parsed.edges.forEach((e) => { e.weight = Math.max(0, e.weight); });
+        canvas.loadGraph(parsed.nodes, parsed.edges);
+        buildSteps();
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', loadFromInput);
+      document.querySelectorAll('[data-edges]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.edges;
+          loadFromInput();
+        });
+      });
+
+      renderCode();
+      loadFromInput();
+    </script>
+  </body>
+</html>
