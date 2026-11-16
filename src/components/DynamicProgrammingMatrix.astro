@@ -1,0 +1,179 @@
+---
+import { withBase } from '../utils/url';
+
+interface DynamicProgrammingSummaryRow {
+  readonly slug: string;
+  readonly name: string;
+  readonly state: string;
+  readonly time: string;
+  readonly space: string;
+  readonly direction: string;
+  readonly bestFor: string;
+}
+
+const DP_MATRIX: readonly DynamicProgrammingSummaryRow[] = [
+  {
+    slug: 'fibonacci-dp',
+    name: 'Fibonacci (Memo vs. Tabulation)',
+    state: 'dp[i]',
+    time: 'O(n)',
+    space: 'O(n) → O(1)',
+    direction: 'Top-down cache / Left → Right',
+    bestFor: 'Learning overlapping subproblems, memoization, and rolling-variable compression',
+  },
+  {
+    slug: 'house-robber',
+    name: 'House Robber',
+    state: 'dp[i]',
+    time: 'O(n)',
+    space: 'O(1)',
+    direction: 'Take-or-skip Left → Right',
+    bestFor: 'Linear pick-or-skip decisions where adjacent items cannot both be chosen',
+  },
+  {
+    slug: 'coin-change',
+    name: 'Coin Change (Min Coins)',
+    state: 'dp[a]',
+    time: 'O(amount · k)',
+    space: 'O(amount)',
+    direction: 'Target 1 → amount (unbounded)',
+    bestFor: 'Minimum items needed to hit a target when choices can be reused freely',
+  },
+  {
+    slug: 'longest-increasing-subsequence',
+    name: 'Longest Increasing Subsequence',
+    state: 'dp[i] / tails[k]',
+    time: 'O(n²) / O(n log n)',
+    space: 'O(n)',
+    direction: 'j < i scan / Binary search',
+    bestFor: 'Finding the longest strictly growing subsequence with or without patience tails',
+  },
+  {
+    slug: 'unique-paths',
+    name: 'Unique Paths (2D Grid DP)',
+    state: 'dp[r][c]',
+    time: 'O(m · n)',
+    space: 'O(m · n) → O(n)',
+    direction: 'Top + Left → Bottom-Right',
+    bestFor: 'Counting paths or minimizing costs across 2D grids with monotonic moves',
+  },
+  {
+    slug: 'zero-one-knapsack',
+    name: '0/1 Knapsack',
+    state: 'dp[i][w]',
+    time: 'O(n · W)',
+    space: 'O(n · W) → O(W)',
+    direction: 'Item-by-item / Reverse w',
+    bestFor: 'Maximizing value under a weight budget when each item is used at most once',
+  },
+  {
+    slug: 'partition-equal-subset-sum',
+    name: 'Partition Equal Subset Sum',
+    state: 'dp[s] (bool)',
+    time: 'O(n · S)',
+    space: 'O(S)',
+    direction: 'Reverse sum target → num',
+    bestFor: 'Checking whether a subset can sum to an exact target without reusing items',
+  },
+  {
+    slug: 'longest-common-subsequence',
+    name: 'Longest Common Subsequence',
+    state: 'dp[i][j]',
+    time: 'O(m · n)',
+    space: 'O(m · n) → O(min(m,n))',
+    direction: 'Diag +1 match / max(Top, Left)',
+    bestFor: 'Comparing two sequences to find shared order-preserving characters or diffs',
+  },
+  {
+    slug: 'edit-distance',
+    name: 'Edit Distance (Levenshtein)',
+    state: 'dp[i][j]',
+    time: 'O(m · n)',
+    space: 'O(m · n) → O(min(m,n))',
+    direction: 'Insert / Delete / Replace',
+    bestFor: 'Measuring minimum single-character edits to transform one string into another',
+  },
+  {
+    slug: 'longest-palindromic-substring',
+    name: 'Longest Palindromic Substring',
+    state: 'dp[l][r] (bool)',
+    time: 'O(n²)',
+    space: 'O(n²)',
+    direction: 'Diagonal by length 1 → n',
+    bestFor: 'Interval problems where range [l, r] depends on the inner range [l + 1, r - 1]',
+  },
+  {
+    slug: 'stock-with-cooldown',
+    name: 'Stock with Cooldown (State Machine)',
+    state: 'hold, sold, rest',
+    time: 'O(n)',
+    space: 'O(1)',
+    direction: 'Day-by-day state transitions',
+    bestFor: 'Sequential decisions governed by modes, cooldowns, or transaction fees',
+  },
+  {
+    slug: 'tsp-bitmask',
+    name: 'Traveling Salesperson (Bitmask DP)',
+    state: 'dp[mask][last]',
+    time: 'O(n² · 2ⁿ)',
+    space: 'O(n · 2ⁿ)',
+    direction: 'Subsets mask 1 → (1 << n) - 1',
+    bestFor: 'Small-n (n ≤ 16) ordering or pairing problems tracking which nodes are visited',
+  },
+] as const;
+---
+
+<section class="clay-section dp-matrix">
+  <h2 class="clay-section__title">Dynamic Programming comparison and decision matrix</h2>
+  <p class="dp-matrix__intro">
+    Compare DP patterns by state representation, transition direction, and space-optimization tradeoffs.
+  </p>
+  <div class="matrix-scroll">
+    <table class="clay-table">
+      <thead>
+        <tr>
+          <th>Pattern / Problem</th>
+          <th>State</th>
+          <th>Time</th>
+          <th>Space</th>
+          <th>Transition Direction</th>
+          <th>Best When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {DP_MATRIX.map((row) => (
+          <tr>
+            <td>
+              <a href={withBase(`/learn/dynamic-programming/${row.slug}/`)} class="matrix-link">
+                {row.name}
+              </a>
+            </td>
+            <td><code>{row.state}</code></td>
+            <td><code>{row.time}</code></td>
+            <td><code>{row.space}</code></td>
+            <td>{row.direction}</td>
+            <td>{row.bestFor}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+  .dp-matrix {
+    margin-top: var(--space-2xl);
+  }
+
+  .dp-matrix__intro {
+    margin-bottom: var(--space-md);
+  }
+
+  .matrix-scroll {
+    overflow-x: auto;
+  }
+
+  .matrix-link {
+    font-weight: 600;
+  }
+</style>
