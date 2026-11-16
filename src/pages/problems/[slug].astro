@@ -273,18 +273,25 @@ const approaches = problem.data.approaches ?? [];
 
   .clay-badge--tag {
     font-size: 0.8rem;
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-clay-subtle);
+    color: var(--text-primary);
   }
 
   .clay-badge--link {
     text-decoration: none;
-    color: var(--color-sorting);
-    transition: transform var(--transition-bounce), box-shadow var(--transition-fast);
+    color: #1b6b50;
+    font-weight: 600;
+    transition: transform var(--transition-bounce), box-shadow var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
   }
 
   .clay-badge--link:hover {
+    background: #ffffff;
+    color: #0d281e;
+    border-color: rgba(27, 107, 80, 0.3);
     transform: translateY(-1px);
-    box-shadow: var(--shadow-clay-card);
+    box-shadow: var(--shadow-clay);
   }
 
   .problem-diagram {

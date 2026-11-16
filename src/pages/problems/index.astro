@@ -151,8 +151,16 @@ const problems = (await getCollection('problems')).sort((a, b) =>
     color: var(--text-muted);
   }
 
+  .filters .clay-btn {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
   .filters .clay-btn.active {
-    background: var(--color-sorting);
+    background: #8ce0be;
+    color: #143627;
+    font-weight: 600;
+    border-color: rgba(20, 54, 39, 0.2);
     box-shadow: var(--shadow-clay-pressed);
   }
 
