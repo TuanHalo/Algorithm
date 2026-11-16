@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fast &amp; Slow Pointers Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+
+      .vis-status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+      }
+
+      .vis-status-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+      .vis-pill {
+        background: var(--bg-card);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+      }
+
+      .vis-pill--accent {
+        background: rgba(240, 182, 208, 0.45);
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .vis-canvas {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: center;
+        min-height: 195px;
+        padding: 1.5rem 1.25rem;
+      }
+
+      .fs-chain {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        padding: 2rem 0.75rem 1.7rem;
+        border-radius: var(--border-radius-sm);
+        background: rgba(255, 255, 255, 0.38);
+        box-shadow: var(--shadow-clay-pressed);
+        min-height: 120px;
+      }
+
+      .fs-slot {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .fs-badges-top,
+      .fs-badges-bottom {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 3px;
+        white-space: nowrap;
+      }
+
+      .fs-badges-top { top: -25px; }
+      .fs-badges-bottom { bottom: -22px; }
+
+      .fs-badge {
+        font-family: var(--font-code);
+        font-size: 0.6rem;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 5px;
+        box-shadow: var(--shadow-clay-subtle);
+      }
+
+      .fs-badge--slow { background: #a8d8ea; color: #0c4a6e; }
+      .fs-badge--fast { background: #ffc8a2; color: #5c2d0c; }
+      .fs-badge--mid { background: #a8e6cf; color: #124d36; }
+
+      .fs-node {
+        min-width: 52px;
+        padding: 0.5rem 0.85rem;
+        border-radius: var(--border-radius-sm);
+        background: var(--vis-default);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        font-family: var(--font-code);
+        font-size: 0.95rem;
+        font-weight: 700;
+        text-align: center;
+        transition: all 240ms ease;
+      }
+
+      .fs-node--slow { background: var(--vis-sorted); transform: translateY(-3px); }
+      .fs-node--fast { background: var(--vis-comparing); transform: translateY(-3px); }
+      .fs-node--both { background: var(--vis-pivot); transform: translateY(-4px) scale(1.04); }
+      .fs-node--middle {
+        background: var(--vis-active);
+        transform: translateY(-5px) scale(1.06);
+        box-shadow: var(--shadow-clay);
+      }
+
+      .fs-arrow {
+        font-family: var(--font-code);
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+      }
+
+      .fs-null {
+        position: relative;
+        font-family: var(--font-code);
+        font-size: 0.76rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        padding: 0.4rem 0.65rem;
+        border-radius: var(--border-radius-xs);
+        border: 1px dashed rgba(90, 90, 90, 0.3);
+        background: rgba(255, 255, 255, 0.45);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input
+          id="list-input"
+          class="vis-input__field"
+          type="text"
+          value="10, 20, 30, 40, 50, 60"
+          placeholder="Node values (comma-separated, up to 9 nodes)"
+          aria-label="Linked list values for fast and slow pointers"
+        />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">▶ Load &amp; Run</button>
+        <button id="btn-random" class="vis-btn" type="button">🎲 Random</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Try presets:</span>
+        <button class="vis-btn" type="button" data-list="10, 20, 30, 40, 50">Odd (5 Nodes)</button>
+        <button class="vis-btn" type="button" data-list="10, 20, 30, 40, 50, 60">Even (6 Nodes)</button>
+        <button class="vis-btn" type="button" data-list="7, 14, 21, 28, 35, 42, 49">Long (7 Nodes)</button>
+        <button class="vis-btn" type="button" data-list="99">Single Node</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button" title="Jump to start">⏮ Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button" title="Previous step">◀ Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button" title="Play animation">▶ Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" title="Pause animation" style="display: none;">⏸ Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button" title="Next step">Next ▶</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed">
+          <span>Speed</span>
+          <input class="vis-speed-slider" type="range" min="1" max="10" value="6" />
+        </label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-sorted);"></span> Slow (+1)</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Fast (+2)</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> Both at Same Node</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Middle Found</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-round" class="vis-pill vis-pill--accent">Round: 0</span>
+        <div class="vis-status-group">
+          <span id="status-slow" class="vis-pill">slow: idx 0</span>
+          <span id="status-fast" class="vis-pill">fast: idx 0</span>
+        </div>
+      </div>
+
+      <div id="vis-canvas" class="vis-canvas" aria-live="polite"></div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">
+        Enter list values above and press <strong>Play</strong> or <strong>Next</strong> to watch <code>slow</code> and <code>fast</code> race.
+      </div>
+
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def find_middle(head: ListNode | None) -> ListNode | None:',
+        '    slow = head',
+        '    fast = head',
+        '    while fast is not None and fast.next is not None:',
+        '        slow = slow.next       # Move 1 step',
+        '        fast = fast.next.next  # Move 2 steps',
+        '    return slow',
+      ];
+
+      const canvasEl = document.getElementById('vis-canvas');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+      const listInputEl = document.getElementById('list-input');
+      const statusRoundEl = document.getElementById('status-round');
+      const statusSlowEl = document.getElementById('status-slow');
+      const statusFastEl = document.getElementById('status-fast');
+
+      function renderCodePanel() {
+        codeEl.innerHTML = PYTHON_LINES.map((line, index) => (
+          `<span class="vis-code__line" data-line="${index}"><span class="vis-code__line-number">${index + 1}</span>${line}</span>`
+        )).join('');
+      }
+
+      function highlightCodeLine(lineIndex) {
+        codeEl.querySelectorAll('.vis-code__line').forEach((el, idx) => {
+          el.classList.toggle('vis-code__line--active', idx === lineIndex);
+        });
+      }
+
+      function parseList(raw) {
+        const vals = raw
+          .split(',')
+          .map((s) => Number(s.trim()))
+          .filter((n) => Number.isFinite(n))
+          .slice(0, 9);
+        return vals.length > 0 ? vals : [10, 20, 30, 40, 50];
+      }
+
+      function renderStep(step) {
+        statusRoundEl.textContent = step.done ? `Middle Found (Rounds: ${step.round})` : `Round: ${step.round}`;
+        statusSlowEl.textContent = `slow: ${step.slow < step.nodes.length ? `idx ${step.slow} (${step.nodes[step.slow]})` : 'None'}`;
+        statusFastEl.textContent = `fast: ${step.fast < step.nodes.length ? `idx ${step.fast} (${step.nodes[step.fast]})` : 'None'}`;
+
+        const nodesHtml = step.nodes.map((val, idx) => {
+          const isSlow = idx === step.slow;
+          const isFast = idx === step.fast;
+          const topBadges = [];
+          const bottomBadges = [];
+
+          if (step.done && isSlow) {
+            topBadges.push('<span class="fs-badge fs-badge--mid">MIDDLE</span>');
+          } else if (isSlow) {
+            topBadges.push('<span class="fs-badge fs-badge--slow">SLOW</span>');
+          }
+          if (isFast) {
+            bottomBadges.push('<span class="fs-badge fs-badge--fast">FAST</span>');
+          }
+
+          let cls = '';
+          if (step.done && isSlow) cls = 'fs-node--middle';
+          else if (isSlow && isFast) cls = 'fs-node--both';
+          else if (isSlow) cls = 'fs-node--slow';
+          else if (isFast) cls = 'fs-node--fast';
+
+          return `
+            <div class="fs-slot">
+              ${topBadges.length > 0 ? `<div class="fs-badges-top">${topBadges.join('')}</div>` : ''}
+              <div class="fs-node ${cls}">${val}</div>
+              ${bottomBadges.length > 0 ? `<div class="fs-badges-bottom">${bottomBadges.join('')}</div>` : ''}
+              <span class="fs-arrow">→</span>
+            </div>
+          `;
+        }).join('');
+
+        const nullHasFast = step.fast >= step.nodes.length;
+        const nullHtml = `
+          <div class="fs-slot">
+            <span class="fs-null">None</span>
+            ${nullHasFast ? '<div class="fs-badges-bottom"><span class="fs-badge fs-badge--fast">FAST</span></div>' : ''}
+          </div>
+        `;
+
+        canvasEl.innerHTML = `<div class="fs-chain">${nodesHtml}${nullHtml}</div>`;
+        infoEl.innerHTML = step.description;
+      }
+
+      const engine = new VisualizerEngine({
+        render: renderStep,
+        highlightCode: highlightCodeLine,
+        defaultSpeed: 700,
+      });
+
+      function buildSteps(nodes) {
+        engine.reset();
+        const n = nodes.length;
+        let slow = 0;
+        let fast = 0;
+        let round = 0;
+
+        engine.recordStep({
+          nodes: [...nodes],
+          slow,
+          fast,
+          round,
+          done: false,
+          description: `Both <code>slow</code> and <code>fast</code> start at <code>head</code> (<strong>${nodes[0]}</strong>).`,
+          codeLine: 2,
+        });
+
+        while (fast < n && fast + 1 < n) {
+          round++;
+          engine.recordStep({
+            nodes: [...nodes],
+            slow,
+            fast,
+            round,
+            done: false,
+            description: `Check loop: <code>fast</code> (${nodes[fast]}) and <code>fast.next</code> (${nodes[fast + 1]}) are both non-None.`,
+            codeLine: 3,
+          });
+
+          slow += 1;
+          fast += 2;
+          const fastDesc = fast < n ? `<strong>${nodes[fast]}</strong> (index ${fast})` : '<code>None</code>';
+          engine.recordStep({
+            nodes: [...nodes],
+            slow,
+            fast,
+            round,
+            done: false,
+            description: `Round ${round}: <code>slow</code> steps +1 to <strong>${nodes[slow]}</strong>; <code>fast</code> leaps +2 to ${fastDesc}.`,
+            codeLine: 5,
+          });
+        }
+
+        engine.recordStep({
+          nodes: [...nodes],
+          slow,
+          fast,
+          round,
+          done: true,
+          description: `${fast >= n ? '<code>fast</code> reached <code>None</code>' : '<code>fast.next</code> is <code>None</code>'}! Returning <code>slow</code> = <strong>${nodes[slow]}</strong> (index ${slow}) as the middle node.`,
+          codeLine: 6,
+        });
+
+        engine.goToStep(0);
+      }
+
+      renderCodePanel();
+      engine.bindControls();
+
+      document.getElementById('btn-apply').addEventListener('click', () => {
+        const nodes = parseList(listInputEl.value);
+        listInputEl.value = nodes.join(', ');
+        buildSteps(nodes);
+        engine.play();
+      });
+
+      document.getElementById('btn-random').addEventListener('click', () => {
+        const count = Math.floor(Math.random() * 5) + 4;
+        const vals = Array.from({ length: count }, () => Math.floor(Math.random() * 89) + 10);
+        listInputEl.value = vals.join(', ');
+        buildSteps(vals);
+      });
+
+      document.querySelectorAll('[data-list]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          listInputEl.value = btn.dataset.list;
+          buildSteps(parseList(btn.dataset.list));
+        });
+      });
+
+      buildSteps(parseList(listInputEl.value));
+    </script>
+  </body>
+</html>

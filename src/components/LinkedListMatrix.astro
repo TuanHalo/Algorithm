@@ -1,0 +1,125 @@
+---
+import { withBase } from '../utils/url';
+
+interface LinkedListSummaryRow {
+  readonly slug: string;
+  readonly name: string;
+  readonly headTailEdit: string;
+  readonly searchAccess: string;
+  readonly extraSpace: string;
+  readonly pointers: string;
+  readonly bestFor: string;
+}
+
+const LINKED_LIST_MATRIX: readonly LinkedListSummaryRow[] = [
+  {
+    slug: 'singly-linked-list',
+    name: 'Singly Linked List',
+    headTailEdit: 'O(1) head / O(n) tail',
+    searchAccess: 'O(n)',
+    extraSpace: 'O(n)',
+    pointers: 'next',
+    bestFor: 'Dynamic stacks, queues & O(1) front inserts without resizing',
+  },
+  {
+    slug: 'doubly-linked-list',
+    name: 'Doubly Linked List',
+    headTailEdit: 'O(1) both ends',
+    searchAccess: 'O(n)',
+    extraSpace: 'O(n)',
+    pointers: 'prev + next',
+    bestFor: 'O(1) node unlinking given a reference, deques & browser history',
+  },
+  {
+    slug: 'reverse-linked-list',
+    name: 'Reverse Linked List',
+    headTailEdit: 'O(n) rewire',
+    searchAccess: 'O(n)',
+    extraSpace: 'O(1)',
+    pointers: 'prev, curr, next',
+    bestFor: 'In-place chain inversion, palindrome checks & k-group reversals',
+  },
+  {
+    slug: 'fast-slow-pointers',
+    name: 'Fast & Slow Pointers',
+    headTailEdit: 'O(n) scan',
+    searchAccess: 'O(n)',
+    extraSpace: 'O(1)',
+    pointers: 'slow (+1), fast (+2)',
+    bestFor: 'Finding the middle node in one pass without counting length',
+  },
+  {
+    slug: 'cycle-detection',
+    name: "Floyd's Cycle Detection",
+    headTailEdit: 'O(n) detect + entry',
+    searchAccess: 'O(n)',
+    extraSpace: 'O(1)',
+    pointers: 'slow, fast, finder',
+    bestFor: 'Detecting loops and finding the cycle start in O(1) space',
+  },
+  {
+    slug: 'lru-cache',
+    name: 'LRU Cache',
+    headTailEdit: 'O(1) promote/evict',
+    searchAccess: 'O(1) via map',
+    extraSpace: 'O(capacity)',
+    pointers: 'map + DLL',
+    bestFor: 'Fixed-capacity caches needing O(1) lookup and oldest-item eviction',
+  },
+] as const;
+---
+
+<section class="clay-section linked-list-matrix">
+  <h2 class="clay-section__title">Linked list comparison and decision matrix</h2>
+  <p class="linked-list-matrix__intro">
+    Compare pointer layouts, traversal patterns, and O(1) cache tradeoffs.
+  </p>
+  <div class="matrix-scroll">
+    <table class="clay-table">
+      <thead>
+        <tr>
+          <th>Pattern</th>
+          <th>Edit / Mutation</th>
+          <th>Search / Access</th>
+          <th>Space</th>
+          <th>Pointers</th>
+          <th>Best When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {LINKED_LIST_MATRIX.map((row) => (
+          <tr>
+            <td>
+              <a href={withBase(`/learn/linked-list/${row.slug}/`)} class="matrix-link">
+                {row.name}
+              </a>
+            </td>
+            <td><code>{row.headTailEdit}</code></td>
+            <td><code>{row.searchAccess}</code></td>
+            <td><code>{row.extraSpace}</code></td>
+            <td><code>{row.pointers}</code></td>
+            <td>{row.bestFor}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+  .linked-list-matrix {
+    margin-top: var(--space-2xl);
+  }
+
+  .linked-list-matrix__intro {
+    margin-bottom: var(--space-md);
+  }
+
+  .matrix-scroll {
+    overflow-x: auto;
+  }
+
+  .matrix-link {
+    font-weight: 600;
+  }
+</style>
