@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Huffman Coding Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/tree-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+
+      .vis-status-bar {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-bottom: 0.65rem;
+      }
+
+      .vis-pill {
+        background: var(--bg-card);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        border-radius: 999px;
+        padding: 0.2rem 0.65rem;
+        font-family: var(--font-code);
+        font-size: 0.74rem;
+      }
+
+      .vis-canvas {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 0.75rem;
+        min-height: 360px;
+        padding: 1rem 1.15rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="freq-input" class="vis-input__field" type="text" value="a:5, b:9, c:12, d:13, e:16, f:45" placeholder="Pairs (a:5, b:9) or text (abracadabra)" aria-label="Symbol frequencies or text" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-freq="a:5, b:9, c:12, d:13, e:16, f:45">CLRS 6 Symbols</button>
+        <button class="vis-btn" type="button" data-freq="abracadabra">abracadabra</button>
+        <button class="vis-btn" type="button" data-freq="mississippi">mississippi</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Merging Pair</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Final Tree / Codes Ready</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="pill-heap" class="vis-pill">Heap Size: 0</span>
+        <span id="pill-bits" class="vis-pill">Weighted Path: -</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="tree-stage" class="bt-stage-wrap"></div>
+        <div class="bt-aux-row">
+          <div class="bt-aux-box">
+            <div class="bt-aux-box__title">Min-Heap Queue</div>
+            <div id="heap-view" class="bt-chip-list"></div>
+          </div>
+          <div class="bt-aux-box">
+            <div class="bt-aux-box__title">Prefix Codes</div>
+            <div id="codes-view" class="bt-chip-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Enter char:freq pairs or a word, then press Play to build the Huffman tree.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/tree-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'import heapq',
+        'def huffman_codes(freqs: dict[str, int]) -> dict[str, str]:',
+        '    heap = [(freq, idx, ch) for idx, (ch, freq) in enumerate(freqs.items())]',
+        '    heapq.heapify(heap)',
+        '    uid = len(heap)',
+        '    while len(heap) > 1:',
+        '        f1, _, left = heapq.heappop(heap)',
+        '        f2, _, right = heapq.heappop(heap)',
+        '        heapq.heappush(heap, (f1 + f2, uid, (left, right)))',
+        '        uid += 1',
+        '    codes: dict[str, str] = {}',
+        '    def walk(node, prefix: str) -> None:',
+        '        if isinstance(node, str): codes[node] = prefix or "0"; return',
+        '        walk(node[0], prefix + "0"); walk(node[1], prefix + "1")',
+        '    if heap: walk(heap[0][2], "")',
+        '    return codes',
+      ];
+
+      const inputEl = document.getElementById('freq-input');
+      const heapView = document.getElementById('heap-view');
+      const codesView = document.getElementById('codes-view');
+      const pillHeap = document.getElementById('pill-heap');
+      const pillBits = document.getElementById('pill-bits');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const treeCanvas = new TreeCanvas({
+        containerEl: document.getElementById('tree-stage'),
+        nodeWidth: 70,
+        gapX: 12,
+        levelGap: 62,
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 700,
+        render: (step) => {
+          treeCanvas.render(step.tree);
+          pillHeap.textContent = `Heap Size: ${step.heapLabels.length}`;
+          pillBits.textContent = step.totalBits !== null ? `Total Bits: ${step.totalBits}` : 'Weighted Path: building...';
+
+          heapView.innerHTML = step.heapLabels.length
+            ? step.heapLabels.map((item, idx) => `<span class="bt-chip${idx < 2 && step.highlightPair ? ' bt-chip--active' : ''}">${item}</span>`).join('')
+            : '<span style="color: var(--text-muted); font-size: 0.76rem;">Single root completed</span>';
+
+          const codeEntries = Object.entries(step.codes);
+          codesView.innerHTML = codeEntries.length
+            ? codeEntries.map(([ch, bits]) => `<span class="bt-chip bt-chip--done">${ch}: ${bits}</span>`).join('')
+            : '<span style="color: var(--text-muted); font-size: 0.76rem;">Assigned after tree finishes</span>';
+
+          infoEl.textContent = step.description;
+        },
+        highlightCode: (line) => renderCode(line),
+      });
+
+      function cloneSubtree(node, highlightIds, finalDone) {
+        const state = finalDone
+          ? 'solution'
+          : highlightIds.has(node.id)
+            ? 'active'
+            : 'default';
+        return {
+          id: node.id,
+          label: node.label,
+          edgeLabel: node.edgeLabel || '',
+          state,
+          children: (node.children || []).map((c) => cloneSubtree(c, highlightIds, finalDone)),
+        };
+      }
+
+      function buildStageTree(heap, highlightIds, finalDone) {
+        if (heap.length === 1) {
+          return cloneSubtree(heap[0], highlightIds, finalDone);
+        }
+        return {
+          id: 'heap-forest',
+          label: `Heap (${heap.length})`,
+          state: 'backtracked',
+          children: heap.map((node) => cloneSubtree(node, highlightIds, false)),
+        };
+      }
+
+      function buildSteps(freqs) {
+        viz.reset();
+        let uid = 0;
+        const heap = Object.entries(freqs).map(([ch, freq]) => ({
+          id: `n-${uid++}`,
+          ch,
+          freq,
+          label: `${ch}:${freq}`,
+          edgeLabel: '',
+          children: [],
+        }));
+
+        const sortHeap = () => heap.sort((a, b) => a.freq - b.freq || a.id.localeCompare(b.id));
+        sortHeap();
+
+        viz.recordStep({
+          tree: buildStageTree(heap, new Set(), false),
+          heapLabels: heap.map((n) => n.label),
+          codes: {},
+          totalBits: null,
+          highlightPair: true,
+          codeLine: 3,
+          description: `Heapify ${heap.length} leaf nodes ordered by frequency.`,
+        });
+
+        while (heap.length > 1) {
+          sortHeap();
+          const left = heap.shift();
+          const right = heap.shift();
+
+          viz.recordStep({
+            tree: buildStageTree([left, right, ...heap], new Set([left.id, right.id]), false),
+            heapLabels: [left.label, right.label, ...heap.map((n) => n.label)],
+            codes: {},
+            totalBits: null,
+            highlightPair: true,
+            codeLine: 6,
+            description: `Pop two smallest nodes: (${left.label}) and (${right.label}).`,
+          });
+
+          const merged = {
+            id: `n-${uid++}`,
+            ch: null,
+            freq: left.freq + right.freq,
+            label: `${left.freq + right.freq}`,
+            edgeLabel: '',
+            children: [
+              { ...left, edgeLabel: '0' },
+              { ...right, edgeLabel: '1' },
+            ],
+          };
+          heap.push(merged);
+          sortHeap();
+
+          viz.recordStep({
+            tree: buildStageTree(heap, new Set([merged.id]), false),
+            heapLabels: heap.map((n) => n.label),
+            codes: {},
+            totalBits: null,
+            highlightPair: false,
+            codeLine: 8,
+            description: `Merge into weight ${merged.freq} (left=0, right=1) and push back into heap.`,
+          });
+        }
+
+        const codes = {};
+        let totalBits = 0;
+        function walk(node, prefix) {
+          if (!node.children || node.children.length === 0) {
+            const code = prefix || '0';
+            codes[node.ch] = code;
+            totalBits += node.freq * code.length;
+            return;
+          }
+          walk(node.children[0], prefix + '0');
+          walk(node.children[1], prefix + '1');
+        }
+        if (heap.length) walk(heap[0], '');
+
+        viz.recordStep({
+          tree: buildStageTree(heap, new Set(), true),
+          heapLabels: [],
+          codes,
+          totalBits,
+          highlightPair: false,
+          codeLine: 14,
+          description: `Walk root-to-leaf paths (0 left, 1 right). Total encoded length: ${totalBits} bits.`,
+        });
+
+        viz.goToStep(0);
+      }
+
+      function parseAndRun() {
+        const raw = inputEl.value.trim();
+        if (!raw) {
+          infoEl.textContent = 'Enter char:freq pairs or sample text.';
+          return;
+        }
+        const freqs = {};
+        if (raw.includes(':')) {
+          for (const part of raw.split(',')) {
+            const [chRaw, fRaw] = part.split(':');
+            const ch = (chRaw || '').trim();
+            const f = parseInt((fRaw || '').trim(), 10);
+            if (ch && Number.isFinite(f) && f > 0) {
+              freqs[ch] = f;
+            }
+          }
+        } else {
+          for (const ch of raw.replace(/\s+/g, '')) {
+            freqs[ch] = (freqs[ch] || 0) + 1;
+          }
+        }
+        const keys = Object.keys(freqs);
+        if (!keys.length || keys.length > 8) {
+          infoEl.textContent = 'Provide 1 to 8 distinct symbols with positive frequencies.';
+          return;
+        }
+        buildSteps(freqs);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', parseAndRun);
+      document.querySelectorAll('[data-freq]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.getAttribute('data-freq') || '';
+          parseAndRun();
+        });
+      });
+
+      viz.bindControls();
+      renderCode();
+      parseAndRun();
+    </script>
+  </body>
+</html>

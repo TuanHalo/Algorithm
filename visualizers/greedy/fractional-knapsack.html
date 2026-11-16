@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fractional Knapsack Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-input__cap {
+        width: 110px;
+        flex: 0 0 auto;
+        min-width: 96px;
+      }
+
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+
+      .vis-status-bar {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .vis-pill {
+        background: var(--bg-card);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        border-radius: 999px;
+        padding: 0.22rem 0.7rem;
+        font-family: var(--font-code);
+        font-size: 0.75rem;
+      }
+
+      .vis-pill--ok { background: var(--vis-active); font-weight: 600; }
+
+      .vis-canvas {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 0.9rem;
+        min-height: 250px;
+        padding: 1.15rem;
+      }
+
+      .bag-meter {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+
+      .bag-meter__label {
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--font-code);
+        font-size: 0.76rem;
+        color: var(--text-secondary);
+      }
+
+      .bag-track {
+        height: 24px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.55);
+        box-shadow: var(--shadow-clay-pressed);
+        overflow: hidden;
+        display: flex;
+      }
+
+      .bag-seg {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-code);
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        border-right: 1px solid rgba(255, 255, 255, 0.7);
+        transition: width 260ms ease;
+      }
+
+      .bag-seg--full { background: var(--vis-active); }
+      .bag-seg--frac { background: var(--vis-comparing); }
+
+      .item-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.6rem;
+      }
+
+      .item-card {
+        background: rgba(255, 255, 255, 0.72);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        border-radius: var(--border-radius-sm);
+        padding: 0.65rem 0.75rem;
+        font-family: var(--font-code);
+        font-size: 0.76rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.22rem;
+        transition: all 220ms ease;
+      }
+
+      .item-card--active { background: var(--vis-comparing); transform: translateY(-2px); }
+      .item-card--full { background: var(--vis-active); }
+      .item-card--frac { background: var(--vis-highlight); }
+      .item-card--skipped { opacity: 0.55; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="items-input" class="vis-input__field" type="text" value="60:10, 100:20, 120:30" placeholder="value:weight pairs (60:10, 100:20, 120:30)" aria-label="Items value:weight" />
+        <input id="cap-input" class="vis-input__field vis-input__cap" type="number" min="1" max="500" value="50" aria-label="Bag capacity" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-items="60:10, 100:20, 120:30" data-cap="50">Classic (Cap 50)</button>
+        <button class="vis-btn" type="button" data-items="30:5, 40:10, 45:15, 77:22, 90:25" data-cap="60">5 Items (Cap 60)</button>
+        <button class="vis-btn" type="button" data-items="50:25, 45:15, 24:6" data-cap="20">High Ratio First (Cap 20)</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Inspecting</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Full Item</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-highlight);"></span> Fractional Slice</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="pill-value" class="vis-pill vis-pill--ok">Total Value: 0.0</span>
+        <span id="pill-rem" class="vis-pill">Remaining Cap: 50</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div class="bag-meter">
+          <div class="bag-meter__label">
+            <span>Knapsack Fill</span>
+            <span id="bag-used-text">0 / 50</span>
+          </div>
+          <div id="bag-track" class="bag-track"></div>
+        </div>
+        <div id="item-grid" class="item-grid"></div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Enter value:weight pairs and capacity, then press Play.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def fractional_knapsack(items: list[tuple[int, int]], capacity: int) -> float:',
+        '    ranked = sorted(items, key=lambda item: item[0] / item[1], reverse=True)',
+        '    total_value = 0.0',
+        '    remaining = capacity',
+        '    for value, weight in ranked:',
+        '        if remaining == 0:',
+        '            break',
+        '        take = min(weight, remaining)',
+        '        total_value += value * (take / weight)',
+        '        remaining -= take',
+        '    return total_value',
+      ];
+
+      const itemsInput = document.getElementById('items-input');
+      const capInput = document.getElementById('cap-input');
+      const bagTrack = document.getElementById('bag-track');
+      const bagUsedText = document.getElementById('bag-used-text');
+      const itemGrid = document.getElementById('item-grid');
+      const pillValue = document.getElementById('pill-value');
+      const pillRem = document.getElementById('pill-rem');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 650,
+        render: (step) => {
+          const used = step.capacity - step.remaining;
+          bagUsedText.textContent = `${used} / ${step.capacity}`;
+          pillValue.textContent = `Total Value: ${step.totalValue.toFixed(1)}`;
+          pillRem.textContent = `Remaining Cap: ${step.remaining}`;
+
+          bagTrack.innerHTML = step.segments.map((seg) => {
+            const pct = (seg.take / step.capacity) * 100;
+            const cls = seg.fraction < 1 ? 'bag-seg bag-seg--frac' : 'bag-seg bag-seg--full';
+            return `<div class="${cls}" style="width: ${pct}%" title="v=${seg.value}, w=${seg.weight}">${seg.take}</div>`;
+          }).join('');
+
+          itemGrid.innerHTML = step.ranked.map((item, idx) => {
+            const state = step.states[idx];
+            let cls = 'item-card';
+            if (idx === step.activeIdx) cls += ' item-card--active';
+            else if (state === 'full') cls += ' item-card--full';
+            else if (state === 'frac') cls += ' item-card--frac';
+            else if (state === 'skipped') cls += ' item-card--skipped';
+            const takenText = step.taken[idx] > 0
+              ? `Taken: ${step.taken[idx]}/${item.weight} (${Math.round((step.taken[idx] / item.weight) * 100)}%)`
+              : 'Taken: 0';
+            return `
+              <div class="${cls}">
+                <div><strong>#${idx + 1}</strong> v=${item.value}, w=${item.weight}</div>
+                <div>Ratio: ${(item.value / item.weight).toFixed(2)} / unit</div>
+                <div>${takenText}</div>
+              </div>
+            `;
+          }).join('');
+
+          infoEl.textContent = step.description;
+        },
+        highlightCode: (line) => renderCode(line),
+      });
+
+      function buildSteps(items, capacity) {
+        viz.reset();
+        const ranked = [...items].sort((a, b) => b.value / b.weight - a.value / a.weight);
+        const states = Array(ranked.length).fill('idle');
+        const taken = Array(ranked.length).fill(0);
+        const segments = [];
+        let remaining = capacity;
+        let totalValue = 0;
+
+        viz.recordStep({
+          ranked,
+          capacity,
+          remaining,
+          totalValue,
+          activeIdx: -1,
+          states,
+          taken,
+          segments,
+          codeLine: 1,
+          description: `Sorted ${ranked.length} items by value/weight ratio descending.`,
+        });
+
+        for (let i = 0; i < ranked.length; i++) {
+          const item = ranked[i];
+          viz.recordStep({
+            ranked,
+            capacity,
+            remaining,
+            totalValue,
+            activeIdx: i,
+            states,
+            taken,
+            segments,
+            codeLine: 5,
+            description: `Check item #${i + 1} (value=${item.value}, weight=${item.weight}, ratio=${(item.value / item.weight).toFixed(2)}).`,
+          });
+
+          if (remaining === 0) {
+            states[i] = 'skipped';
+            viz.recordStep({
+              ranked,
+              capacity,
+              remaining,
+              totalValue,
+              activeIdx: -1,
+              states,
+              taken,
+              segments,
+              codeLine: 6,
+              description: 'Bag is full (remaining == 0); stop packing.',
+            });
+            break;
+          }
+
+          const take = Math.min(item.weight, remaining);
+          const fraction = take / item.weight;
+          totalValue += item.value * fraction;
+          remaining -= take;
+          taken[i] = take;
+          states[i] = fraction === 1 ? 'full' : 'frac';
+          segments.push({ value: item.value, weight: item.weight, take, fraction });
+
+          viz.recordStep({
+            ranked,
+            capacity,
+            remaining,
+            totalValue,
+            activeIdx: -1,
+            states,
+            taken,
+            segments,
+            codeLine: 8,
+            description: fraction === 1
+              ? `Take whole item #${i + 1} (+${item.value.toFixed(1)} value, ${remaining} capacity left).`
+              : `Take ${take}/${item.weight} (${Math.round(fraction * 100)}%) of item #${i + 1} (+${(item.value * fraction).toFixed(1)} value).`,
+          });
+        }
+
+        viz.recordStep({
+          ranked,
+          capacity,
+          remaining,
+          totalValue,
+          activeIdx: -1,
+          states,
+          taken,
+          segments,
+          codeLine: 10,
+          description: `Finished! Maximum value is ${totalValue.toFixed(1)}.`,
+        });
+
+        viz.goToStep(0);
+      }
+
+      function parseAndRun() {
+        const items = itemsInput.value
+          .split(',')
+          .map((part) => {
+            const [v, w] = part.split(':').map((x) => parseFloat(x.trim()));
+            return { value: v, weight: w };
+          })
+          .filter((it) => Number.isFinite(it.value) && Number.isFinite(it.weight) && it.value > 0 && it.weight > 0)
+          .slice(0, 8);
+        const cap = Math.max(1, Math.min(500, parseInt(capInput.value, 10) || 50));
+        if (!items.length) {
+          infoEl.textContent = 'Enter items as value:weight pairs, like 60:10, 100:20.';
+          return;
+        }
+        capInput.value = String(cap);
+        buildSteps(items, cap);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', parseAndRun);
+      document.querySelectorAll('[data-items]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          itemsInput.value = btn.getAttribute('data-items') || '';
+          capInput.value = btn.getAttribute('data-cap') || '50';
+          parseAndRun();
+        });
+      });
+
+      viz.bindControls();
+      renderCode();
+      parseAndRun();
+    </script>
+  </body>
+</html>

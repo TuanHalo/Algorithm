@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jump Game Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+
+      .vis-status-bar {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .vis-pill {
+        background: var(--bg-card);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        border-radius: 999px;
+        padding: 0.22rem 0.7rem;
+        font-family: var(--font-code);
+        font-size: 0.75rem;
+      }
+
+      .vis-pill--ok { background: var(--vis-active); font-weight: 600; }
+      .vis-pill--fail { background: var(--vis-swapping); font-weight: 600; }
+
+      .vis-canvas {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: center;
+        gap: 0.9rem;
+        min-height: 220px;
+        padding: 1.25rem;
+      }
+
+      .stone-row {
+        display: grid;
+        gap: 0.55rem;
+      }
+
+      .stone-cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+      }
+
+      .stone-box {
+        width: 100%;
+        min-height: 54px;
+        border-radius: var(--border-radius-sm);
+        background: rgba(255, 255, 255, 0.72);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-code);
+        transition: all 220ms ease;
+      }
+
+      .stone-val { font-size: 1.05rem; font-weight: 700; }
+      .stone-reach { font-size: 0.68rem; color: var(--text-muted); }
+      .stone-idx { font-family: var(--font-code); font-size: 0.7rem; color: var(--text-muted); }
+
+      .stone-box--reachable { background: var(--vis-active); }
+      .stone-box--current { background: var(--vis-comparing); transform: translateY(-3px); }
+      .stone-box--goal { box-shadow: 0 0 0 2px #15803d, var(--shadow-clay-subtle); }
+      .stone-box--blocked { background: var(--vis-swapping); }
+
+      .reach-bar-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        font-family: var(--font-code);
+        font-size: 0.76rem;
+      }
+
+      .reach-track {
+        height: 14px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.55);
+        box-shadow: var(--shadow-clay-pressed);
+        overflow: hidden;
+      }
+
+      .reach-fill {
+        height: 100%;
+        background: var(--vis-active);
+        border-radius: 999px;
+        transition: width 250ms ease;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="nums-input" class="vis-input__field" type="text" value="2, 3, 1, 1, 4" placeholder="Non-negative jump lengths: 2, 3, 1, 1, 4" aria-label="Jump array" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-nums="2, 3, 1, 1, 4">Reachable (2,3,1,1,4)</button>
+        <button class="vis-btn" type="button" data-nums="3, 2, 1, 0, 4">Zero Wall (3,2,1,0,4)</button>
+        <button class="vis-btn" type="button" data-nums="1, 2, 0, 1, 2, 0, 1">Tight Hops</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Current Index</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Within Farthest Reach</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Unreachable</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="pill-idx" class="vis-pill">Index: 0</span>
+        <span id="pill-far" class="vis-pill vis-pill--ok">farthest: 0 / goal: 4</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="stone-row" class="stone-row"></div>
+        <div class="reach-bar-wrap">
+          <div style="display: flex; justify-content: space-between;">
+            <span>Reach Frontier</span>
+            <span id="reach-pct">0 / 4</span>
+          </div>
+          <div class="reach-track"><div id="reach-fill" class="reach-fill" style="width: 0%;"></div></div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Enter jump lengths and press Play to track the farthest reachable index.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def can_jump(nums: list[int]) -> bool:',
+        '    farthest = 0',
+        '    goal = len(nums) - 1',
+        '    for idx, jump in enumerate(nums):',
+        '        if idx > farthest:',
+        '            return False',
+        '        farthest = max(farthest, idx + jump)',
+        '        if farthest >= goal:',
+        '            return True',
+        '    return True',
+      ];
+
+      const inputEl = document.getElementById('nums-input');
+      const stoneRow = document.getElementById('stone-row');
+      const reachFill = document.getElementById('reach-fill');
+      const reachPct = document.getElementById('reach-pct');
+      const pillIdx = document.getElementById('pill-idx');
+      const pillFar = document.getElementById('pill-far');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 650,
+        render: (step) => {
+          const n = step.nums.length;
+          const goal = n - 1;
+          stoneRow.style.gridTemplateColumns = `repeat(${n}, minmax(48px, 1fr))`;
+          stoneRow.innerHTML = step.nums.map((jump, i) => {
+            let cls = 'stone-box';
+            if (step.blockedIdx === i) cls += ' stone-box--blocked';
+            else if (i === step.idx) cls += ' stone-box--current';
+            else if (i <= step.farthest) cls += ' stone-box--reachable';
+            if (i === goal) cls += ' stone-box--goal';
+            return `
+              <div class="stone-cell">
+                <div class="${cls}">
+                  <span class="stone-val">${jump}</span>
+                  <span class="stone-reach">→ ${Math.min(goal, i + jump)}</span>
+                </div>
+                <span class="stone-idx">i=${i}${i === goal ? ' ★' : ''}</span>
+              </div>
+            `;
+          }).join('');
+
+          const clamped = Math.min(goal, step.farthest);
+          const pct = goal > 0 ? Math.round((clamped / goal) * 100) : 100;
+          reachFill.style.width = `${pct}%`;
+          reachFill.style.background = step.blockedIdx !== -1 ? 'var(--vis-swapping)' : 'var(--vis-active)';
+          reachPct.textContent = `${Math.min(goal, step.farthest)} / ${goal}`;
+
+          pillIdx.textContent = `Index: ${step.idx < 0 ? 0 : step.idx}`;
+          pillFar.textContent = `farthest: ${step.farthest} / goal: ${goal}`;
+          pillFar.className = `vis-pill ${step.blockedIdx !== -1 ? 'vis-pill--fail' : 'vis-pill--ok'}`;
+          infoEl.textContent = step.description;
+        },
+        highlightCode: (line) => renderCode(line),
+      });
+
+      function buildSteps(nums) {
+        viz.reset();
+        const goal = nums.length - 1;
+        let farthest = 0;
+
+        viz.recordStep({
+          nums,
+          idx: -1,
+          farthest,
+          blockedIdx: -1,
+          codeLine: 1,
+          description: `Start at index 0 with farthest = 0, goal = ${goal}.`,
+        });
+
+        for (let i = 0; i < nums.length; i++) {
+          if (i > farthest) {
+            viz.recordStep({
+              nums,
+              idx: i,
+              farthest,
+              blockedIdx: i,
+              codeLine: 5,
+              description: `Index ${i} > farthest (${farthest}). Cannot reach here; return False.`,
+            });
+            viz.goToStep(0);
+            return;
+          }
+
+          viz.recordStep({
+            nums,
+            idx: i,
+            farthest,
+            blockedIdx: -1,
+            codeLine: 4,
+            description: `At index ${i} (<= farthest ${farthest}), jump value is ${nums[i]}.`,
+          });
+
+          const prev = farthest;
+          farthest = Math.max(farthest, i + nums[i]);
+          viz.recordStep({
+            nums,
+            idx: i,
+            farthest,
+            blockedIdx: -1,
+            codeLine: 6,
+            description: `farthest = max(${prev}, ${i} + ${nums[i]}) = ${farthest}.`,
+          });
+
+          if (farthest >= goal) {
+            viz.recordStep({
+              nums,
+              idx: i,
+              farthest,
+              blockedIdx: -1,
+              codeLine: 8,
+              description: `farthest (${farthest}) >= goal (${goal})! Return True.`,
+            });
+            viz.goToStep(0);
+            return;
+          }
+        }
+
+        viz.recordStep({
+          nums,
+          idx: goal,
+          farthest,
+          blockedIdx: -1,
+          codeLine: 9,
+          description: 'Goal reached! Return True.',
+        });
+        viz.goToStep(0);
+      }
+
+      function parseAndRun() {
+        const nums = inputEl.value
+          .split(',')
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => Number.isFinite(n) && n >= 0)
+          .slice(0, 12);
+        if (!nums.length) {
+          infoEl.textContent = 'Enter non-negative integers like 2, 3, 1, 1, 4.';
+          return;
+        }
+        buildSteps(nums);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', parseAndRun);
+      document.querySelectorAll('[data-nums]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.getAttribute('data-nums') || '';
+          parseAndRun();
+        });
+      });
+
+      viz.bindControls();
+      renderCode();
+      parseAndRun();
+    </script>
+  </body>
+</html>
