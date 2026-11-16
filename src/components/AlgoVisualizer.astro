@@ -12,13 +12,24 @@ const resolvedSrc = withBase(src);
 ---
 
 <div class="clay-embed visualizer-embed">
-  {title && (
-    <div class="clay-embed__title">
-      🎬 {title}
-      <span class="visualizer-hint">Enter input and press Play to simulate</span>
-    </div>
-  )}
-  <iframe src={resolvedSrc} style={`height: ${height}`} loading="lazy" title={title || 'Algorithm Visualizer'}></iframe>
+  <div class="clay-embed__header">
+    {title && (
+      <div class="clay-embed__title">
+        🎬 {title}
+        <span class="visualizer-hint">Enter input and press Play to simulate</span>
+      </div>
+    )}
+    <a
+      href={resolvedSrc}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="clay-embed__external-btn"
+      title="Open visualizer in standalone tab"
+    >
+      Open full visualizer ↗
+    </a>
+  </div>
+  <iframe src={resolvedSrc} style={`height: ${height};`} loading="lazy" title={title || 'Algorithm Visualizer'}></iframe>
 </div>
 
 <style>
@@ -31,5 +42,11 @@ const resolvedSrc = withBase(src);
     color: var(--text-muted);
     font-weight: 400;
     margin-left: var(--space-sm);
+  }
+
+  .visualizer-embed iframe {
+    width: 100%;
+    border: none;
+    display: block;
   }
 </style>

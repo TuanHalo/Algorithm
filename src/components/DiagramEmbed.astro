@@ -7,11 +7,40 @@ interface Props {
   height?: string;
 }
 
-const { src, title, height = '520px' } = Astro.props;
+const { src, title, height = '580px' } = Astro.props;
 const resolvedSrc = withBase(src);
 ---
 
-<div class="clay-embed">
-  {title && <div class="clay-embed__title">📊 {title}</div>}
-  <iframe src={resolvedSrc} style={`height: ${height}`} loading="lazy" title={title || 'Interactive diagram'}></iframe>
+<div class="clay-embed diagram-embed-container">
+  <div class="clay-embed__header">
+    {title && <span class="clay-embed__title">📊 {title}</span>}
+    <a
+      href={resolvedSrc}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="clay-embed__external-btn"
+      title="Open diagram in standalone tab"
+    >
+      Open full diagram ↗
+    </a>
+  </div>
+  <iframe
+    src={resolvedSrc}
+    style={`height: ${height};`}
+    loading="lazy"
+    title={title || 'Interactive diagram'}
+  ></iframe>
 </div>
+
+<style>
+  .diagram-embed-container {
+    position: relative;
+    width: 100%;
+  }
+
+  .diagram-embed-container iframe {
+    width: 100%;
+    border: none;
+    display: block;
+  }
+</style>
