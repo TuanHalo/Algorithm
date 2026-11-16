@@ -137,7 +137,16 @@ export const TOPICS: readonly TopicConfig[] = [
     color: 'var(--color-greedy)',
     order: 9,
     description: 'Make the best local choice at each step when a local optimum leads to a global one.',
-    previewAlgorithms: ['Activity Selection', 'Huffman Coding'],
+    previewAlgorithms: [
+      'Coin Change (Greedy vs. DP)',
+      'Fractional Knapsack',
+      'Activity Selection',
+      'Minimum Meeting Rooms',
+      'Merge Intervals',
+      'Jump Game',
+      'Gas Station',
+      'Huffman Coding',
+    ],
   },
   {
     slug: 'backtracking',

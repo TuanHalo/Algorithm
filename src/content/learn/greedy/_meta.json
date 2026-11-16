@@ -1,0 +1,7 @@
+{
+  "name": "Greedy",
+  "icon": "💰",
+  "color": "#c1e1c1",
+  "order": 9,
+  "description": "Make the best local choice at each step when a local optimum leads to a global one."
+}

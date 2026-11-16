@@ -1,0 +1,143 @@
+---
+import { withBase } from '../utils/url';
+
+interface GreedySummaryRow {
+  readonly slug: string;
+  readonly name: string;
+  readonly time: string;
+  readonly space: string;
+  readonly orderKey: string;
+  readonly greedyChoice: string;
+  readonly bestFor: string;
+}
+
+const GREEDY_MATRIX: readonly GreedySummaryRow[] = [
+  {
+    slug: 'coin-change-greedy',
+    name: 'Coin Change (Greedy vs. DP)',
+    time: 'O(k log k + k)',
+    space: 'O(1)',
+    orderKey: 'Value descending',
+    greedyChoice: 'Take largest coin <= remaining',
+    bestFor: 'Canonical coin systems; switch to DP for arbitrary coin sets like [1, 3, 4]',
+  },
+  {
+    slug: 'fractional-knapsack',
+    name: 'Fractional Knapsack',
+    time: 'O(n log n)',
+    space: 'O(n)',
+    orderKey: 'Value / weight descending',
+    greedyChoice: 'Pack highest ratio first',
+    bestFor: 'Divisible cargo where you can take a slice of an item (use DP for 0/1)',
+  },
+  {
+    slug: 'activity-selection',
+    name: 'Activity Selection',
+    time: 'O(n log n)',
+    space: 'O(n)',
+    orderKey: 'End time ascending',
+    greedyChoice: 'Pick earliest-finishing compatible slot',
+    bestFor: 'Fitting the maximum count of non-overlapping intervals on one resource',
+  },
+  {
+    slug: 'meeting-rooms',
+    name: 'Minimum Meeting Rooms',
+    time: 'O(n log n)',
+    space: 'O(n)',
+    orderKey: 'Start time + min-heap of ends',
+    greedyChoice: 'Reuse earliest-freeing room if ready',
+    bestFor: 'Finding the fewest rooms or machines needed to run every interval',
+  },
+  {
+    slug: 'merge-intervals',
+    name: 'Merge Intervals',
+    time: 'O(n log n)',
+    space: 'O(n)',
+    orderKey: 'Start time ascending',
+    greedyChoice: 'Extend last merged end on overlap',
+    bestFor: 'Collapsing overlapping calendar blocks or ranges into disjoint spans',
+  },
+  {
+    slug: 'jump-game',
+    name: 'Jump Game (Farthest Reach)',
+    time: 'O(n)',
+    space: 'O(1)',
+    orderKey: 'Index left to right',
+    greedyChoice: 'Keep max(farthest, i + nums[i])',
+    bestFor: 'Testing reachability across step sizes without building a graph or DP table',
+  },
+  {
+    slug: 'gas-station',
+    name: 'Gas Station',
+    time: 'O(n)',
+    space: 'O(1)',
+    orderKey: 'Circular index scan',
+    greedyChoice: 'Reset start to i + 1 when tank < 0',
+    bestFor: 'Finding a valid circular tour start when total supply covers total cost',
+  },
+  {
+    slug: 'huffman-coding',
+    name: 'Huffman Coding',
+    time: 'O(n log n)',
+    space: 'O(n)',
+    orderKey: 'Min-heap by frequency',
+    greedyChoice: 'Merge two lowest-frequency nodes',
+    bestFor: 'Lossless prefix-free compression where frequent symbols get shorter bit codes',
+  },
+] as const;
+---
+
+<section class="clay-section greedy-matrix">
+  <h2 class="clay-section__title">Greedy comparison and decision matrix</h2>
+  <p class="greedy-matrix__intro">
+    Compare greedy algorithms by how they sort or order candidates, what local rule they apply, and when another method is safer.
+  </p>
+  <div class="matrix-scroll">
+    <table class="clay-table">
+      <thead>
+        <tr>
+          <th>Algorithm / Pattern</th>
+          <th>Time</th>
+          <th>Space</th>
+          <th>Sort / Heap Key</th>
+          <th>Greedy Choice</th>
+          <th>Best When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {GREEDY_MATRIX.map((row) => (
+          <tr>
+            <td>
+              <a href={withBase(`/learn/greedy/${row.slug}/`)} class="matrix-link">
+                {row.name}
+              </a>
+            </td>
+            <td><code>{row.time}</code></td>
+            <td><code>{row.space}</code></td>
+            <td>{row.orderKey}</td>
+            <td><code>{row.greedyChoice}</code></td>
+            <td>{row.bestFor}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+  .greedy-matrix {
+    margin-top: var(--space-2xl);
+  }
+
+  .greedy-matrix__intro {
+    margin-bottom: var(--space-md);
+  }
+
+  .matrix-scroll {
+    overflow-x: auto;
+  }
+
+  .matrix-link {
+    font-weight: 600;
+  }
+</style>
