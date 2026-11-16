@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Coin Change (Greedy vs. DP) Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-input__amount {
+        width: 110px;
+        flex: 0 0 auto;
+        min-width: 96px;
+      }
+
+      .vis-presets {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .vis-preset-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+
+      .vis-status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .vis-status-group {
+        display: flex;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+      }
+
+      .vis-pill {
+        background: var(--bg-card);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        border-radius: 999px;
+        padding: 0.22rem 0.7rem;
+        font-family: var(--font-code);
+        font-size: 0.75rem;
+        color: var(--text-primary);
+      }
+
+      .vis-pill--ok { background: var(--vis-active); font-weight: 600; }
+      .vis-pill--warn { background: var(--vis-swapping); font-weight: 600; }
+
+      .vis-canvas {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 0.9rem;
+        min-height: 230px;
+        padding: 1.15rem;
+      }
+
+      .coin-section-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 0.4rem;
+      }
+
+      .coin-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        min-height: 44px;
+      }
+
+      .coin-chip {
+        min-width: 44px;
+        height: 44px;
+        padding: 0 0.75rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-code);
+        font-weight: 700;
+        font-size: 0.85rem;
+        background: rgba(255, 255, 255, 0.75);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        transition: all 220ms ease;
+      }
+
+      .coin-chip--testing { background: var(--vis-comparing); transform: translateY(-2px); }
+      .coin-chip--skipped { background: rgba(255, 255, 255, 0.4); color: var(--text-muted); }
+      .coin-chip--picked { background: var(--vis-active); }
+
+      .dp-compare {
+        padding: 0.6rem 0.85rem;
+        border-radius: var(--border-radius-sm);
+        background: rgba(255, 255, 255, 0.52);
+        box-shadow: var(--shadow-clay-pressed);
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .dp-compare--suboptimal {
+        background: rgba(255, 170, 165, 0.35);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="coins-input" class="vis-input__field" type="text" value="25, 10, 5, 1" placeholder="Coins: 25, 10, 5, 1" aria-label="Coin denominations" />
+        <input id="amount-input" class="vis-input__field vis-input__amount" type="number" min="0" max="200" value="63" aria-label="Target amount" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-coins="25, 10, 5, 1" data-amount="63">US Coins (63)</button>
+        <button class="vis-btn" type="button" data-coins="1, 3, 4" data-amount="6">Greedy Trap (1,3,4 → 6)</button>
+        <button class="vis-btn" type="button" data-coins="1, 5, 10, 20" data-amount="36">Exact (36)</button>
+        <button class="vis-btn" type="button" data-coins="5, 2" data-amount="3">Impossible (5,2 → 3)</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Testing Coin</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Chosen</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: rgba(255,255,255,0.6);"></span> Skipped</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <div class="vis-status-group">
+          <span id="pill-remaining" class="vis-pill">Remaining: 63</span>
+          <span id="pill-count" class="vis-pill">Picked: 0</span>
+        </div>
+        <span id="pill-dp" class="vis-pill">DP Optimal: -</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div>
+          <div class="coin-section-label">Coins Sorted Descending</div>
+          <div id="sorted-coins" class="coin-row"></div>
+        </div>
+        <div>
+          <div class="coin-section-label">Greedy Selection</div>
+          <div id="chosen-coins" class="coin-row"></div>
+        </div>
+        <div id="dp-compare" class="dp-compare">
+          <span id="dp-summary">Optimal DP check will appear at completion.</span>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Enter coin values and target amount, then press Play.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def coin_change_greedy(coins: list[int], amount: int) -> list[int] | None:',
+        '    chosen: list[int] = []',
+        '    remaining = amount',
+        '    for coin in sorted(coins, reverse=True):',
+        '        if coin <= 0 or coin > remaining:',
+        '            continue',
+        '        count = remaining // coin',
+        '        chosen.extend([coin] * count)',
+        '        remaining -= count * coin',
+        '    return chosen if remaining == 0 else None',
+      ];
+
+      const coinsInput = document.getElementById('coins-input');
+      const amountInput = document.getElementById('amount-input');
+      const sortedEl = document.getElementById('sorted-coins');
+      const chosenEl = document.getElementById('chosen-coins');
+      const pillRemaining = document.getElementById('pill-remaining');
+      const pillCount = document.getElementById('pill-count');
+      const pillDp = document.getElementById('pill-dp');
+      const dpCompare = document.getElementById('dp-compare');
+      const dpSummary = document.getElementById('dp-summary');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      function computeOptimalDp(coins, amount) {
+        const dp = Array(amount + 1).fill(Infinity);
+        const parent = Array(amount + 1).fill(-1);
+        dp[0] = 0;
+        for (let a = 1; a <= amount; a++) {
+          for (const c of coins) {
+            if (c > 0 && c <= a && dp[a - c] + 1 < dp[a]) {
+              dp[a] = dp[a - c] + 1;
+              parent[a] = c;
+            }
+          }
+        }
+        if (dp[amount] === Infinity) return null;
+        const out = [];
+        let cur = amount;
+        while (cur > 0) {
+          out.push(parent[cur]);
+          cur -= parent[cur];
+        }
+        return out.sort((a, b) => b - a);
+      }
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 650,
+        render: (step) => {
+          sortedEl.innerHTML = step.sortedCoins.map((c, idx) => {
+            let cls = 'coin-chip';
+            if (idx === step.activeIdx) cls += ' coin-chip--testing';
+            else if (step.pickedCoinIndices.includes(idx)) cls += ' coin-chip--picked';
+            else if (idx < step.activeIdx) cls += ' coin-chip--skipped';
+            return `<span class="${cls}">${c}</span>`;
+          }).join('');
+
+          chosenEl.innerHTML = step.chosen.length
+            ? step.chosen.map((c) => `<span class="coin-chip coin-chip--picked">${c}</span>`).join('')
+            : '<span style="color: var(--text-muted); font-size: 0.8rem;">None yet</span>';
+
+          pillRemaining.textContent = `Remaining: ${step.remaining}`;
+          pillRemaining.className = `vis-pill${step.remaining === 0 ? ' vis-pill--ok' : ''}`;
+          pillCount.textContent = `Picked: ${step.chosen.length}`;
+          pillDp.textContent = step.dpOptimal
+            ? `DP Optimal: ${step.dpOptimal.length} coins`
+            : 'DP Optimal: Impossible';
+
+          dpCompare.className = 'dp-compare';
+          if (step.done) {
+            if (step.remaining === 0 && step.dpOptimal && step.chosen.length > step.dpOptimal.length) {
+              dpCompare.className = 'dp-compare dp-compare--suboptimal';
+              dpSummary.textContent = `Greedy used ${step.chosen.length} coins [${step.chosen.join(', ')}], but DP found ${step.dpOptimal.length} coins [${step.dpOptimal.join(', ')}].`;
+            } else if (step.remaining === 0) {
+              dpSummary.textContent = `Greedy matched the optimal ${step.chosen.length}-coin total.`;
+            } else if (step.dpOptimal) {
+              dpCompare.className = 'dp-compare dp-compare--suboptimal';
+              dpSummary.textContent = `Greedy got stuck with ${step.remaining} left, while DP solves it with [${step.dpOptimal.join(', ')}].`;
+            } else {
+              dpSummary.textContent = 'Neither greedy nor DP can form this exact target.';
+            }
+          } else {
+            dpSummary.textContent = step.dpOptimal
+              ? `Optimal reference: ${step.dpOptimal.length} coins.`
+              : 'No exact combination exists for these coins.';
+          }
+
+          infoEl.textContent = step.description;
+        },
+        highlightCode: (line) => renderCode(line),
+      });
+
+      function buildSteps(coins, amount) {
+        viz.reset();
+        const sortedCoins = [...coins].sort((a, b) => b - a);
+        const dpOptimal = computeOptimalDp(sortedCoins, amount);
+        const chosen = [];
+        const pickedCoinIndices = [];
+        let remaining = amount;
+
+        viz.recordStep({
+          sortedCoins,
+          activeIdx: -1,
+          pickedCoinIndices,
+          chosen,
+          remaining,
+          dpOptimal,
+          done: false,
+          codeLine: 3,
+          description: `Sort coins descending: [${sortedCoins.join(', ')}]. Target remaining: ${remaining}.`,
+        });
+
+        for (let i = 0; i < sortedCoins.length; i++) {
+          const coin = sortedCoins[i];
+          viz.recordStep({
+            sortedCoins,
+            activeIdx: i,
+            pickedCoinIndices,
+            chosen,
+            remaining,
+            dpOptimal,
+            done: false,
+            codeLine: 4,
+            description: `Check coin ${coin} against remaining ${remaining}.`,
+          });
+
+          if (coin <= 0 || coin > remaining) {
+            viz.recordStep({
+              sortedCoins,
+              activeIdx: i,
+              pickedCoinIndices,
+              chosen,
+              remaining,
+              dpOptimal,
+              done: false,
+              codeLine: 5,
+              description: `Skip coin ${coin} because it is larger than ${remaining}.`,
+            });
+            continue;
+          }
+
+          const count = Math.floor(remaining / coin);
+          for (let k = 0; k < count; k++) chosen.push(coin);
+          pickedCoinIndices.push(i);
+          remaining -= count * coin;
+
+          viz.recordStep({
+            sortedCoins,
+            activeIdx: i,
+            pickedCoinIndices,
+            chosen,
+            remaining,
+            dpOptimal,
+            done: false,
+            codeLine: 7,
+            description: `Take ${count} × ${coin} (${count * coin}). Remaining becomes ${remaining}.`,
+          });
+        }
+
+        viz.recordStep({
+          sortedCoins,
+          activeIdx: sortedCoins.length,
+          pickedCoinIndices,
+          chosen,
+          remaining,
+          dpOptimal,
+          done: true,
+          codeLine: 9,
+          description: remaining === 0
+            ? `Done! Picked ${chosen.length} coins: [${chosen.join(', ')}].`
+            : `Stopped with remaining = ${remaining}; greedy could not make exact change.`,
+        });
+
+        viz.goToStep(0);
+      }
+
+      function parseAndRun() {
+        const coins = coinsInput.value
+          .split(',')
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => Number.isFinite(n) && n > 0)
+          .slice(0, 10);
+        const amount = Math.max(0, Math.min(200, parseInt(amountInput.value, 10) || 0));
+        if (!coins.length) {
+          infoEl.textContent = 'Enter at least one positive coin value.';
+          return;
+        }
+        amountInput.value = String(amount);
+        buildSteps(coins, amount);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', parseAndRun);
+      document.querySelectorAll('[data-coins]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          coinsInput.value = btn.getAttribute('data-coins') || '25, 10, 5, 1';
+          amountInput.value = btn.getAttribute('data-amount') || '63';
+          parseAndRun();
+        });
+      });
+
+      viz.bindControls();
+      renderCode();
+      parseAndRun();
+    </script>
+  </body>
+</html>

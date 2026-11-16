@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Minimum Meeting Rooms Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+
+      .vis-status-bar {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .vis-pill {
+        background: var(--bg-card);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        border-radius: 999px;
+        padding: 0.22rem 0.7rem;
+        font-family: var(--font-code);
+        font-size: 0.75rem;
+      }
+
+      .vis-pill--ok { background: var(--vis-active); font-weight: 600; }
+
+      .vis-canvas {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 0.85rem;
+        min-height: 250px;
+        padding: 1.15rem;
+      }
+
+      .sub-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 0.35rem;
+      }
+
+      .heap-row {
+        display: flex;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+        min-height: 36px;
+        align-items: center;
+      }
+
+      .heap-chip {
+        padding: 0.28rem 0.65rem;
+        border-radius: 8px;
+        font-family: var(--font-code);
+        font-size: 0.78rem;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.78);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+      }
+
+      .heap-chip--top { background: var(--vis-comparing); }
+
+      .room-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.4rem;
+      }
+
+      .room-name {
+        width: 68px;
+        font-family: var(--font-code);
+        font-size: 0.74rem;
+        color: var(--text-secondary);
+        flex-shrink: 0;
+      }
+
+      .room-track {
+        position: relative;
+        flex: 1;
+        height: 28px;
+        background: rgba(255, 255, 255, 0.42);
+        border-radius: 8px;
+      }
+
+      .room-block {
+        position: absolute;
+        top: 3px;
+        height: 22px;
+        border-radius: 6px;
+        background: var(--vis-active);
+        border: var(--border-clay);
+        box-shadow: var(--shadow-clay-subtle);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-code);
+        font-size: 0.7rem;
+        font-weight: 600;
+        overflow: hidden;
+      }
+
+      .room-block--new { background: var(--vis-comparing); }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="meetings-input" class="vis-input__field" type="text" value="0-30, 5-10, 15-20, 10-18, 22-28" placeholder="start-end pairs: 0-30, 5-10, 15-20" aria-label="Meeting intervals" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load &amp; Run</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-meetings="0-30, 5-10, 15-20, 10-18, 22-28">5 Meetings (2 Rooms)</button>
+        <button class="vis-btn" type="button" data-meetings="1-5, 2-6, 3-7, 4-8">All Overlap (4 Rooms)</button>
+        <button class="vis-btn" type="button" data-meetings="7-10, 2-4, 4-7">Back-to-Back (1 Room)</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Heap Top / Latest Placed</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Scheduled in Room</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="pill-next" class="vis-pill">Next Meeting: -</span>
+        <span id="pill-rooms" class="vis-pill vis-pill--ok">Rooms Needed: 0</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div>
+          <div class="sub-label">Min-Heap of Room End Times (Smallest First)</div>
+          <div id="heap-view" class="heap-row"></div>
+        </div>
+        <div>
+          <div class="sub-label">Room Timelines</div>
+          <div id="rooms-view"></div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Enter meeting intervals and press Play to watch room reuse via min-heap.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'import heapq',
+        'def min_meeting_rooms(intervals: list[tuple[int, int]]) -> int:',
+        '    if not intervals:',
+        '        return 0',
+        '    end_times: list[int] = []',
+        '    for start, end in sorted(intervals, key=lambda item: item[0]):',
+        '        if end_times and end_times[0] <= start:',
+        '            heapq.heappop(end_times)',
+        '        heapq.heappush(end_times, end)',
+        '    return len(end_times)',
+      ];
+
+      const inputEl = document.getElementById('meetings-input');
+      const heapView = document.getElementById('heap-view');
+      const roomsView = document.getElementById('rooms-view');
+      const pillNext = document.getElementById('pill-next');
+      const pillRooms = document.getElementById('pill-rooms');
+      const infoEl = document.getElementById('vis-info');
+      const codeEl = document.getElementById('vis-code');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 650,
+        render: (step) => {
+          const sortedHeap = [...step.heap].sort((a, b) => a.end - b.end);
+          heapView.innerHTML = sortedHeap.length
+            ? sortedHeap.map((entry, idx) => `<span class="heap-chip${idx === 0 ? ' heap-chip--top' : ''}">Room ${entry.room + 1}: ends ${entry.end}</span>`).join('')
+            : '<span style="color: var(--text-muted); font-size: 0.8rem;">Empty heap</span>';
+
+          const span = Math.max(1, step.maxT - step.minT);
+          const pct = (t) => ((t - step.minT) / span) * 100;
+
+          roomsView.innerHTML = step.rooms.length
+            ? step.rooms.map((blocks, rIdx) => {
+                const bars = blocks.map((b) => {
+                  const left = pct(b.start);
+                  const width = Math.max(5, pct(b.end) - left);
+                  const cls = b.id === step.highlightId ? 'room-block room-block--new' : 'room-block';
+                  return `<div class="${cls}" style="left: ${left}%; width: ${width}%">[${b.start}, ${b.end}]</div>`;
+                }).join('');
+                return `<div class="room-row"><span class="room-name">Room ${rIdx + 1}</span><div class="room-track">${bars}</div></div>`;
+              }).join('')
+            : '<span style="color: var(--text-muted); font-size: 0.8rem;">No rooms allocated yet</span>';
+
+          pillNext.textContent = step.current ? `Meeting: [${step.current.start}, ${step.current.end}]` : 'Meeting: Done';
+          pillRooms.textContent = `Rooms Needed: ${step.rooms.length}`;
+          infoEl.textContent = step.description;
+        },
+        highlightCode: (line) => renderCode(line),
+      });
+
+      function buildSteps(intervals) {
+        viz.reset();
+        const ordered = [...intervals]
+          .sort((a, b) => a.start - b.start || a.end - b.end)
+          .map((iv, idx) => ({ ...iv, id: idx }));
+        const minT = Math.min(...ordered.map((x) => x.start));
+        const maxT = Math.max(...ordered.map((x) => x.end));
+
+        const heap = [];
+        const rooms = [];
+
+        viz.recordStep({
+          minT,
+          maxT,
+          heap,
+          rooms,
+          current: null,
+          highlightId: -1,
+          codeLine: 5,
+          description: `Sort ${ordered.length} meetings by start time ascending.`,
+        });
+
+        for (const mtg of ordered) {
+          heap.sort((a, b) => a.end - b.end);
+          viz.recordStep({
+            minT,
+            maxT,
+            heap,
+            rooms,
+            current: mtg,
+            highlightId: -1,
+            codeLine: 6,
+            description: heap.length
+              ? `Next [${mtg.start}, ${mtg.end}]: earliest room ends at ${heap[0].end}.`
+              : `Next [${mtg.start}, ${mtg.end}]: heap is empty, allocate Room 1.`,
+          });
+
+          let roomIdx;
+          if (heap.length && heap[0].end <= mtg.start) {
+            const freed = heap.shift();
+            roomIdx = freed.room;
+            rooms[roomIdx].push(mtg);
+            heap.push({ end: mtg.end, room: roomIdx });
+            heap.sort((a, b) => a.end - b.end);
+            viz.recordStep({
+              minT,
+              maxT,
+              heap,
+              rooms,
+              current: mtg,
+              highlightId: mtg.id,
+              codeLine: 7,
+              description: `Pop Room ${roomIdx + 1} (${freed.end} <= ${mtg.start}) and push new end ${mtg.end}.`,
+            });
+          } else {
+            roomIdx = rooms.length;
+            rooms.push([mtg]);
+            heap.push({ end: mtg.end, room: roomIdx });
+            heap.sort((a, b) => a.end - b.end);
+            viz.recordStep({
+              minT,
+              maxT,
+              heap,
+              rooms,
+              current: mtg,
+              highlightId: mtg.id,
+              codeLine: 8,
+              description: `No room free yet; open Room ${roomIdx + 1} and push end ${mtg.end}.`,
+            });
+          }
+        }
+
+        viz.recordStep({
+          minT,
+          maxT,
+          heap,
+          rooms,
+          current: null,
+          highlightId: -1,
+          codeLine: 9,
+          description: `Done! Minimum meeting rooms required: ${rooms.length}.`,
+        });
+
+        viz.goToStep(0);
+      }
+
+      function parseAndRun() {
+        const intervals = inputEl.value
+          .split(',')
+          .map((tok) => {
+            const [s, e] = tok.split('-').map((n) => parseInt(n.trim(), 10));
+            return { start: s, end: e };
+          })
+          .filter((iv) => Number.isFinite(iv.start) && Number.isFinite(iv.end) && iv.start < iv.end)
+          .slice(0, 9);
+        if (!intervals.length) {
+          infoEl.textContent = 'Enter valid meetings like 0-30, 5-10, 15-20 where start < end.';
+          return;
+        }
+        buildSteps(intervals);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', parseAndRun);
+      document.querySelectorAll('[data-meetings]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.getAttribute('data-meetings') || '';
+          parseAndRun();
+        });
+      });
+
+      viz.bindControls();
+      renderCode();
+      parseAndRun();
+    </script>
+  </body>
+</html>
