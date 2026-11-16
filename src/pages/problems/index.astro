@@ -4,7 +4,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProblemCard from '../../components/ProblemCard.astro';
 
 const problems = (await getCollection('problems')).sort((a, b) =>
-  b.data.dateCompleted.localeCompare(a.data.dateCompleted),
+  (b.data.dateCompleted || '').localeCompare(a.data.dateCompleted || ''),
 );
 ---
 
@@ -36,18 +36,25 @@ const problems = (await getCollection('problems')).sort((a, b) =>
     {problems.length > 0 ? (
       <>
         <div class="problem-grid" id="problem-list">
-          {problems.map((problem) => (
-            <ProblemCard
-              title={problem.data.title}
-              platform={problem.data.platform}
-              difficulty={problem.data.difficulty}
-              topics={problem.data.topics}
-              slug={problem.slug}
-              dateCompleted={problem.data.dateCompleted}
-              timeComplexity={problem.data.timeComplexity}
-              spaceComplexity={problem.data.spaceComplexity}
-            />
-          ))}
+          {problems.map((problem) => {
+            const optimalApproach =
+              problem.data.approaches?.find((a) => a.isOptimal) ?? problem.data.approaches?.[0];
+            const timeComplexity = problem.data.timeComplexity ?? optimalApproach?.timeComplexity;
+            const spaceComplexity = problem.data.spaceComplexity ?? optimalApproach?.spaceComplexity;
+
+            return (
+              <ProblemCard
+                title={problem.data.title}
+                platform={problem.data.platform}
+                difficulty={problem.data.difficulty}
+                topics={problem.data.topics}
+                slug={problem.slug}
+                dateCompleted={problem.data.dateCompleted}
+                timeComplexity={timeComplexity}
+                spaceComplexity={spaceComplexity}
+              />
+            );
+          })}
         </div>
         <div class="clay-card empty-state" id="empty-filter-state" hidden>
           <div class="empty-state__icon">🔍</div>

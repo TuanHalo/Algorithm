@@ -16,3 +16,30 @@ export interface TopicWithCount extends TopicConfig {
   readonly lessonCount: number;
 }
 
+export interface ProblemTag {
+  readonly label: string;
+  readonly topic?: string;
+  readonly slug?: string;
+}
+
+export interface ProblemApproach {
+  readonly name: string;
+  readonly timeComplexity: string;
+  readonly spaceComplexity: string;
+  readonly isOptimal: boolean;
+  readonly summary?: string;
+  readonly tags: readonly ProblemTag[];
+}
+
+export interface ProblemData {
+  readonly title: string;
+  readonly platform: PlatformName;
+  readonly problemUrl: string;
+  readonly difficulty: ProblemDifficulty;
+  readonly topics: readonly string[];
+  readonly dateCompleted?: string;
+  readonly timeComplexity?: string;
+  readonly spaceComplexity?: string;
+  readonly diagram?: string;
+  readonly approaches?: readonly ProblemApproach[];
+}
