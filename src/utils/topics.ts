@@ -78,7 +78,19 @@ export const TOPICS: readonly TopicConfig[] = [
     color: 'var(--color-tree)',
     order: 5,
     description: 'Hierarchical data, from file systems and family trees to search engines.',
-    previewAlgorithms: ['BST', 'AVL', 'Inorder', 'Preorder', 'Postorder'],
+    previewAlgorithms: [
+      'Binary Tree Basics',
+      'DFS Traversals (Pre, In, Post)',
+      'Level-Order Traversal (BFS)',
+      'Tree Height, Diameter & Balance',
+      'Binary Search Tree (BST)',
+      'Validate BST & Kth Smallest',
+      'Lowest Common Ancestor (LCA)',
+      'AVL Tree',
+      'Binary Heap',
+      'Trie (Prefix Tree)',
+      'Segment Tree',
+    ],
   },
   {
     slug: 'linked-list',
@@ -155,7 +167,16 @@ export const TOPICS: readonly TopicConfig[] = [
     color: 'var(--color-backtracking)',
     order: 10,
     description: 'Try a path and undo what does not work to explore all possibilities.',
-    previewAlgorithms: ['N-Queens', 'Sudoku', 'Permutations'],
+    previewAlgorithms: [
+      'Subsets (Power Set)',
+      'Permutations',
+      'Combination Sum',
+      'Subsets II (Duplicate Pruning)',
+      'Generate Parentheses',
+      'Word Search (Grid Backtracking)',
+      'N-Queens',
+      'Sudoku Solver',
+    ],
   },
 ] as const;
 

@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Binary Tree Basics Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/binary-tree-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 330px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="tree-input" class="vis-input__field" type="text" value="10, 5, 15, 2, 7, null, 20" placeholder="Level-order: 10, 5, 15, 2, 7, null, 20" aria-label="Level-order binary tree" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Load Tree</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-tree="10, 5, 15, 2, 7, null, 20">Balanced</button>
+        <button class="vis-btn" type="button" data-tree="1, 2, 3, 4, 5, 6, 7">Complete</button>
+        <button class="vis-btn" type="button" data-tree="1, 2, null, 3, null, 4">Left-Skewed</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> Root / Selected</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Inspecting</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Leaf Node</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-sorted);"></span> Internal Node</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-summary" class="vis-pill">Nodes: 0 | Leaves: 0 | Height: 0</span>
+        <span id="status-selected" class="vis-pill">Click any node to inspect</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="tree-stage" class="t-stage-wrap"></div>
+        <div class="t-aux-row">
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">Selected Node Properties</div>
+            <div id="props-view" class="t-chip-list"></div>
+          </div>
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">Leaf Nodes Found</div>
+            <div id="leaves-view" class="t-chip-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Press Play to inspect every node's depth, height, and role, or click a node directly.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/binary-tree-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'class TreeNode:',
+        '    def __init__(self, val: int, left=None, right=None) -> None:',
+        '        self.val = val',
+        '        self.left = left',
+        '        self.right = right',
+        '',
+        'def count_leaves(node: TreeNode | None) -> int:',
+        '    if node is None:',
+        '        return 0',
+        '    if node.left is None and node.right is None:',
+        '        return 1',
+        '    return count_leaves(node.left) + count_leaves(node.right)',
+      ];
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('tree-input');
+      const summaryPill = document.getElementById('status-summary');
+      const selectedPill = document.getElementById('status-selected');
+      const propsView = document.getElementById('props-view');
+      const leavesView = document.getElementById('leaves-view');
+
+      let currentRoot = null;
+      let nodeMeta = {};
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new BinaryTreeCanvas({
+        containerEl: document.getElementById('tree-stage'),
+        onSelectNode: (node) => {
+          viz.pause();
+          const m = nodeMeta[node.id];
+          if (!m) return;
+          selectedPill.textContent = `Selected: ${node.val} (${m.role})`;
+          renderProps(m);
+          const nodeStates = {};
+          const nodeBadges = {};
+          Object.keys(nodeMeta).forEach((id) => {
+            nodeStates[id] = nodeMeta[id].isLeaf ? 'visited' : 'queued';
+            nodeBadges[id] = `d=${nodeMeta[id].depth}`;
+          });
+          nodeStates[node.id] = 'pivot';
+          canvas.renderBinary(currentRoot, { nodeStates, nodeBadges });
+          infoEl.textContent = `Node ${node.val}: depth ${m.depth}, subtree height ${m.height}, parent ${m.parentVal ?? 'None'}.`;
+        },
+      });
+
+      function renderProps(m) {
+        if (!m) {
+          propsView.innerHTML = '<span class="t-empty">none selected</span>';
+          return;
+        }
+        propsView.innerHTML = [
+          `<span class="t-chip t-chip--pivot">val: ${m.val}</span>`,
+          `<span class="t-chip">role: ${m.role}</span>`,
+          `<span class="t-chip">depth: ${m.depth}</span>`,
+          `<span class="t-chip">height: ${m.height}</span>`,
+          `<span class="t-chip">parent: ${m.parentVal ?? 'None'}</span>`,
+        ].join('');
+      }
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 650,
+        render: (step) => {
+          canvas.renderBinary(currentRoot, {
+            nodeStates: step.nodeStates,
+            nodeBadges: step.nodeBadges,
+            edgeStates: step.edgeStates,
+          });
+          infoEl.textContent = step.description;
+          selectedPill.textContent = step.selectedLabel;
+          renderProps(step.selectedMeta);
+          leavesView.innerHTML = step.leaves.length
+            ? step.leaves.map((v) => `<span class="t-chip t-chip--done">${v}</span>`).join('')
+            : '<span class="t-empty">none yet</span>';
+        },
+        highlightCode: renderCode,
+      });
+      viz.bindControls();
+
+      function buildSteps() {
+        viz.reset();
+        const parsed = BinaryTreeCanvas.parseLevelOrder(inputEl.value);
+        currentRoot = parsed.root;
+        nodeMeta = {};
+
+        if (!currentRoot) {
+          summaryPill.textContent = 'Nodes: 0 | Leaves: 0 | Height: -';
+          canvas.renderBinary(null);
+          infoEl.textContent = 'Enter a non-empty level-order tree (for example: 10, 5, 15).';
+          return;
+        }
+
+        let totalNodes = 0;
+        let totalLeaves = 0;
+        let maxDepth = 0;
+
+        const measure = (node, depth, parent) => {
+          if (!node) return -1;
+          totalNodes += 1;
+          if (depth > maxDepth) maxDepth = depth;
+          const lh = measure(node.left, depth + 1, node);
+          const rh = measure(node.right, depth + 1, node);
+          const h = 1 + Math.max(lh, rh);
+          const isLeaf = !node.left && !node.right;
+          if (isLeaf) totalLeaves += 1;
+          const role = !parent ? (isLeaf ? 'root & leaf' : 'root') : isLeaf ? 'leaf' : 'internal';
+          nodeMeta[node.id] = {
+            id: node.id,
+            val: node.val,
+            depth,
+            height: h,
+            isLeaf,
+            role,
+            parentVal: parent ? parent.val : null,
+          };
+          return h;
+        };
+
+        const rootHeight = measure(currentRoot, 0, null);
+        summaryPill.textContent = `Nodes: ${totalNodes} | Leaves: ${totalLeaves} | Height: ${rootHeight}`;
+
+        const resolved = {};
+        const leaves = [];
+
+        const snap = (activeId, activeEdge, codeLine, description, selectedMeta) => {
+          const nodeStates = {};
+          const nodeBadges = {};
+          Object.keys(nodeMeta).forEach((id) => {
+            if (id === activeId) nodeStates[id] = 'active';
+            else if (resolved[id] === 'leaf') nodeStates[id] = 'visited';
+            else if (resolved[id] === 'internal') nodeStates[id] = 'queued';
+            else if (id === currentRoot.id && !activeId) nodeStates[id] = 'pivot';
+            nodeBadges[id] = `d=${nodeMeta[id].depth}`;
+          });
+          const edgeStates = {};
+          if (activeEdge) edgeStates[activeEdge] = 'exploring';
+
+          viz.recordStep({
+            nodeStates,
+            nodeBadges,
+            edgeStates,
+            leaves: [...leaves],
+            selectedMeta,
+            selectedLabel: selectedMeta ? `Inspecting: ${selectedMeta.val}` : 'Root overview',
+            codeLine,
+            description,
+          });
+        };
+
+        snap(null, null, 0, `Tree built with root ${currentRoot.val}, ${totalNodes} nodes, and height ${rootHeight}.`, nodeMeta[currentRoot.id]);
+
+        const walk = (node, parent) => {
+          if (!node) {
+            snap(null, null, 7, 'Hit a None child pointer and return 0 leaves.', null);
+            return;
+          }
+          const m = nodeMeta[node.id];
+          const edge = parent ? `${parent.id}->${node.id}` : null;
+          snap(node.id, edge, 6, `Visit node ${node.val} at depth ${m.depth} (subtree height ${m.height}).`, m);
+
+          if (m.isLeaf) {
+            resolved[node.id] = 'leaf';
+            leaves.push(node.val);
+            snap(node.id, edge, 10, `Node ${node.val} has no left or right child, so it is a leaf (return 1).`, m);
+            return;
+          }
+
+          walk(node.left, node);
+          walk(node.right, node);
+          resolved[node.id] = 'internal';
+          snap(node.id, edge, 11, `Combine leaf counts from ${node.val}'s left and right subtrees.`, m);
+        };
+
+        walk(currentRoot, null);
+        snap(null, null, 11, `Done! Found ${leaves.length} leaf node(s): [${leaves.join(', ')}].`, nodeMeta[currentRoot.id]);
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', buildSteps);
+      document.querySelectorAll('[data-tree]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.tree;
+          buildSteps();
+        });
+      });
+
+      renderCode();
+      buildSteps();
+    </script>
+  </body>
+</html>

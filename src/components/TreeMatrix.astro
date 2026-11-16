@@ -1,0 +1,170 @@
+---
+import { withBase } from '../utils/url';
+
+interface TreeSummaryRow {
+  readonly slug: string;
+  readonly name: string;
+  readonly time: string;
+  readonly space: string;
+  readonly treeScope: string;
+  readonly coreMechanism: string;
+  readonly bestFor: string;
+}
+
+const TREE_MATRIX: readonly TreeSummaryRow[] = [
+  {
+    slug: 'binary-tree-basics',
+    name: 'Binary Tree Basics',
+    time: 'O(1) / O(n)',
+    space: 'O(n)',
+    treeScope: 'Any binary tree',
+    coreMechanism: 'val, left, right pointers',
+    bestFor: 'Understanding root, leaf, depth, height, and balanced vs skewed shapes',
+  },
+  {
+    slug: 'dfs-traversals',
+    name: 'DFS Traversals (Pre / In / Post)',
+    time: 'O(n)',
+    space: 'O(h)',
+    treeScope: 'Any binary tree',
+    coreMechanism: 'Call stack / recursion',
+    bestFor: 'Cloning trees (pre), sorted BST reads (in), and subtree cleanup (post)',
+  },
+  {
+    slug: 'level-order-traversal',
+    name: 'Level-Order Traversal (BFS)',
+    time: 'O(n)',
+    space: 'O(w)',
+    treeScope: 'Any tree',
+    coreMechanism: 'FIFO deque + level size',
+    bestFor: 'Layer-by-layer views, shortest depth, and right-side or zigzag scans',
+  },
+  {
+    slug: 'tree-height-diameter',
+    name: 'Tree Height, Diameter & Balance',
+    time: 'O(n)',
+    space: 'O(h)',
+    treeScope: 'Any binary tree',
+    coreMechanism: 'Bottom-up postorder DFS',
+    bestFor: 'Computing depth, longest path between nodes, and height-balance checks',
+  },
+  {
+    slug: 'binary-search-tree',
+    name: 'Binary Search Tree (BST)',
+    time: 'O(h)',
+    space: 'O(h)',
+    treeScope: 'Left < Node < Right',
+    coreMechanism: 'Binary branch comparison',
+    bestFor: 'Dynamic ordered sets supporting search, insert, delete, and sorted scans',
+  },
+  {
+    slug: 'validate-bst',
+    name: 'Validate BST & Kth Smallest',
+    time: 'O(n) / O(h + k)',
+    space: 'O(h)',
+    treeScope: 'BST / candidate tree',
+    coreMechanism: '(low, high) bounds / inorder',
+    bestFor: 'Verifying global BST ordering and fetching the kth sorted element',
+  },
+  {
+    slug: 'lowest-common-ancestor',
+    name: 'Lowest Common Ancestor (LCA)',
+    time: 'O(n) / O(h)',
+    space: 'O(h)',
+    treeScope: 'Binary tree or BST',
+    coreMechanism: 'Split point / postorder',
+    bestFor: 'Finding the deepest shared ancestor of two nodes in hierarchies or BSTs',
+  },
+  {
+    slug: 'avl-tree',
+    name: 'AVL Tree',
+    time: 'O(log n)',
+    space: 'O(n)',
+    treeScope: 'Height-balanced BST',
+    coreMechanism: 'LL / RR / LR / RL rotations',
+    bestFor: 'Read-heavy ordered maps needing strict O(log n) worst-case lookup height',
+  },
+  {
+    slug: 'binary-heap',
+    name: 'Binary Heap (Priority Queue)',
+    time: 'O(log n) / O(n)',
+    space: 'O(n)',
+    treeScope: 'Complete binary tree',
+    coreMechanism: 'Array 2i+1, 2i+2 + sift',
+    bestFor: 'Fastest min/max extraction, top-k tracking, and Dijkstra priority queues',
+  },
+  {
+    slug: 'trie',
+    name: 'Trie (Prefix Tree)',
+    time: 'O(L)',
+    space: 'O(total chars)',
+    treeScope: 'N-ary char tree',
+    coreMechanism: 'Edge per char + end flag',
+    bestFor: 'Autocomplete, spell checking, and word prefix lookups in O(word length)',
+  },
+  {
+    slug: 'segment-tree',
+    name: 'Segment Tree',
+    time: 'O(log n)',
+    space: 'O(n)',
+    treeScope: 'Static-length array',
+    coreMechanism: 'Interval tree 4n array',
+    bestFor: 'Dynamic range sum/min/max queries mixed with frequent point updates',
+  },
+] as const;
+---
+
+<section class="clay-section tree-matrix">
+  <h2 class="clay-section__title">Tree comparison and decision matrix</h2>
+  <p class="tree-matrix__intro">
+    Compare tree traversals, balanced search trees, heaps, tries, and range trees by invariant and complexity.
+  </p>
+  <div class="matrix-scroll">
+    <table class="clay-table">
+      <thead>
+        <tr>
+          <th>Algorithm / Structure</th>
+          <th>Time</th>
+          <th>Space</th>
+          <th>Tree Scope / Invariant</th>
+          <th>Core Mechanism</th>
+          <th>Best When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {TREE_MATRIX.map((row) => (
+          <tr>
+            <td>
+              <a href={withBase(`/learn/tree/${row.slug}/`)} class="matrix-link">
+                {row.name}
+              </a>
+            </td>
+            <td><code>{row.time}</code></td>
+            <td><code>{row.space}</code></td>
+            <td>{row.treeScope}</td>
+            <td><code>{row.coreMechanism}</code></td>
+            <td>{row.bestFor}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+  .tree-matrix {
+    margin-top: var(--space-2xl);
+  }
+
+  .tree-matrix__intro {
+    margin-bottom: var(--space-md);
+  }
+
+  .matrix-scroll {
+    overflow-x: auto;
+  }
+
+  .matrix-link {
+    font-weight: 600;
+  }
+</style>

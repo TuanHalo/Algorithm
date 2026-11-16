@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Binary Heap (Priority Queue) Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/binary-tree-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 350px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+      .vis-small-input { max-width: 84px; min-width: 68px !important; flex: 0 0 auto !important; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="heap-input" class="vis-input__field" type="text" value="9, 4, 7, 1, 6, 3" placeholder="Array: 9, 4, 7, 1, 6, 3" aria-label="Heap input numbers" />
+        <input id="push-input" class="vis-input__field vis-small-input" type="number" value="2" aria-label="Value to push" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Build &amp; Run</button>
+      </div>
+
+      <div class="t-mode-tabs">
+        <span class="vis-preset-label">Heap Type:</span>
+        <button class="vis-btn vis-btn--primary" type="button" data-kind="min">Min-Heap</button>
+        <button class="vis-btn" type="button" data-kind="max">Max-Heap</button>
+        <span class="vis-preset-label" style="margin-left:0.4rem;">Operation:</span>
+        <button class="vis-btn vis-btn--primary" type="button" data-op="heapify">Heapify</button>
+        <button class="vis-btn" type="button" data-op="push">Push (sift_up)</button>
+        <button class="vis-btn" type="button" data-op="pop">Pop Root (sift_down)</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-arr="9, 4, 7, 1, 6, 3" data-val="2">Unsorted [9,4,7,1,6,3]</button>
+        <button class="vis-btn" type="button" data-arr="10, 20, 15, 30, 40" data-val="5">Push 5 to Root</button>
+        <button class="vis-btn" type="button" data-arr="12, 8, 10, 4, 5, 7, 9" data-val="15">Max-Heap Demo</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Comparing</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Swapping</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Heap Property OK</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-kind" class="vis-pill">Min-Heap | Heapify</span>
+        <span id="status-root" class="vis-pill">Top (heap[0]): -</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="tree-stage" class="t-stage-wrap"></div>
+        <div class="t-aux-box">
+          <div class="t-aux-box__title">Backing Array (parent=(i-1)//2, left=2i+1, right=2i+2)</div>
+          <div id="array-view" class="t-array-strip"></div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">See how a complete binary tree maps directly onto a compact array with zero pointer overhead.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/binary-tree-canvas.js"></script>
+    <script>
+      const CODE_BY_OP = {
+        heapify: [
+          'def heapify_bottom_up(arr: list[int]) -> None:',
+          '    for i in range(len(arr) // 2 - 1, -1, -1):',
+          '        sift_down(arr, i, len(arr))',
+        ],
+        push: [
+          'def heappush(heap: list[int], val: int) -> None:',
+          '    heap.append(val)',
+          '    idx = len(heap) - 1',
+          '    while idx > 0:',
+          '        parent = (idx - 1) // 2',
+          '        if heap[idx] < heap[parent]:',
+          '            heap[idx], heap[parent] = heap[parent], heap[idx]',
+          '            idx = parent',
+          '        else: break',
+        ],
+        pop: [
+          'def heappop(heap: list[int]) -> int:',
+          '    top = heap[0]',
+          '    heap[0] = heap.pop()',
+          '    sift_down(heap, 0, len(heap))',
+          '    return top',
+        ],
+      };
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('heap-input');
+      const pushEl = document.getElementById('push-input');
+      const kindPill = document.getElementById('status-kind');
+      const rootPill = document.getElementById('status-root');
+      const arrayView = document.getElementById('array-view');
+
+      let kind = 'min';
+      let op = 'heapify';
+
+      function renderCode(activeLine = -1) {
+        const lines = CODE_BY_OP[op];
+        codeEl.innerHTML = lines.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new BinaryTreeCanvas({
+        containerEl: document.getElementById('tree-stage'),
+      });
+
+      function arrayToTree(arr) {
+        if (!arr.length) return null;
+        const nodes = arr.map((val, idx) => ({ id: `i${idx}`, val, left: null, right: null }));
+        for (let i = 0; i < arr.length; i++) {
+          const l = 2 * i + 1;
+          const r = 2 * i + 2;
+          if (l < arr.length) nodes[i].left = nodes[l];
+          if (r < arr.length) nodes[i].right = nodes[r];
+        }
+        return nodes[0];
+      }
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 680,
+        render: (step) => {
+          const tree = arrayToTree(step.arr);
+          const nodeStates = {};
+          const nodeBadges = {};
+          step.arr.forEach((_, idx) => {
+            nodeBadges[`i${idx}`] = `[${idx}]`;
+            if (step.swapping.includes(idx)) nodeStates[`i${idx}`] = 'violation';
+            else if (step.comparing.includes(idx)) nodeStates[`i${idx}`] = 'active';
+            else if (step.done.includes(idx)) nodeStates[`i${idx}`] = 'visited';
+          });
+          canvas.renderBinary(tree, { nodeStates, nodeBadges });
+
+          arrayView.innerHTML = step.arr.length
+            ? step.arr.map((val, idx) => {
+                let cls = '';
+                if (step.swapping.includes(idx)) cls = 't-array-box--violation';
+                else if (step.comparing.includes(idx)) cls = 't-array-box--active';
+                else if (step.done.includes(idx)) cls = 't-array-box--visited';
+                return `<div class="t-array-cell"><div class="t-array-box ${cls}">${val}</div><span class="t-array-idx">${idx}</span></div>`;
+              }).join('')
+            : '<span class="t-empty">empty heap</span>';
+
+          infoEl.textContent = step.description;
+          rootPill.textContent = step.arr.length ? `Top (heap[0]): ${step.arr[0]}` : 'Top: -';
+        },
+        highlightCode: renderCode,
+      });
+      viz.bindControls();
+
+      const better = (a, b) => (kind === 'min' ? a < b : a > b);
+
+      function buildSteps() {
+        viz.reset();
+        renderCode();
+        kindPill.textContent = `${kind === 'min' ? 'Min-Heap' : 'Max-Heap'} | ${op.toUpperCase()}`;
+
+        const arr = BinaryTreeCanvas.parseNumberList(inputEl.value);
+        if (!arr.length) {
+          canvas.renderBinary(null);
+          return;
+        }
+
+        const snap = (comparing, swapping, done, codeLine, description) => {
+          viz.recordStep({
+            arr: [...arr],
+            comparing: [...comparing],
+            swapping: [...swapping],
+            done: [...done],
+            codeLine,
+            description,
+          });
+        };
+
+        const siftDown = (startIdx, lineNum) => {
+          let i = startIdx;
+          const n = arr.length;
+          while (true) {
+            let best = i;
+            const l = 2 * i + 1;
+            const r = 2 * i + 2;
+            const cmp = [i];
+            if (l < n) cmp.push(l);
+            if (r < n) cmp.push(r);
+            snap(cmp, [], [], lineNum, `Compare node [${i}]=${arr[i]} with its children.`);
+            if (l < n && better(arr[l], arr[best])) best = l;
+            if (r < n && better(arr[r], arr[best])) best = r;
+            if (best !== i) {
+              snap([], [i, best], [], lineNum, `Swap [${i}]=${arr[i]} with child [${best}]=${arr[best]} to restore ${kind}-heap order.`);
+              [arr[i], arr[best]] = [arr[best], arr[i]];
+              i = best;
+            } else {
+              break;
+            }
+          }
+        };
+
+        const buildHeapQuiet = () => {
+          for (let i = Math.floor(arr.length / 2) - 1; i >= 0; i--) {
+            let idx = i;
+            while (true) {
+              let best = idx;
+              const l = 2 * idx + 1;
+              const r = 2 * idx + 2;
+              if (l < arr.length && better(arr[l], arr[best])) best = l;
+              if (r < arr.length && better(arr[r], arr[best])) best = r;
+              if (best === idx) break;
+              [arr[idx], arr[best]] = [arr[best], arr[idx]];
+              idx = best;
+            }
+          }
+        };
+
+        if (op === 'heapify') {
+          snap([], [], [], 0, `Start bottom-up heapify from last non-leaf index ${(Math.floor(arr.length / 2) - 1)}.`);
+          for (let i = Math.floor(arr.length / 2) - 1; i >= 0; i--) {
+            siftDown(i, 2);
+          }
+          snap([], [], arr.map((_, i) => i), 2, `Heapify complete! ${kind === 'min' ? 'Smallest' : 'Largest'} item ${arr[0]} is now at heap[0].`);
+        } else if (op === 'push') {
+          buildHeapQuiet();
+          const val = Number(pushEl.value);
+          const pushVal = Number.isNaN(val) ? 2 : val;
+          snap([], [], [0], 0, `Valid ${kind}-heap ready. Append ${pushVal} at the end of the array.`);
+          arr.push(pushVal);
+          let idx = arr.length - 1;
+          snap([idx], [], [], 1, `Placed ${pushVal} at index ${idx}. Now sift up toward the root.`);
+          while (idx > 0) {
+            const parent = Math.floor((idx - 1) / 2);
+            snap([idx, parent], [], [], 5, `Compare [${idx}]=${arr[idx]} with parent [${parent}]=${arr[parent]}.`);
+            if (better(arr[idx], arr[parent])) {
+              snap([], [idx, parent], [], 6, `Swap [${idx}]=${arr[idx]} and parent [${parent}]=${arr[parent]}.`);
+              [arr[idx], arr[parent]] = [arr[parent], arr[idx]];
+              idx = parent;
+            } else {
+              snap([], [], [idx], 8, `Heap property satisfied at index ${idx}; stop sifting up.`);
+              break;
+            }
+          }
+          snap([], [], arr.map((_, i) => i), 0, `Push complete! New top is ${arr[0]}.`);
+        } else {
+          buildHeapQuiet();
+          snap([0], [], [], 1, `Valid ${kind}-heap ready. Pop root ${arr[0]} and move last item [${arr.length - 1}]=${arr[arr.length - 1]} to index 0.`);
+          const popped = arr[0];
+          const last = arr.pop();
+          if (arr.length > 0) {
+            arr[0] = last;
+            snap([0], [], [], 2, `Moved ${last} to index 0. Sift down to restore heap order.`);
+            siftDown(0, 3);
+          }
+          snap([], [], arr.map((_, i) => i), 4, `Popped ${popped}. New root is ${arr.length ? arr[0] : 'empty'}.`);
+        }
+
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', buildSteps);
+      document.querySelectorAll('[data-kind]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          kind = btn.dataset.kind;
+          document.querySelectorAll('[data-kind]').forEach((b) => {
+            b.classList.toggle('vis-btn--primary', b.dataset.kind === kind);
+          });
+          buildSteps();
+        });
+      });
+      document.querySelectorAll('[data-op]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          op = btn.dataset.op;
+          document.querySelectorAll('[data-op]').forEach((b) => {
+            b.classList.toggle('vis-btn--primary', b.dataset.op === op);
+          });
+          buildSteps();
+        });
+      });
+      document.querySelectorAll('[data-arr]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.arr;
+          pushEl.value = btn.dataset.val;
+          buildSteps();
+        });
+      });
+
+      renderCode();
+      buildSteps();
+    </script>
+  </body>
+</html>

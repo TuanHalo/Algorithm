@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Binary Search Tree (BST) Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/binary-tree-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 330px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+      .vis-small-input { max-width: 96px; min-width: 72px !important; flex: 0 0 auto !important; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="tree-input" class="vis-input__field" type="text" value="15, 8, 22, 4, 12, 18, 28" placeholder="Insert keys: 15, 8, 22, 4, 12" aria-label="BST insert keys" />
+        <input id="target-input" class="vis-input__field vis-small-input" type="number" value="12" aria-label="Target key" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Run Op</button>
+      </div>
+
+      <div class="t-mode-tabs">
+        <span class="vis-preset-label">Operation:</span>
+        <button class="vis-btn vis-btn--primary" type="button" data-op="search">Search</button>
+        <button class="vis-btn" type="button" data-op="insert">Insert</button>
+        <button class="vis-btn" type="button" data-op="delete">Delete</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-tree="15, 8, 22, 4, 12, 18, 28" data-target="12">Balanced BST</button>
+        <button class="vis-btn" type="button" data-tree="20, 10, 30, 5, 15, 25, 35, 13" data-target="10">Two-Child Delete (10)</button>
+        <button class="vis-btn" type="button" data-tree="10, 5, 15, 2, 7" data-target="9">Insert Missing (9)</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Comparing</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-pivot);"></span> Path / Successor</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Found / Updated</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Removed / Miss</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-op" class="vis-pill">Op: Search(12)</span>
+        <span id="status-inorder" class="vis-pill">Inorder (Sorted): -</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="tree-stage" class="t-stage-wrap"></div>
+        <div class="t-aux-row">
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">Comparison Path</div>
+            <div id="path-view" class="t-chip-list"></div>
+          </div>
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">Sorted Inorder Snapshot</div>
+            <div id="inorder-view" class="t-chip-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Pick Search, Insert, or Delete, enter a target key, and press Play.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/binary-tree-canvas.js"></script>
+    <script>
+      const CODE_BY_OP = {
+        search: [
+          'def search_bst(root: TreeNode | None, key: int) -> TreeNode | None:',
+          '    curr = root',
+          '    while curr is not None:',
+          '        if key == curr.val:',
+          '            return curr',
+          '        curr = curr.left if key < curr.val else curr.right',
+          '    return None',
+        ],
+        insert: [
+          'def insert_bst(root: TreeNode | None, key: int) -> TreeNode:',
+          '    if root is None:',
+          '        return TreeNode(key)',
+          '    if key < root.val:',
+          '        root.left = insert_bst(root.left, key)',
+          '    elif key > root.val:',
+          '        root.right = insert_bst(root.right, key)',
+          '    return root',
+        ],
+        delete: [
+          'def delete_bst(root: TreeNode | None, key: int) -> TreeNode | None:',
+          '    if root is None: return None',
+          '    if key < root.val:',
+          '        root.left = delete_bst(root.left, key)',
+          '    elif key > root.val:',
+          '        root.right = delete_bst(root.right, key)',
+          '    else:',
+          '        if not root.left: return root.right',
+          '        if not root.right: return root.left',
+          '        succ = min_node(root.right)',
+          '        root.val = succ.val',
+          '        root.right = delete_bst(root.right, succ.val)',
+          '    return root',
+        ],
+      };
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('tree-input');
+      const targetEl = document.getElementById('target-input');
+      const opPill = document.getElementById('status-op');
+      const inorderPill = document.getElementById('status-inorder');
+      const pathView = document.getElementById('path-view');
+      const inorderView = document.getElementById('inorder-view');
+
+      let op = 'search';
+      let nextId = 0;
+
+      function renderCode(activeLine = -1) {
+        const lines = CODE_BY_OP[op];
+        codeEl.innerHTML = lines.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new BinaryTreeCanvas({
+        containerEl: document.getElementById('tree-stage'),
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 700,
+        render: (step) => {
+          canvas.renderBinary(step.tree, {
+            nodeStates: step.nodeStates,
+            nodeBadges: step.nodeBadges,
+            edgeStates: step.edgeStates,
+          });
+          infoEl.textContent = step.description;
+          inorderPill.textContent = `Inorder (Sorted): ${step.inorder.join(', ') || '-'}`;
+          pathView.innerHTML = step.path.length
+            ? step.path.map((p) => `<span class="t-chip t-chip--pivot">${p}</span>`).join('')
+            : '<span class="t-empty">none</span>';
+          inorderView.innerHTML = step.inorder.length
+            ? step.inorder.map((v) => `<span class="t-chip t-chip--done">${v}</span>`).join('')
+            : '<span class="t-empty">empty</span>';
+        },
+        highlightCode: renderCode,
+      });
+      viz.bindControls();
+
+      function insertRaw(root, val) {
+        if (!root) return { id: `n${nextId++}`, val, left: null, right: null };
+        if (val < root.val) root.left = insertRaw(root.left, val);
+        else if (val > root.val) root.right = insertRaw(root.right, val);
+        return root;
+      }
+
+      function getInorder(node, out = []) {
+        if (!node) return out;
+        getInorder(node.left, out);
+        out.push(node.val);
+        getInorder(node.right, out);
+        return out;
+      }
+
+      function buildSteps() {
+        viz.reset();
+        renderCode();
+        nextId = 0;
+
+        const nums = BinaryTreeCanvas.parseNumberList(inputEl.value);
+        const key = Number(targetEl.value);
+        const target = Number.isNaN(key) ? 12 : key;
+        opPill.textContent = `Op: ${op.toUpperCase()}(${target})`;
+
+        let root = null;
+        for (const v of nums) root = insertRaw(root, v);
+
+        const path = [];
+        const visitedIds = new Set();
+
+        const snap = (treeRef, activeId, activeEdge, extraStates, codeLine, description) => {
+          const nodeStates = { ...extraStates };
+          visitedIds.forEach((id) => {
+            if (!nodeStates[id]) nodeStates[id] = 'pivot';
+          });
+          if (activeId) nodeStates[activeId] = 'active';
+          const edgeStates = {};
+          if (activeEdge) edgeStates[activeEdge] = 'exploring';
+
+          viz.recordStep({
+            tree: BinaryTreeCanvas.cloneBinary(treeRef),
+            path: [...path],
+            inorder: getInorder(treeRef),
+            nodeStates,
+            nodeBadges: {},
+            edgeStates,
+            codeLine,
+            description,
+          });
+        };
+
+        if (op === 'search') {
+          let curr = root;
+          let parent = null;
+          snap(root, null, null, {}, 1, `Start searching for ${target} at the root.`);
+          while (curr) {
+            const edge = parent ? `${parent.id}->${curr.id}` : null;
+            visitedIds.add(curr.id);
+            if (target === curr.val) {
+              path.push(`${curr.val} == ${target}`);
+              snap(root, null, edge, { [curr.id]: 'visited' }, 4, `Found ${target}! Returning node ${curr.val}.`);
+              viz.goToStep(0);
+              return;
+            }
+            const dir = target < curr.val ? 'left' : 'right';
+            path.push(`${target} ${target < curr.val ? '<' : '>'} ${curr.val} -> ${dir}`);
+            snap(root, curr.id, edge, {}, 5, `${target} ${target < curr.val ? '<' : '>'} ${curr.val}, so branch ${dir}.`);
+            parent = curr;
+            curr = target < curr.val ? curr.left : curr.right;
+          }
+          snap(root, null, null, {}, 6, `Reached None. Key ${target} is not in the BST.`);
+        } else if (op === 'insert') {
+          snap(root, null, null, {}, 0, `Insert ${target} by following BST comparisons until an empty slot.`);
+          const insertStep = (node, parent) => {
+            if (!node) {
+              const created = { id: `n${nextId++}`, val: target, left: null, right: null };
+              path.push(`create(${target})`);
+              return created;
+            }
+            const edge = parent ? `${parent.id}->${node.id}` : null;
+            visitedIds.add(node.id);
+            if (target === node.val) {
+              path.push(`${target} already exists`);
+              snap(root, null, edge, { [node.id]: 'visited' }, 7, `Key ${target} is already in the BST; no duplicate added.`);
+              return node;
+            }
+            if (target < node.val) {
+              path.push(`${target} < ${node.val} -> L`);
+              snap(root, node.id, edge, {}, 3, `${target} < ${node.val}: descend left.`);
+              node.left = insertStep(node.left, node);
+            } else {
+              path.push(`${target} > ${node.val} -> R`);
+              snap(root, node.id, edge, {}, 5, `${target} > ${node.val}: descend right.`);
+              node.right = insertStep(node.right, node);
+            }
+            return node;
+          };
+          root = insertStep(root, null);
+          const findId = (n) => (!n ? null : n.val === target ? n.id : target < n.val ? findId(n.left) : findId(n.right));
+          const insertedId = findId(root);
+          snap(root, null, null, insertedId ? { [insertedId]: 'visited' } : {}, 2, `Attached ${target} in sorted BST position.`);
+        } else {
+          snap(root, null, null, {}, 0, `Delete ${target}: first locate the node while keeping BST order.`);
+          const deleteStep = (node, parent, k) => {
+            if (!node) {
+              snap(root, null, null, {}, 1, `Key ${k} not found; nothing deleted.`);
+              return null;
+            }
+            const edge = parent ? `${parent.id}->${node.id}` : null;
+            visitedIds.add(node.id);
+            if (k < node.val) {
+              path.push(`${k} < ${node.val} -> L`);
+              snap(root, node.id, edge, {}, 2, `${k} < ${node.val}: search left subtree.`);
+              node.left = deleteStep(node.left, node, k);
+              return node;
+            }
+            if (k > node.val) {
+              path.push(`${k} > ${node.val} -> R`);
+              snap(root, node.id, edge, {}, 4, `${k} > ${node.val}: search right subtree.`);
+              node.right = deleteStep(node.right, node, k);
+              return node;
+            }
+
+            snap(root, null, edge, { [node.id]: 'violation' }, 6, `Located ${k} to delete.`);
+            if (!node.left) {
+              path.push(`replace ${k} with right`);
+              return node.right;
+            }
+            if (!node.right) {
+              path.push(`replace ${k} with left`);
+              return node.left;
+            }
+            let succ = node.right;
+            while (succ.left) succ = succ.left;
+            path.push(`successor = ${succ.val}`);
+            snap(root, null, null, { [node.id]: 'violation', [succ.id]: 'visited' }, 9, `Node ${k} has two children. Find inorder successor ${succ.val} (smallest in right subtree).`);
+            node.val = succ.val;
+            snap(root, null, null, { [node.id]: 'visited' }, 10, `Copy successor value ${succ.val} into node, then delete duplicate ${succ.val} from right subtree.`);
+            node.right = deleteStep(node.right, node, succ.val);
+            return node;
+          };
+          root = deleteStep(root, null, target);
+          snap(root, null, null, {}, 12, `Deletion complete! Inorder traversal remains strictly sorted.`);
+        }
+
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', buildSteps);
+      document.querySelectorAll('[data-op]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          op = btn.dataset.op;
+          document.querySelectorAll('[data-op]').forEach((b) => {
+            b.classList.toggle('vis-btn--primary', b.dataset.op === op);
+          });
+          buildSteps();
+        });
+      });
+      document.querySelectorAll('[data-tree]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.tree;
+          targetEl.value = btn.dataset.target;
+          buildSteps();
+        });
+      });
+
+      renderCode();
+      buildSteps();
+    </script>
+  </body>
+</html>

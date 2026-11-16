@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Segment Tree (Range Sum &amp; Point Update) Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/binary-tree-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 360px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+      .vis-small-input { max-width: 72px; min-width: 58px !important; flex: 0 0 auto !important; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="arr-input" class="vis-input__field" type="text" value="2, 5, 1, 4, 9, 3" placeholder="Array: 2, 5, 1, 4, 9, 3" aria-label="Base array" />
+        <input id="arg1-input" class="vis-input__field vis-small-input" type="number" min="0" value="1" aria-label="Left index or update index" />
+        <input id="arg2-input" class="vis-input__field vis-small-input" type="number" value="4" aria-label="Right index or new value" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Run Op</button>
+      </div>
+
+      <div class="t-mode-tabs">
+        <span class="vis-preset-label">Operation:</span>
+        <button class="vis-btn vis-btn--primary" type="button" data-op="query">Query Sum [L..R]</button>
+        <button class="vis-btn" type="button" data-op="update">Point Update (idx, val)</button>
+        <button class="vis-btn" type="button" data-op="build">Build Tree</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-arr="2, 5, 1, 4, 9, 3" data-a="1" data-b="4" data-op="query">Query [1..4]</button>
+        <button class="vis-btn" type="button" data-arr="2, 5, 1, 4, 9, 3" data-a="2" data-b="10" data-op="update">Update idx 2 -&gt; 10</button>
+        <button class="vis-btn" type="button" data-arr="1, 3, 5, 7, 9, 11" data-a="0" data-b="5" data-op="build">Build 6-item Tree</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="6" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Visiting Segment</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Full Overlap / Updated</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Disjoint (Skip)</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-op" class="vis-pill">Query: sum(1..4)</span>
+        <span id="status-ans" class="vis-pill">Sum: -</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="tree-stage" class="t-stage-wrap"></div>
+        <div class="t-aux-box">
+          <div class="t-aux-box__title">Underlying Array (0-indexed)</div>
+          <div id="array-view" class="t-array-strip"></div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Watch how each node covers a subrange [l..r], letting range sums and updates run in O(log n).</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/binary-tree-canvas.js"></script>
+    <script>
+      const CODE_BY_OP = {
+        query: [
+          'def query(node: int, l: int, r: int, ql: int, qr: int) -> int:',
+          '    if qr < l or r < ql:',
+          '        return 0                     # Disjoint segment',
+          '    if ql <= l and r <= qr:',
+          '        return tree[node]            # Full overlap',
+          '    mid = (l + r) // 2',
+          '    return query(2*node, l, mid, ql, qr) + query(2*node+1, mid+1, r, ql, qr)',
+        ],
+        update: [
+          'def update(node: int, l: int, r: int, idx: int, val: int) -> None:',
+          '    if l == r:',
+          '        tree[node] = val             # Update leaf',
+          '        return',
+          '    mid = (l + r) // 2',
+          '    if idx <= mid: update(2*node, l, mid, idx, val)',
+          '    else:          update(2*node+1, mid+1, r, idx, val)',
+          '    tree[node] = tree[2*node] + tree[2*node+1]',
+        ],
+        build: [
+          'def build(node: int, l: int, r: int, arr: list[int]) -> None:',
+          '    if l == r:',
+          '        tree[node] = arr[l]',
+          '        return',
+          '    mid = (l + r) // 2',
+          '    build(2*node, l, mid, arr)',
+          '    build(2*node+1, mid+1, r, arr)',
+          '    tree[node] = tree[2*node] + tree[2*node+1]',
+        ],
+      };
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const arrEl = document.getElementById('arr-input');
+      const arg1El = document.getElementById('arg1-input');
+      const arg2El = document.getElementById('arg2-input');
+      const opPill = document.getElementById('status-op');
+      const ansPill = document.getElementById('status-ans');
+      const arrayView = document.getElementById('array-view');
+
+      let op = 'query';
+
+      function renderCode(activeLine = -1) {
+        const lines = CODE_BY_OP[op];
+        codeEl.innerHTML = lines.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new BinaryTreeCanvas({
+        containerEl: document.getElementById('tree-stage'),
+        levelGap: 68,
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 700,
+        render: (step) => {
+          canvas.renderBinary(step.tree, {
+            nodeStates: step.nodeStates,
+            edgeStates: step.edgeStates,
+            pillNodes: true,
+          });
+          arrayView.innerHTML = step.arr.map((val, idx) => {
+            const inRange = step.highlightRange && idx >= step.highlightRange[0] && idx <= step.highlightRange[1];
+            const cls = inRange ? 't-array-box--visited' : '';
+            return `<div class="t-array-cell"><div class="t-array-box ${cls}">${val}</div><span class="t-array-idx">${idx}</span></div>`;
+          }).join('');
+          infoEl.textContent = step.description;
+          ansPill.textContent = step.ansText;
+        },
+        highlightCode: renderCode,
+      });
+      viz.bindControls();
+
+      function buildSteps() {
+        viz.reset();
+        renderCode();
+
+        const arr = BinaryTreeCanvas.parseNumberList(arrEl.value).slice(0, 8);
+        if (!arr.length) {
+          canvas.renderBinary(null);
+          return;
+        }
+        const n = arr.length;
+        const treeVals = new Array(4 * n).fill(null);
+
+        const buildStruct = (nodeIdx, l, r) => {
+          const obj = {
+            id: `s${nodeIdx}`,
+            label: treeVals[nodeIdx] !== null ? String(treeVals[nodeIdx]) : '?',
+            sub: `[${l}..${r}]`,
+            left: null,
+            right: null,
+          };
+          if (l < r) {
+            const mid = Math.floor((l + r) / 2);
+            obj.left = buildStruct(2 * nodeIdx, l, mid);
+            obj.right = buildStruct(2 * nodeIdx + 1, mid + 1, r);
+          }
+          return obj;
+        };
+
+        const buildQuiet = (nodeIdx, l, r) => {
+          if (l === r) {
+            treeVals[nodeIdx] = arr[l];
+            return;
+          }
+          const mid = Math.floor((l + r) / 2);
+          buildQuiet(2 * nodeIdx, l, mid);
+          buildQuiet(2 * nodeIdx + 1, mid + 1, r);
+          treeVals[nodeIdx] = treeVals[2 * nodeIdx] + treeVals[2 * nodeIdx + 1];
+        };
+
+        const snap = (nodeStates, highlightRange, ansText, codeLine, description) => {
+          viz.recordStep({
+            tree: buildStruct(1, 0, n - 1),
+            arr: [...arr],
+            nodeStates: { ...nodeStates },
+            edgeStates: {},
+            highlightRange,
+            ansText,
+            codeLine,
+            description,
+          });
+        };
+
+        if (op === 'build') {
+          opPill.textContent = `Build: [0..${n - 1}]`;
+          const states = {};
+          snap(states, null, 'Building...', 0, `Build segment tree bottom-up for ${n} elements.`);
+          const buildAnim = (nodeIdx, l, r) => {
+            const id = `s${nodeIdx}`;
+            states[id] = 'active';
+            snap(states, [l, r], 'Building...', 0, `Visit segment [${l}..${r}].`);
+            if (l === r) {
+              treeVals[nodeIdx] = arr[l];
+              states[id] = 'visited';
+              snap(states, [l, r], `leaf[${l}] = ${arr[l]}`, 2, `Leaf [${l}..${l}] stores arr[${l}] = ${arr[l]}.`);
+              return;
+            }
+            const mid = Math.floor((l + r) / 2);
+            buildAnim(2 * nodeIdx, l, mid);
+            buildAnim(2 * nodeIdx + 1, mid + 1, r);
+            treeVals[nodeIdx] = treeVals[2 * nodeIdx] + treeVals[2 * nodeIdx + 1];
+            states[id] = 'visited';
+            snap(states, [l, r], `node[${l}..${r}] = ${treeVals[nodeIdx]}`, 7, `Merge [${l}..${mid}] + [${mid + 1}..${r}] = ${treeVals[nodeIdx]}.`);
+          };
+          buildAnim(1, 0, n - 1);
+          snap(states, [0, n - 1], `Total Sum: ${treeVals[1]}`, 7, `Build complete! Root [0..${n - 1}] holds total sum ${treeVals[1]}.`);
+        } else if (op === 'query') {
+          buildQuiet(1, 0, n - 1);
+          let ql = Math.max(0, Math.min(n - 1, parseInt(arg1El.value, 10) || 0));
+          let qr = Math.max(0, Math.min(n - 1, parseInt(arg2El.value, 10) || n - 1));
+          if (ql > qr) [ql, qr] = [qr, ql];
+          opPill.textContent = `Query: sum[${ql}..${qr}]`;
+          const states = {};
+          let runningSum = 0;
+
+          snap(states, [ql, qr], 'Sum: 0', 0, `Query range sum [${ql}..${qr}] starting from root [0..${n - 1}].`);
+          const qAnim = (nodeIdx, l, r) => {
+            const id = `s${nodeIdx}`;
+            if (qr < l || r < ql) {
+              states[id] = 'violation';
+              snap(states, [ql, qr], `Running Sum: ${runningSum}`, 2, `Segment [${l}..${r}] is disjoint from [${ql}..${qr}] -> return 0.`);
+              return 0;
+            }
+            if (ql <= l && r <= qr) {
+              states[id] = 'visited';
+              runningSum += treeVals[nodeIdx];
+              snap(states, [ql, qr], `Running Sum: ${runningSum}`, 4, `Segment [${l}..${r}] fits completely inside [${ql}..${qr}] -> add ${treeVals[nodeIdx]}!`);
+              return treeVals[nodeIdx];
+            }
+            states[id] = 'active';
+            snap(states, [ql, qr], `Running Sum: ${runningSum}`, 6, `Segment [${l}..${r}] partially overlaps [${ql}..${qr}] -> split left and right.`);
+            const mid = Math.floor((l + r) / 2);
+            return qAnim(2 * nodeIdx, l, mid) + qAnim(2 * nodeIdx + 1, mid + 1, r);
+          };
+          const total = qAnim(1, 0, n - 1);
+          snap(states, [ql, qr], `Sum[${ql}..${qr}] = ${total}`, 6, `Query complete! Range sum [${ql}..${qr}] = ${total}.`);
+        } else {
+          buildQuiet(1, 0, n - 1);
+          const idx = Math.max(0, Math.min(n - 1, parseInt(arg1El.value, 10) || 0));
+          const val = Number.isNaN(Number(arg2El.value)) ? 10 : Number(arg2El.value);
+          opPill.textContent = `Update: arr[${idx}] = ${val}`;
+          const states = {};
+
+          snap(states, [idx, idx], `arr[${idx}] = ${arr[idx]}`, 0, `Update index ${idx} to ${val} along a single root-to-leaf path.`);
+          const uAnim = (nodeIdx, l, r) => {
+            const id = `s${nodeIdx}`;
+            states[id] = 'active';
+            snap(states, [idx, idx], `Updating path...`, 0, `Descend through [${l}..${r}].`);
+            if (l === r) {
+              arr[idx] = val;
+              treeVals[nodeIdx] = val;
+              states[id] = 'visited';
+              snap(states, [idx, idx], `arr[${idx}] = ${val}`, 2, `Updated leaf [${idx}..${idx}] to ${val}.`);
+              return;
+            }
+            const mid = Math.floor((l + r) / 2);
+            if (idx <= mid) uAnim(2 * nodeIdx, l, mid);
+            else uAnim(2 * nodeIdx + 1, mid + 1, r);
+            treeVals[nodeIdx] = treeVals[2 * nodeIdx] + treeVals[2 * nodeIdx + 1];
+            states[id] = 'visited';
+            snap(states, [idx, idx], `Root Sum: ${treeVals[1]}`, 7, `Recompute [${l}..${r}] = ${treeVals[2 * nodeIdx]} + ${treeVals[2 * nodeIdx + 1]} = ${treeVals[nodeIdx]}.`);
+          };
+          uAnim(1, 0, n - 1);
+          snap(states, [idx, idx], `Root Sum: ${treeVals[1]}`, 7, `Point update complete in O(log n) steps! New root sum = ${treeVals[1]}.`);
+        }
+
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', buildSteps);
+      document.querySelectorAll('[data-op]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          op = btn.dataset.op;
+          document.querySelectorAll('[data-op]').forEach((b) => {
+            b.classList.toggle('vis-btn--primary', b.dataset.op === op);
+          });
+          buildSteps();
+        });
+      });
+      document.querySelectorAll('[data-arr]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          arrEl.value = btn.dataset.arr;
+          arg1El.value = btn.dataset.a;
+          arg2El.value = btn.dataset.b;
+          op = btn.dataset.op;
+          document.querySelectorAll('[data-op]').forEach((b) => {
+            b.classList.toggle('vis-btn--primary', b.dataset.op === op);
+          });
+          buildSteps();
+        });
+      });
+
+      renderCode();
+      buildSteps();
+    </script>
+  </body>
+</html>

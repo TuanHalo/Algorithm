@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AVL Tree (Self-Balancing BST) Visualizer</title>
+    <link rel="stylesheet" href="../shared/clay-visualizer.css" />
+    <link rel="stylesheet" href="../shared/binary-tree-canvas.css" />
+    <style>
+      .vis-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+      .vis-preset-label { font-size: 0.75rem; color: var(--text-muted); }
+      .vis-canvas { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.65rem; min-height: 330px; padding: 1rem 1.15rem; }
+      .vis-status-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.65rem; }
+      .vis-pill { background: var(--bg-card); border: var(--border-clay); box-shadow: var(--shadow-clay-subtle); border-radius: 999px; padding: 0.2rem 0.65rem; font-family: var(--font-code); font-size: 0.74rem; }
+    </style>
+  </head>
+  <body>
+    <div class="visualizer">
+      <div class="vis-input">
+        <input id="tree-input" class="vis-input__field" type="text" value="10, 20, 30, 15, 25, 5, 1" placeholder="Insert keys: 10, 20, 30, 15, 25" aria-label="AVL insertion sequence" />
+        <button id="btn-apply" class="vis-btn vis-btn--primary" type="button">Insert Sequence</button>
+      </div>
+
+      <div class="vis-presets">
+        <span class="vis-preset-label">Presets:</span>
+        <button class="vis-btn" type="button" data-seq="10, 20, 30, 15, 25, 5, 1">Mixed Rotations</button>
+        <button class="vis-btn" type="button" data-seq="1, 2, 3, 4, 5, 6, 7">Ascending (RR Chain)</button>
+        <button class="vis-btn" type="button" data-seq="30, 10, 20, 40, 35">LR &amp; RL Double Rotations</button>
+      </div>
+
+      <div class="vis-controls">
+        <button class="vis-btn vis-btn-reset" type="button">Reset</button>
+        <button class="vis-btn vis-btn-step-back" type="button">Back</button>
+        <button class="vis-btn vis-btn--primary vis-btn-play" type="button">Play</button>
+        <button class="vis-btn vis-btn--primary vis-btn-pause" type="button" style="display: none;">Pause</button>
+        <button class="vis-btn vis-btn-step-forward" type="button">Next</button>
+        <span class="vis-step-counter">No steps</span>
+        <label class="vis-speed"><span>Speed</span><input class="vis-speed-slider" type="range" min="1" max="10" value="5" /></label>
+      </div>
+
+      <div class="vis-legend">
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-comparing);"></span> Inserting</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-swapping);"></span> Unbalanced (|bf| &gt; 1)</span>
+        <span class="vis-legend__item"><span class="vis-legend__dot" style="background: var(--vis-active);"></span> Rotated / Balanced</span>
+      </div>
+
+      <div class="vis-status-bar">
+        <span id="status-rot" class="vis-pill">Rotations: 0</span>
+        <span id="status-height" class="vis-pill">Tree Height: 0</span>
+      </div>
+
+      <div class="vis-canvas">
+        <div id="tree-stage" class="t-stage-wrap"></div>
+        <div class="t-aux-row">
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">Insert Queue</div>
+            <div id="queue-view" class="t-chip-list"></div>
+          </div>
+          <div class="t-aux-box">
+            <div class="t-aux-box__title">Rotations Performed</div>
+            <div id="rot-view" class="t-chip-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vis-info" class="vis-info" style="margin-bottom: 1rem;">Watch AVL balance factors (bf = height(L) - height(R)) trigger LL, RR, LR, and RL rotations automatically.</div>
+      <div class="vis-code" id="vis-code"></div>
+    </div>
+
+    <script src="../shared/visualizer-base.js"></script>
+    <script src="../shared/binary-tree-canvas.js"></script>
+    <script>
+      const PYTHON_LINES = [
+        'def insert_avl(node: AVLNode | None, key: int) -> AVLNode:',
+        '    if not node: return AVLNode(key)',
+        '    if key < node.val: node.left = insert_avl(node.left, key)',
+        '    elif key > node.val: node.right = insert_avl(node.right, key)',
+        '    node.h = 1 + max(h(node.left), h(node.right))',
+        '    bf = h(node.left) - h(node.right)',
+        '    if bf > 1 and key < node.left.val: return rotate_right(node)   # LL',
+        '    if bf < -1 and key > node.right.val: return rotate_left(node)  # RR',
+        '    if bf > 1 and key > node.left.val:                             # LR',
+        '        node.left = rotate_left(node.left); return rotate_right(node)',
+        '    if bf < -1 and key < node.right.val:                           # RL',
+        '        node.right = rotate_right(node.right); return rotate_left(node)',
+        '    return node',
+      ];
+
+      const codeEl = document.getElementById('vis-code');
+      const infoEl = document.getElementById('vis-info');
+      const inputEl = document.getElementById('tree-input');
+      const rotPill = document.getElementById('status-rot');
+      const heightPill = document.getElementById('status-height');
+      const queueView = document.getElementById('queue-view');
+      const rotView = document.getElementById('rot-view');
+
+      function renderCode(activeLine = -1) {
+        codeEl.innerHTML = PYTHON_LINES.map((line, i) => {
+          const active = i === activeLine ? ' vis-code__line--active' : '';
+          const esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="vis-code__line${active}"><span class="vis-code__line-number">${i + 1}</span>${esc}</span>`;
+        }).join('');
+      }
+
+      const canvas = new BinaryTreeCanvas({
+        containerEl: document.getElementById('tree-stage'),
+        levelGap: 78,
+      });
+
+      const viz = new VisualizerEngine({
+        defaultSpeed: 780,
+        render: (step) => {
+          canvas.renderBinary(step.tree, {
+            nodeStates: step.nodeStates,
+            nodeBadges: step.nodeBadges,
+          });
+          infoEl.textContent = step.description;
+          rotPill.textContent = `Rotations: ${step.rotations.length}`;
+          heightPill.textContent = `Tree Height: ${step.treeHeight}`;
+          queueView.innerHTML = step.keys.map((k, idx) => {
+            const cls = idx < step.insertedCount ? 't-chip--done' : idx === step.insertedCount ? 't-chip--active' : '';
+            return `<span class="t-chip ${cls}">${k}</span>`;
+          }).join('');
+          rotView.innerHTML = step.rotations.length
+            ? step.rotations.map((r) => `<span class="t-chip t-chip--pivot">${r}</span>`).join('')
+            : '<span class="t-empty">none yet</span>';
+        },
+        highlightCode: renderCode,
+      });
+      viz.bindControls();
+
+      const h = (n) => (n ? n.h : 0);
+      const updateH = (n) => {
+        if (n) n.h = 1 + Math.max(h(n.left), h(n.right));
+      };
+      const bfOf = (n) => (n ? h(n.left) - h(n.right) : 0);
+
+      function rotateRight(y) {
+        const x = y.left;
+        const t2 = x.right;
+        x.right = y;
+        y.left = t2;
+        updateH(y);
+        updateH(x);
+        return x;
+      }
+
+      function rotateLeft(x) {
+        const y = x.right;
+        const t2 = y.left;
+        y.left = x;
+        x.right = t2;
+        updateH(x);
+        updateH(y);
+        return y;
+      }
+
+      function collectBadges(node, badges = {}, warnIds = new Set()) {
+        if (!node) return badges;
+        const bf = bfOf(node);
+        const sign = bf > 0 ? `+${bf}` : String(bf);
+        badges[node.id] = { text: `bf=${sign}`, warn: Math.abs(bf) > 1 || warnIds.has(node.id) };
+        collectBadges(node.left, badges, warnIds);
+        collectBadges(node.right, badges, warnIds);
+        return badges;
+      }
+
+      function buildSteps() {
+        viz.reset();
+        const keys = BinaryTreeCanvas.parseNumberList(inputEl.value);
+        if (!keys.length) {
+          canvas.renderBinary(null);
+          return;
+        }
+
+        let root = null;
+        let nextId = 0;
+        const rotations = [];
+        let insertedCount = 0;
+
+        const snap = (nodeStates, warnIds, codeLine, description) => {
+          const badges = collectBadges(root, {}, warnIds);
+          viz.recordStep({
+            tree: BinaryTreeCanvas.cloneBinary(root),
+            keys,
+            insertedCount,
+            rotations: [...rotations],
+            treeHeight: h(root),
+            nodeStates,
+            nodeBadges: badges,
+            codeLine,
+            description,
+          });
+        };
+
+        const insertAVL = (node, key, attach) => {
+          if (!node) {
+            const created = { id: `n${nextId++}`, val: key, h: 1, left: null, right: null };
+            attach(created);
+            snap({ [created.id]: 'active' }, new Set(), 1, `Insert ${key} as a new leaf.`);
+            return created;
+          }
+          if (key < node.val) {
+            insertAVL(node.left, key, (child) => { node.left = child; });
+          } else if (key > node.val) {
+            insertAVL(node.right, key, (child) => { node.right = child; });
+          } else {
+            return node;
+          }
+
+          updateH(node);
+          const bf = bfOf(node);
+
+          if (bf > 1 && key < node.left.val) {
+            snap({ [node.id]: 'violation' }, new Set([node.id]), 6, `Node ${node.val} has bf=+2 (LL case). Perform Right Rotation.`);
+            const res = rotateRight(node);
+            attach(res);
+            rotations.push(`LL @ ${node.val}`);
+            snap({ [res.id]: 'visited' }, new Set(), 6, `Right rotation complete: ${res.val} rises as balanced subtree root.`);
+            return res;
+          }
+          if (bf < -1 && key > node.right.val) {
+            snap({ [node.id]: 'violation' }, new Set([node.id]), 7, `Node ${node.val} has bf=-2 (RR case). Perform Left Rotation.`);
+            const res = rotateLeft(node);
+            attach(res);
+            rotations.push(`RR @ ${node.val}`);
+            snap({ [res.id]: 'visited' }, new Set(), 7, `Left rotation complete: ${res.val} rises as balanced subtree root.`);
+            return res;
+          }
+          if (bf > 1 && key > node.left.val) {
+            snap({ [node.id]: 'violation' }, new Set([node.id]), 8, `Node ${node.val} has bf=+2 (LR case). Left-rotate child ${node.left.val}, then right-rotate ${node.val}.`);
+            node.left = rotateLeft(node.left);
+            const res = rotateRight(node);
+            attach(res);
+            rotations.push(`LR @ ${node.val}`);
+            snap({ [res.id]: 'visited' }, new Set(), 9, `LR double rotation complete: ${res.val} is now balanced.`);
+            return res;
+          }
+          if (bf < -1 && key < node.right.val) {
+            snap({ [node.id]: 'violation' }, new Set([node.id]), 10, `Node ${node.val} has bf=-2 (RL case). Right-rotate child ${node.right.val}, then left-rotate ${node.val}.`);
+            node.right = rotateRight(node.right);
+            const res = rotateLeft(node);
+            attach(res);
+            rotations.push(`RL @ ${node.val}`);
+            snap({ [res.id]: 'visited' }, new Set(), 11, `RL double rotation complete: ${res.val} is now balanced.`);
+            return res;
+          }
+          return node;
+        };
+
+        for (const k of keys) {
+          insertAVL(root, k, (newRoot) => { root = newRoot; });
+          insertedCount += 1;
+        }
+        snap({}, new Set(), 12, `All ${keys.length} keys inserted! Tree height stays O(log n) = ${h(root)} after ${rotations.length} rotation(s).`);
+        viz.goToStep(0);
+      }
+
+      document.getElementById('btn-apply').addEventListener('click', buildSteps);
+      document.querySelectorAll('[data-seq]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          inputEl.value = btn.dataset.seq;
+          buildSteps();
+        });
+      });
+
+      renderCode();
+      buildSteps();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,143 @@
+---
+import { withBase } from '../utils/url';
+
+interface BacktrackingSummaryRow {
+  readonly slug: string;
+  readonly name: string;
+  readonly time: string;
+  readonly space: string;
+  readonly branchingRule: string;
+  readonly pruningUndo: string;
+  readonly bestFor: string;
+}
+
+const BACKTRACKING_MATRIX: readonly BacktrackingSummaryRow[] = [
+  {
+    slug: 'subsets',
+    name: 'Subsets (Power Set)',
+    time: 'O(n · 2ⁿ)',
+    space: 'O(n)',
+    branchingRule: 'Include or skip index i',
+    pruningUndo: 'path.pop() after exploring',
+    bestFor: 'Generating all combinations of any size from distinct elements',
+  },
+  {
+    slug: 'permutations',
+    name: 'Permutations',
+    time: 'O(n · n!)',
+    space: 'O(n)',
+    branchingRule: 'Pick any unused element',
+    pruningUndo: 'used[i] = False; path.pop()',
+    bestFor: 'Enumerating every ordering when arrangement order matters',
+  },
+  {
+    slug: 'combination-sum',
+    name: 'Combination Sum',
+    time: 'O(N^(T/M + 1))',
+    space: 'O(T / M)',
+    branchingRule: 'Reuse from index start',
+    pruningUndo: 'Break early when cand > rem',
+    bestFor: 'Finding combinations that hit a target sum with unlimited reuse',
+  },
+  {
+    slug: 'subsets-ii',
+    name: 'Subsets II (Duplicate Pruning)',
+    time: 'O(n · 2ⁿ)',
+    space: 'O(n)',
+    branchingRule: 'Sort + loop from start',
+    pruningUndo: 'Skip i > start if nums[i] == nums[i-1]',
+    bestFor: 'Unique subsets or combinations when input contains repeated values',
+  },
+  {
+    slug: 'generate-parentheses',
+    name: 'Generate Parentheses',
+    time: 'O(4ⁿ / √n)',
+    space: 'O(n)',
+    branchingRule: 'Add ( or ) within bounds',
+    pruningUndo: 'Only ) when close < open',
+    bestFor: 'Building balanced strings without generating invalid sequences first',
+  },
+  {
+    slug: 'word-search',
+    name: 'Word Search (Grid Backtracking)',
+    time: 'O(R · C · 3^L)',
+    space: 'O(L)',
+    branchingRule: '4-neighbor DFS from cell',
+    pruningUndo: 'Mark "#" then restore char',
+    bestFor: 'Matching paths on a 2D board without revisiting the same cell',
+  },
+  {
+    slug: 'n-queens',
+    name: 'N-Queens',
+    time: 'O(n!)',
+    space: 'O(n)',
+    branchingRule: 'One queen per row',
+    pruningUndo: 'Check cols, r - c, r + c sets',
+    bestFor: 'Placing non-attacking pieces on a grid via constraint sets',
+  },
+  {
+    slug: 'sudoku-solver',
+    name: 'Sudoku Solver',
+    time: 'O(9ᵐ)',
+    space: 'O(m)',
+    branchingRule: 'Digits 1..9 on empty cell',
+    pruningUndo: 'Check row, col, box sets; undo',
+    bestFor: 'Constraint satisfaction on fixed boards with early conflict checks',
+  },
+] as const;
+---
+
+<section class="clay-section backtracking-matrix">
+  <h2 class="clay-section__title">Backtracking comparison and decision matrix</h2>
+  <p class="backtracking-matrix__intro">
+    Compare backtracking patterns by branching rule, pruning check, and complexity tradeoffs.
+  </p>
+  <div class="matrix-scroll">
+    <table class="clay-table">
+      <thead>
+        <tr>
+          <th>Pattern</th>
+          <th>Time</th>
+          <th>Space</th>
+          <th>Branching Rule</th>
+          <th>Pruning / Undo</th>
+          <th>Best When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {BACKTRACKING_MATRIX.map((row) => (
+          <tr>
+            <td>
+              <a href={withBase(`/learn/backtracking/${row.slug}/`)} class="matrix-link">
+                {row.name}
+              </a>
+            </td>
+            <td><code>{row.time}</code></td>
+            <td><code>{row.space}</code></td>
+            <td>{row.branchingRule}</td>
+            <td><code>{row.pruningUndo}</code></td>
+            <td>{row.bestFor}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+  .backtracking-matrix {
+    margin-top: var(--space-2xl);
+  }
+
+  .backtracking-matrix__intro {
+    margin-bottom: var(--space-md);
+  }
+
+  .matrix-scroll {
+    overflow-x: auto;
+  }
+
+  .matrix-link {
+    font-weight: 600;
+  }
+</style>
