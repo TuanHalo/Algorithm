@@ -1,7 +1,7 @@
 ---
 title: "Edit Distance (Levenshtein)"
 topic: "dynamic-programming"
-order: 9
+order: 8
 difficulty: "intermediate"
 timeComplexity: "O(m · n)"
 spaceComplexity: "O(m · n)"

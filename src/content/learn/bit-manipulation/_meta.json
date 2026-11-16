@@ -1,0 +1,5 @@
+{
+  "name": "Bit Manipulation",
+  "order": 4,
+  "description": "Binary primitives, bit hacks, XOR tricks, and bitmask subset iteration."
+}

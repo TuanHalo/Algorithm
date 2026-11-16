@@ -26,6 +26,12 @@ const platformEmoji: Record<string, string> = {
   codeforces: '🔵',
   other: '🟣',
 };
+
+const optimalApproach =
+  problem.data.approaches?.find((a) => a.isOptimal) ?? problem.data.approaches?.[0];
+const displayTime = problem.data.timeComplexity ?? optimalApproach?.timeComplexity;
+const displaySpace = problem.data.spaceComplexity ?? optimalApproach?.spaceComplexity;
+const approaches = problem.data.approaches ?? [];
 ---
 
 <BaseLayout title={problem.data.title}>
@@ -45,7 +51,9 @@ const platformEmoji: Record<string, string> = {
           <span class={`clay-badge clay-badge--${problem.data.difficulty}`}>
             {problem.data.difficulty}
           </span>
-          <span class="clay-badge">📅 {problem.data.dateCompleted}</span>
+          {problem.data.dateCompleted && (
+            <span class="clay-badge">📅 {problem.data.dateCompleted}</span>
+          )}
         </div>
         <a
           href={problem.data.problemUrl}
@@ -60,10 +68,12 @@ const platformEmoji: Record<string, string> = {
       <h1 class="problem-header__title">{problem.data.title}</h1>
 
       <div class="problem-header__footer">
-        <ComplexityBadge
-          time={problem.data.timeComplexity}
-          space={problem.data.spaceComplexity}
-        />
+        {displayTime && displaySpace && (
+          <ComplexityBadge
+            time={displayTime}
+            space={displaySpace}
+          />
+        )}
         <div class="problem-header__topics">
           {problem.data.topics.map((topic) => (
             <span class="clay-badge clay-badge--complexity">{topic}</span>
@@ -71,6 +81,49 @@ const platformEmoji: Record<string, string> = {
         </div>
       </div>
     </header>
+
+    {approaches.length > 0 && (
+      <section class="clay-section problem-approaches">
+        <h2 class="problem-approaches__title">💡 Solution Approaches</h2>
+        <div class="problem-approaches__list">
+          {approaches.map((approach) => (
+            <div class={`approach-card clay-card ${approach.isOptimal ? 'approach-card--optimal' : ''}`}>
+              <div class="approach-card__header">
+                <div class="approach-card__title-row">
+                  <h3 class="approach-card__name">{approach.name}</h3>
+                  {approach.isOptimal && (
+                    <span class="clay-badge clay-badge--optimal">⭐ Optimal</span>
+                  )}
+                </div>
+                <div class="approach-card__complexities">
+                  <span class="clay-badge clay-badge--complexity">⏱️ {approach.timeComplexity}</span>
+                  <span class="clay-badge clay-badge--complexity">💾 {approach.spaceComplexity}</span>
+                </div>
+              </div>
+              {approach.summary && (
+                <p class="approach-card__summary">{approach.summary}</p>
+              )}
+              {approach.tags && approach.tags.length > 0 && (
+                <div class="approach-card__tags">
+                  {approach.tags.map((tag) =>
+                    tag.topic ? (
+                      <a
+                        href={withBase(`/learn/${tag.topic}/${tag.slug ? tag.slug + '/' : ''}`)}
+                        class="clay-badge clay-badge--tag clay-badge--link"
+                      >
+                        🏷️ {tag.label} ↗
+                      </a>
+                    ) : (
+                      <span class="clay-badge clay-badge--tag">🏷️ {tag.label}</span>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
 
     <article class="clay-section markdown-body">
       <Content />
@@ -107,6 +160,10 @@ const platformEmoji: Record<string, string> = {
     margin-bottom: var(--space-lg);
   }
 
+  .problem-header {
+    margin-bottom: var(--space-xl);
+  }
+
   .problem-header__top {
     display: flex;
     justify-content: space-between;
@@ -141,8 +198,100 @@ const platformEmoji: Record<string, string> = {
     gap: var(--space-xs);
   }
 
+  .problem-approaches {
+    margin-bottom: var(--space-xl);
+  }
+
+  .problem-approaches__title {
+    font-size: 1.3rem;
+    margin-bottom: var(--space-md);
+  }
+
+  .problem-approaches__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .approach-card {
+    padding: var(--space-md);
+    background: var(--bg-card);
+    border-radius: var(--border-radius-sm);
+  }
+
+  .approach-card--optimal {
+    border-left: 4px solid #2e7d32;
+    background: rgba(76, 175, 80, 0.04);
+  }
+
+  .approach-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-xs);
+  }
+
+  .approach-card__title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+  }
+
+  .approach-card__name {
+    font-size: 1.1rem;
+    margin: 0;
+  }
+
+  .approach-card__complexities {
+    display: flex;
+    gap: var(--space-xs);
+    flex-wrap: wrap;
+  }
+
+  .approach-card__summary {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin: var(--space-xs) 0 var(--space-sm);
+    line-height: 1.5;
+  }
+
+  .approach-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-top: var(--space-xs);
+  }
+
+  .clay-badge--optimal {
+    background: rgba(76, 175, 80, 0.2);
+    color: #2e7d32;
+    font-weight: 600;
+  }
+
+  .clay-badge--tag {
+    font-size: 0.8rem;
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .clay-badge--link {
+    text-decoration: none;
+    color: var(--color-sorting);
+    transition: transform var(--transition-bounce), box-shadow var(--transition-fast);
+  }
+
+  .clay-badge--link:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-clay-card);
+  }
+
+  .problem-diagram {
+    margin-top: var(--space-xl);
+  }
+
   .problem-nav {
     margin-top: var(--space-xl);
   }
 </style>
-

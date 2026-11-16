@@ -2,6 +2,21 @@
   "name": "Tree",
   "icon": "🌳",
   "color": "#ffd3b6",
-  "order": 5,
-  "description": "Hierarchical data, from file systems and family trees to search engines."
+  "order": 10,
+  "description": "Hierarchical data, from file systems and family trees to search engines.",
+  "lessons": [
+    "binary-tree-basics",
+    "dfs-traversals",
+    "level-order-traversal",
+    "tree-height-diameter",
+    "binary-search-tree",
+    "validate-bst",
+    "lowest-common-ancestor",
+    "avl-tree",
+    "binary-heap",
+    "trie",
+    "segment-tree",
+    "fenwick-tree",
+    "binary-lifting"
+  ]
 }

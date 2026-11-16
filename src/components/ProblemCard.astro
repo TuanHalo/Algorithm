@@ -8,7 +8,7 @@ interface Props {
   difficulty: ProblemDifficulty;
   topics: readonly string[];
   slug: string;
-  dateCompleted: string;
+  dateCompleted?: string;
   timeComplexity?: string;
   spaceComplexity?: string;
 }
@@ -57,7 +57,7 @@ const difficultyLabel: Record<ProblemDifficulty, string> = {
     {timeComplexity && <span class="clay-badge">⏱️ {timeComplexity}</span>}
     {spaceComplexity && <span class="clay-badge">💾 {spaceComplexity}</span>}
   </div>
-  <time class="problem-card__date">{dateCompleted}</time>
+  {dateCompleted && <time class="problem-card__date">{dateCompleted}</time>}
 </a>
 
 <style>

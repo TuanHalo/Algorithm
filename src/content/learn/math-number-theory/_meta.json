@@ -1,0 +1,5 @@
+{
+  "name": "Math & Number Theory",
+  "order": 5,
+  "description": "Euclidean GCD/LCM, prime sieves, modular arithmetic, and combinatorics."
+}

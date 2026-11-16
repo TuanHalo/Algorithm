@@ -2,6 +2,26 @@
   "name": "Graph",
   "icon": "🕸️",
   "color": "#cdb4db",
-  "order": 3,
-  "description": "Navigate networks such as social connections, maps, dependencies, and paths."
+  "order": 8,
+  "description": "Navigate networks such as social connections, maps, dependencies, and paths.",
+  "lessons": [
+    "graph-representations",
+    "bfs",
+    "dfs",
+    "connected-components",
+    "cycle-detection",
+    "bipartite-check",
+    "topological-sort",
+    "union-find",
+    "zero-one-bfs",
+    "dijkstra",
+    "bellman-ford",
+    "floyd-warshall",
+    "kruskal-mst",
+    "prim-mst",
+    "kosaraju-scc",
+    "bridges-articulation-points",
+    "a-star-search",
+    "tarjan-scc"
+  ]
 }

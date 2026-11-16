@@ -1,7 +1,7 @@
 ---
 title: "Fibonacci (Memo vs. Tabulation)"
 topic: "dynamic-programming"
-order: 1
+order: 2
 difficulty: "beginner"
 timeComplexity: "O(n)"
 spaceComplexity: "O(1)"

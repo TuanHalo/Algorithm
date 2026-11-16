@@ -2,6 +2,15 @@
   "name": "Stack & Queue",
   "icon": "📚",
   "color": "#ffaaa5",
-  "order": 7,
-  "description": "Learn both FIFO (first in, first out) and LIFO (last in, first out) data structures."
+  "order": 12,
+  "description": "Learn both FIFO (first in, first out) and LIFO (last in, first out) data structures.",
+  "lessons": [
+    "stack-operations",
+    "queue-operations",
+    "circular-queue",
+    "deque-operations",
+    "min-max-stack",
+    "monotonic-stack",
+    "monotonic-queue"
+  ]
 }
