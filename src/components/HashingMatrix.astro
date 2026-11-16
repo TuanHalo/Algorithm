@@ -1,0 +1,134 @@
+---
+import { withBase } from '../utils/url';
+
+interface HashingSummaryRow {
+  readonly slug: string;
+  readonly name: string;
+  readonly avgLookup: string;
+  readonly worstLookup: string;
+  readonly space: string;
+  readonly collisionStrategy: string;
+  readonly bestFor: string;
+}
+
+const HASHING_MATRIX: readonly HashingSummaryRow[] = [
+  {
+    slug: 'hash-functions',
+    name: 'Hash Functions & Load Factor',
+    avgLookup: 'O(k) hash',
+    worstLookup: 'O(k) hash',
+    space: 'O(m)',
+    collisionStrategy: 'Spread + resize',
+    bestFor: 'Turning arbitrary keys into uniform bucket indices before storing',
+  },
+  {
+    slug: 'hash-map',
+    name: 'Hash Map',
+    avgLookup: 'O(1)',
+    worstLookup: 'O(n)',
+    space: 'O(n)',
+    collisionStrategy: 'Built-in table',
+    bestFor: 'Fast key-value lookups, caches, and frequency counting',
+  },
+  {
+    slug: 'hash-set',
+    name: 'Hash Set',
+    avgLookup: 'O(1)',
+    worstLookup: 'O(n)',
+    space: 'O(n)',
+    collisionStrategy: 'Built-in table',
+    bestFor: 'Deduplication, visited-node tracking, and O(1) membership tests',
+  },
+  {
+    slug: 'separate-chaining',
+    name: 'Separate Chaining',
+    avgLookup: 'O(1 + α)',
+    worstLookup: 'O(n)',
+    space: 'O(n + m)',
+    collisionStrategy: 'Linked buckets',
+    bestFor: 'Hash tables that handle high load factors gracefully without tombstones',
+  },
+  {
+    slug: 'open-addressing',
+    name: 'Open Addressing',
+    avgLookup: 'O(1 / (1 - α))',
+    worstLookup: 'O(n)',
+    space: 'O(m)',
+    collisionStrategy: 'Probe + tombstone',
+    bestFor: 'Cache-friendly flat arrays with low memory overhead when α < 0.7',
+  },
+  {
+    slug: 'prefix-sum-hashing',
+    name: 'Prefix Sum + Hash Map',
+    avgLookup: 'O(n) total',
+    worstLookup: 'O(n²)',
+    space: 'O(n)',
+    collisionStrategy: 'Count map',
+    bestFor: 'Counting subarrays with exact sum k in one linear pass',
+  },
+  {
+    slug: 'rolling-hash',
+    name: 'Rolling Hash (Rabin-Karp)',
+    avgLookup: 'O(n + m)',
+    worstLookup: 'O(n · m)',
+    space: 'O(1) extra',
+    collisionStrategy: 'Exact check',
+    bestFor: 'Multi-pattern substring search and sliding-window duplicate detection',
+  },
+] as const;
+---
+
+<section class="clay-section hashing-matrix">
+  <h2 class="clay-section__title">Hashing comparison and decision matrix</h2>
+  <p class="hashing-matrix__intro">
+    Compare hash structures, collision strategies, and linear-time hashing patterns.
+  </p>
+  <div class="matrix-scroll">
+    <table class="clay-table">
+      <thead>
+        <tr>
+          <th>Concept / Pattern</th>
+          <th>Average Time</th>
+          <th>Worst Time</th>
+          <th>Space</th>
+          <th>Collision Strategy</th>
+          <th>Best When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {HASHING_MATRIX.map((row) => (
+          <tr>
+            <td>
+              <a href={withBase(`/learn/hashing/${row.slug}/`)} class="matrix-link">
+                {row.name}
+              </a>
+            </td>
+            <td><code>{row.avgLookup}</code></td>
+            <td><code>{row.worstLookup}</code></td>
+            <td><code>{row.space}</code></td>
+            <td><code>{row.collisionStrategy}</code></td>
+            <td>{row.bestFor}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+  .hashing-matrix {
+    margin-top: var(--space-2xl);
+  }
+
+  .hashing-matrix__intro {
+    margin-bottom: var(--space-md);
+  }
+
+  .matrix-scroll {
+    overflow-x: auto;
+  }
+
+  .matrix-link {
+    font-weight: 600;
+  }
+</style>
