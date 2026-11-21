@@ -22,15 +22,6 @@ const DP_MATRIX: readonly DynamicProgrammingSummaryRow[] = [
     bestFor: 'Learning overlapping subproblems, memoization, and rolling-variable compression',
   },
   {
-    slug: 'house-robber',
-    name: 'House Robber',
-    state: 'dp[i]',
-    time: 'O(n)',
-    space: 'O(1)',
-    direction: 'Take-or-skip Left → Right',
-    bestFor: 'Linear pick-or-skip decisions where adjacent items cannot both be chosen',
-  },
-  {
     slug: 'coin-change',
     name: 'Coin Change (Min Coins)',
     state: 'dp[a]',
@@ -65,15 +56,6 @@ const DP_MATRIX: readonly DynamicProgrammingSummaryRow[] = [
     space: 'O(n · W) → O(W)',
     direction: 'Item-by-item / Reverse w',
     bestFor: 'Maximizing value under a weight budget when each item is used at most once',
-  },
-  {
-    slug: 'partition-equal-subset-sum',
-    name: 'Partition Equal Subset Sum',
-    state: 'dp[s] (bool)',
-    time: 'O(n · S)',
-    space: 'O(S)',
-    direction: 'Reverse sum target → num',
-    bestFor: 'Checking whether a subset can sum to an exact target without reusing items',
   },
   {
     slug: 'longest-common-subsequence',
