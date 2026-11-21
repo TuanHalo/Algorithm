@@ -57,15 +57,6 @@ const LINKED_LIST_MATRIX: readonly LinkedListSummaryRow[] = [
     pointers: 'slow, fast, finder',
     bestFor: 'Detecting loops and finding the cycle start in O(1) space',
   },
-  {
-    slug: 'lru-cache',
-    name: 'LRU Cache',
-    headTailEdit: 'O(1) promote/evict',
-    searchAccess: 'O(1) via map',
-    extraSpace: 'O(capacity)',
-    pointers: 'map + DLL',
-    bestFor: 'Fixed-capacity caches needing O(1) lookup and oldest-item eviction',
-  },
 ] as const;
 ---
 

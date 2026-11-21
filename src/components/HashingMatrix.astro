@@ -58,15 +58,6 @@ const HASHING_MATRIX: readonly HashingSummaryRow[] = [
     bestFor: 'Cache-friendly flat arrays with low memory overhead when α < 0.7',
   },
   {
-    slug: 'prefix-sum-hashing',
-    name: 'Prefix Sum + Hash Map',
-    avgLookup: 'O(n) total',
-    worstLookup: 'O(n²)',
-    space: 'O(n)',
-    collisionStrategy: 'Count map',
-    bestFor: 'Counting subarrays with exact sum k in one linear pass',
-  },
-  {
     slug: 'rolling-hash',
     name: 'Rolling Hash (Rabin-Karp)',
     avgLookup: 'O(n + m)',

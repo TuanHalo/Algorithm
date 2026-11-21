@@ -21,6 +21,7 @@
   "dependencies": {
     "@astrojs/mdx": "^4.3.14",
     "@astrojs/sitemap": "^3.7.4",
+    "@shikijs/magic-move": "4.6.0",
     "astro": "^5.18.2",
     "shiki": "^4.6.0"
   },

@@ -1,0 +1,59 @@
+---
+/**
+ * Standalone walkthrough page: /embed/<walkthrough id>/
+ * Bare layout so it can be opened in its own tab or embedded in an iframe.
+ */
+import Walkthrough from '../../components/Walkthrough.astro';
+import { getWalkthrough, listWalkthroughIds } from '../../lib/walkthrough/registry';
+import { withBase } from '../../utils/url';
+
+export function getStaticPaths(): { params: { id: string } }[] {
+  return listWalkthroughIds().map((id) => ({ params: { id } }));
+}
+
+const id = Astro.params.id ?? '';
+const wt = getWalkthrough(id);
+// Walkthrough ids mirror page routes: problems/<slug> and learn/<topic>/<slug>.
+const backHref = withBase(`/${id}/`);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" type="image/svg+xml" href={withBase('/favicon.svg')} />
+    <title>{wt?.title ?? 'Walkthrough'} | Algorithm Hub</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+  </head>
+  <body>
+    <main class="embed-main">
+      <a class="embed-back" href={backHref}>← Back to the full page</a>
+      <Walkthrough id={id} standalone />
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  @import '../../styles/global.css';
+  @import '../../styles/clay-theme.css';
+</style>
+
+<style>
+  .embed-main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: var(--space-md);
+  }
+
+  .embed-back {
+    display: inline-block;
+    font-size: 0.85rem;
+    margin-bottom: var(--space-sm);
+  }
+
+  .embed-main :global(.wt) {
+    margin: 0;
+  }
+</style>
