@@ -4,6 +4,8 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ComplexityBadge from '../../../components/ComplexityBadge.astro';
 import AlgoVisualizer from '../../../components/AlgoVisualizer.astro';
 import DiagramEmbed from '../../../components/DiagramEmbed.astro';
+import Walkthrough from '../../../components/Walkthrough.astro';
+import { getWalkthrough, lessonWalkthroughId } from '../../../lib/walkthrough/registry';
 import { getTopicBySlug } from '../../../utils/topics';
 import { withBase } from '../../../utils/url';
 
@@ -28,6 +30,9 @@ interface Props {
 const { lesson } = Astro.props;
 const { Content } = await lesson.render();
 const topicMeta = getTopicBySlug(lesson.data.topic);
+const lessonSlug = lesson.slug.split('/').pop() ?? lesson.slug;
+const walkthroughId = lessonWalkthroughId(lesson.data.topic, lessonSlug);
+const hasWalkthrough = getWalkthrough(walkthroughId) !== undefined;
 
 const topicLessons = (await getCollection('learn'))
   .filter((entry) => entry.data.topic === lesson.data.topic)
@@ -73,8 +78,15 @@ const getSlug = (entry: CollectionEntry<'learn'>): string =>
       </div>
     </header>
 
-    <!-- Interactive Visualizer -->
-    {lesson.data.visualizer && (
+    <!-- Animated Walkthrough (src/walkthroughs/learn/<topic>/<slug>.ts) -->
+    {hasWalkthrough && (
+      <section class="lesson-walkthrough">
+        <Walkthrough id={walkthroughId} accent={topicMeta?.color} />
+      </section>
+    )}
+
+    <!-- Legacy interactive visualizer (replaced by the story's "Try your own" mode) -->
+    {!hasWalkthrough && lesson.data.visualizer && (
       <section class="lesson-visual">
         <AlgoVisualizer
           src={lesson.data.visualizer}
@@ -93,7 +105,7 @@ const getSlug = (entry: CollectionEntry<'learn'>): string =>
       <section class="lesson-diagram">
         <DiagramEmbed
           src={lesson.data.diagram}
-          title={`${lesson.data.title}: visual flow`}
+          title={hasWalkthrough ? `Big picture: ${lesson.data.title}` : `${lesson.data.title}: visual flow`}
         />
       </section>
     )}

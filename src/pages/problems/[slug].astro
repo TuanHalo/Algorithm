@@ -3,6 +3,8 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ComplexityBadge from '../../components/ComplexityBadge.astro';
 import DiagramEmbed from '../../components/DiagramEmbed.astro';
+import Walkthrough from '../../components/Walkthrough.astro';
+import { getWalkthrough, problemWalkthroughId } from '../../lib/walkthrough/registry';
 import { withBase } from '../../utils/url';
 
 export async function getStaticPaths() {
@@ -32,6 +34,9 @@ const optimalApproach =
 const displayTime = problem.data.timeComplexity ?? optimalApproach?.timeComplexity;
 const displaySpace = problem.data.spaceComplexity ?? optimalApproach?.spaceComplexity;
 const approaches = problem.data.approaches ?? [];
+const walkthroughId = problemWalkthroughId(problem.slug);
+const hasWalkthrough = getWalkthrough(walkthroughId) !== undefined;
+const usesTags = hasWalkthrough ? (optimalApproach?.tags ?? []).filter((tag) => tag.topic) : [];
 ---
 
 <BaseLayout title={problem.data.title}>
@@ -80,9 +85,19 @@ const approaches = problem.data.approaches ?? [];
           ))}
         </div>
       </div>
+      {usesTags.length > 0 && (
+        <div class="problem-header__uses">
+          <span class="problem-header__uses-label">Uses:</span>
+          {usesTags.map((tag) => (
+            <a href={withBase(`/learn/${tag.topic}/${tag.slug ? tag.slug + '/' : ''}`)} class="clay-badge clay-badge--tag clay-badge--link">
+              🏷️ {tag.label} ↗
+            </a>
+          ))}
+        </div>
+      )}
     </header>
 
-    {approaches.length > 0 && (
+    {!hasWalkthrough && approaches.length > 0 && (
       <section class="clay-section problem-approaches">
         <h2 class="problem-approaches__title">💡 Solution Approaches</h2>
         <div class="problem-approaches__list">
@@ -125,11 +140,18 @@ const approaches = problem.data.approaches ?? [];
       </section>
     )}
 
+    <!-- Animated Walkthrough (src/walkthroughs/problems/<slug>.ts) -->
+    {hasWalkthrough && (
+      <section class="problem-walkthrough">
+        <Walkthrough id={walkthroughId} accent="var(--color-hashing)" />
+      </section>
+    )}
+
     <article class="clay-section markdown-body">
       <Content />
     </article>
 
-    {problem.data.diagram && (
+    {!hasWalkthrough && problem.data.diagram && (
       <section class="problem-diagram">
         <DiagramEmbed
           src={problem.data.diagram}
@@ -162,6 +184,20 @@ const approaches = problem.data.approaches ?? [];
 
   .problem-header {
     margin-bottom: var(--space-xl);
+  }
+
+  .problem-header__uses {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-top: var(--space-md);
+  }
+
+  .problem-header__uses-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted);
   }
 
   .problem-header__top {
