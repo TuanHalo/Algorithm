@@ -1,0 +1,188 @@
+---
+/**
+ * Step-by-step animated walkthrough. Data lives in `src/walkthroughs/<id>.ts`;
+ * the browser player (`src/lib/walkthrough/player.ts`) drives this markup.
+ */
+import { Code } from 'astro:components';
+import { buildCodeFrames, framesToJson } from '../lib/walkthrough/code-frames';
+import { getWalkthrough } from '../lib/walkthrough/registry';
+import { renderNarration } from '../lib/walkthrough/text';
+import { withBase } from '../utils/url';
+import '@shikijs/magic-move/style.css';
+import '../styles/walkthrough.css';
+
+interface Props {
+  id: string;
+  /** Topic colour used for the top border and active rail dot. */
+  accent?: string;
+  /** Sync the current step to `#step-N` in the URL (one walkthrough per page). */
+  deeplink?: boolean;
+  /** Hide the "Open standalone" link (used on the embed page itself). */
+  standalone?: boolean;
+}
+
+const { id, accent = 'var(--color-searching)', deeplink = true, standalone = false } = Astro.props;
+const wt = getWalkthrough(id);
+if (!wt) throw new Error(`<Walkthrough id="${id}"> not found in src/walkthroughs/`);
+
+const first = wt.steps[0];
+const embedUrl = withBase(`/embed/${id}/`);
+// Highlight every code view the story uses at build time; the browser only animates between them.
+const framesJson = framesToJson(await buildCodeFrames(wt));
+---
+
+<section
+  class="wt clay-embed"
+  data-walkthrough={id}
+  data-wt-deeplink={String(deeplink)}
+  data-wt-view="story"
+  style={`--wt-accent: ${accent}`}
+  aria-label={`${wt.title} walkthrough`}
+>
+  <header class="wt-head">
+    <div class="wt-head__text">
+      <p class="wt-eyebrow">
+        🎬 Walkthrough
+        {wt.minutes && <span>· {wt.minutes} min</span>}
+        <span>· {wt.steps.length} steps</span>
+      </p>
+      <h2 class="wt-head__title">{wt.title}</h2>
+      <p class="wt-head__summary">{wt.summary}</p>
+    </div>
+    <div class="wt-head__actions">
+      {wt.trace && (
+        <div class="wt-modes" role="group" aria-label="Walkthrough mode">
+          <button type="button" class="wt-mode" data-wt-mode="story" aria-pressed="true">📖 Story</button>
+          <button type="button" class="wt-mode" data-wt-mode="trace" aria-pressed="false">🧪 Try your own</button>
+        </div>
+      )}
+      {!standalone && (
+        <a href={embedUrl} target="_blank" rel="noopener noreferrer" class="clay-embed__external-btn">
+          Open standalone ↗
+        </a>
+      )}
+    </div>
+  </header>
+
+  {wt.trace && (
+    <div class="wt-trace" data-wt-trace hidden>
+      <form class="wt-trace__form" data-wt-trace-form>
+        <span class="wt-trace__title">{wt.trace.title}</span>
+        {wt.trace.inputs.map((input) => (
+          <label class="wt-trace__field">
+            <span>{input.label}</span>
+            <input
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              spellcheck="false"
+              value={input.default}
+              data-wt-input={input.name}
+              class={input.kind === 'numbers' ? 'wt-input wt-input--wide' : 'wt-input'}
+            />
+          </label>
+        ))}
+        <button type="submit" class="wt-btn wt-btn--primary">▶ Run</button>
+      </form>
+      {wt.trace.presets && (
+        <div class="wt-trace__presets">
+          <span>Presets:</span>
+          {wt.trace.presets.map((preset) => (
+            <button type="button" class="wt-btn wt-btn--small" data-wt-preset={JSON.stringify(preset.values)}>
+              {preset.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <p class="wt-trace__error" data-wt-error role="alert"></p>
+    </div>
+  )}
+
+  {wt.metrics && (
+    <dl class="wt-metrics">
+      {wt.metrics.map((metric) => (
+        <div class="wt-metric">
+          <dt>{metric.label}</dt>
+          <dd data-wt-metric={metric.key}>—</dd>
+        </div>
+      ))}
+    </dl>
+  )}
+
+  <div class="wt-stage">
+    <svg class="wt-svg" data-wt-svg role="img" aria-label={`${wt.title}: animated diagram`}></svg>
+    <p class="wt-status" data-wt-status>Loading walkthrough…</p>
+  </div>
+
+  {wt.legend && (
+    <ul class="wt-legend" aria-label="Legend">
+      {wt.legend.map((item) => (
+        <li><span class={`wt-swatch wt-tone-${item.tone}`}></span>{item.label}</li>
+      ))}
+    </ul>
+  )}
+
+  <!-- Fixed-size control bar: buttons never move when the narration below changes length. -->
+  <div class="wt-bar">
+    <button type="button" class="wt-btn wt-bar__prev" data-wt-prev disabled aria-label="Previous step">← Back</button>
+    <nav class="wt-rail" data-wt-rail aria-label="Steps"></nav>
+    <button type="button" class="wt-btn wt-bar__play" data-wt-play aria-pressed="false">▶ Play</button>
+    <button type="button" class="wt-btn wt-btn--primary wt-bar__next" data-wt-next>Next →</button>
+  </div>
+
+  <div class="wt-panels">
+    <div class="wt-narration">
+      <p class="wt-narration__meta">
+        <span data-wt-counter>Step 1 of {wt.steps.length}</span>
+        <span class="wt-chapter" data-wt-chapter>{first?.chapter}</span>
+        <span class="wt-short" data-wt-short>{first?.short}</span>
+        <span class="wt-lines" data-wt-lines>code</span>
+      </p>
+      <h3 class="wt-narration__title" data-wt-title>{first?.title}</h3>
+      <div class="wt-narration__body" data-wt-body aria-live="polite" set:html={renderNarration(first?.body ?? '')} />
+      <ul class="wt-changes" data-wt-changes hidden></ul>
+      <p class="wt-hint"><kbd>←</kbd> <kbd>→</kbd> step · <button type="button" class="wt-link-btn" data-wt-restart>restart</button></p>
+    </div>
+    <div class="wt-code" data-wt-code>
+      <div class="wt-code__head">
+        <p class="wt-code__title">Code <span>grows with the story · highlighted lines run in this step</span></p>
+        <button type="button" class="wt-btn wt-btn--small" data-wt-copy title="Copy the full solution">Copy</button>
+      </div>
+      <!-- Without JavaScript the full solution stays readable; the player swaps in the live panel. -->
+      <div class="wt-code-static" data-wt-code-static>
+        <Code code={wt.code.source} lang={wt.code.lang} theme="github-light" />
+      </div>
+      <div class="wt-codebox" data-wt-code-live hidden>
+        <div class="wt-code-gutter" data-wt-gutter aria-hidden="true"></div>
+        <div class="wt-code-main">
+          <div class="wt-code-hl" data-wt-hl aria-hidden="true"></div>
+          <pre class="wt-mm" data-wt-mm></pre>
+          <div class="wt-code-values" data-wt-values aria-hidden="true"></div>
+        </div>
+      </div>
+      <script type="application/json" is:inline data-wt-frames set:html={framesJson}></script>
+    </div>
+  </div>
+
+  {wt.goals && (
+    <div class="wt-goals" data-wt-goals>
+      <h3 class="wt-goals__title">You'll learn</h3>
+      <ol class="wt-goals__list">
+        {wt.goals.map((goal) => (
+          <li>
+            <button type="button" class="wt-goal" data-wt-goal={goal.step}>
+              <span>{goal.text}</span>
+              <span class="wt-goal__step">step {goal.step}</span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )}
+</section>
+
+<script>
+  import { mountWalkthroughs } from '../lib/walkthrough/player';
+
+  void mountWalkthroughs();
+</script>
