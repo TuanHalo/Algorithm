@@ -5,47 +5,8 @@ order: 6
 difficulty: "intermediate"
 timeComplexity: "O(log i)"
 spaceComplexity: "O(1)"
-visualizer: "/visualizers/searching/exponential-search.html"
-diagram: "/diagrams/searching/exponential-search-flow.html"
 tags: ["searching", "unbounded", "doubling", "sorted"]
 ---
-
-## What is exponential search?
-
-Imagine guessing a large secret number by jumping 1, 2, 4, 8, 16, and so on until you overshoot, then running Binary Search inside that smaller range.
-Exponential Search works well on unbounded or very large sorted lists when the target sits near the front, because it never inspects elements far past the answer.
-
-## Core idea
-
-Double `bound` (`1, 2, 4, 8, ...`) until `arr[bound] > target`, then run Binary Search inside `[bound // 2, min(bound, n - 1)]`.
-
-## Python code
-
-```python
-def exponential_search(arr: list[int], target: int) -> int:
-    n = len(arr)
-    if n == 0:
-        return -1
-    if arr[0] == target:
-        return 0
-
-    bound = 1
-    # Double the range while still below target
-    while bound < n and arr[bound] <= target:
-        bound *= 2
-
-    low = bound // 2
-    high = min(bound, n - 1)
-    while low <= high:
-        mid = low + (high - low) // 2
-        if arr[mid] == target:
-            return mid
-        if arr[mid] < target:
-            low = mid + 1
-        else:
-            high = mid - 1
-    return -1
-```
 
 ## Complexity
 
@@ -62,4 +23,3 @@ def exponential_search(arr: list[int], target: int) -> int:
 | Unbounded or infinite sorted streams where `len(arr)` isn't known upfront | Unsorted data (both doubling and Binary Search break without sorted order) |
 | Sorted arrays where targets usually appear close to index `0` (`O(log i)` < `O(log n)`) | Uniformly spaced numeric arrays where Interpolation Search hits in `O(log log n)` |
 | | Tiny arrays where extra bound-doubling logic adds unnecessary branches |
-
