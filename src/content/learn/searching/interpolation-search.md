@@ -5,6 +5,7 @@ order: 5
 difficulty: "intermediate"
 timeComplexity: "O(log log n)"
 spaceComplexity: "O(1)"
+verified: "2026-11-22"
 tags: ["searching", "probing", "uniform-data", "sorted"]
 ---
 

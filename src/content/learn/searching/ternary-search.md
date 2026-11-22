@@ -5,6 +5,7 @@ order: 7
 difficulty: "intermediate"
 timeComplexity: "O(log₃ n)"
 spaceComplexity: "O(1)"
+verified: "2026-11-22"
 tags: ["searching", "divide-and-conquer", "sorted", "three-way"]
 ---
 

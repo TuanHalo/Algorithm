@@ -5,6 +5,7 @@ order: 1
 difficulty: "beginner"
 timeComplexity: "O(n)"
 spaceComplexity: "O(1)"
+verified: "2026-11-22"
 tags: ["searching", "sequential", "unsorted", "in-place"]
 ---
 

@@ -5,6 +5,7 @@ order: 6
 difficulty: "intermediate"
 timeComplexity: "O(log i)"
 spaceComplexity: "O(1)"
+verified: "2026-11-22"
 tags: ["searching", "unbounded", "doubling", "sorted"]
 ---
 

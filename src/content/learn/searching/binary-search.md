@@ -5,6 +5,7 @@ order: 2
 difficulty: "beginner"
 timeComplexity: "O(log n)"
 spaceComplexity: "O(1)"
+verified: "2026-11-22"
 tags: ["searching", "divide-and-conquer", "sorted", "iterative"]
 ---
 

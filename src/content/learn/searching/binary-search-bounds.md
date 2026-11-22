@@ -5,6 +5,7 @@ order: 3
 difficulty: "intermediate"
 timeComplexity: "O(log n)"
 spaceComplexity: "O(1)"
+verified: "2026-11-22"
 tags: ["searching", "binary-search", "bounds", "duplicates"]
 ---
 

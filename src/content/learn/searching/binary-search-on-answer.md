@@ -5,6 +5,7 @@ order: 8
 difficulty: "advanced"
 timeComplexity: "O(log(range) · f(n))"
 spaceComplexity: "O(1)"
+verified: "2026-11-22"
 tags: ["searching", "binary-search", "parametric-search", "optimization", "monotonicity"]
 ---
 
