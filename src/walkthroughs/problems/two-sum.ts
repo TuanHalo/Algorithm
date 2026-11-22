@@ -1,5 +1,5 @@
 import { arr, defineWalkthrough, link, map, note, ptr, vars } from '../../lib/walkthrough/helpers';
-import { GAP, PITCH } from '../../lib/walkthrough/layout';
+import { tableBesideArray } from '../../lib/walkthrough/layout';
 import type { Entity, MapEntry, Step, Tone } from '../../lib/walkthrough/types';
 
 const NUMS = [3, 8, 1, 6, 4] as const;
@@ -11,8 +11,8 @@ interface Model {
   readonly target: number;
 }
 
-/** The `seen` map sits to the right of the array, however long the array is. */
-const mapX = (m: Model): number => Math.max(380, m.nums.length * PITCH - GAP + 110);
+/** The `seen` map sits right of the array; it can grow to one row per number. */
+const mapX = (m: Model): number => tableBesideArray(m.nums.length, m.nums.length);
 
 /**
  * `seen` after the first `processed` numbers were stored, with Python dict
@@ -31,13 +31,14 @@ interface FrameOptions {
   readonly cellTones?: Readonly<Record<number, Tone>>;
   readonly highlight?: { key: number; tone: Tone };
   readonly extra?: readonly Entity[];
+  /** `miss` / `found` once the lookup has run; plain before that. */
   readonly complementTone?: Tone;
   /** Hide `seen` before the story introduces it. */
   readonly withSeen?: boolean;
 }
 
 /** One moment of the hash-map solution: array, idx pointer, variables and `seen`. */
-function frame(m: Model, { idx, processed, cellTones, highlight, extra = [], complementTone = 'active', withSeen = true }: FrameOptions): Entity[] {
+function frame(m: Model, { idx, processed, cellTones, highlight, extra = [], complementTone = 'default', withSeen = true }: FrameOptions): Entity[] {
   const num = idx === undefined ? undefined : m.nums[idx];
   const tones: Record<number, Tone> = {};
   for (let i = 0; i < processed; i += 1) tones[i] = 'done';
@@ -142,7 +143,7 @@ function traceTwoSum(nums: readonly number[], target: number): Step[] {
       values: { 8: `seen[${num}] = ${idx}` },
       metrics: metrics('—'),
       changes: [`seen[${num}] = ${idx}`],
-      scene: { entities: frame(m, { idx, processed: idx + 1, highlight: { key: num, tone: 'active' } }) },
+      scene: { entities: frame(m, { idx, processed: idx + 1, highlight: { key: num, tone: 'active' }, complementTone: 'miss' }) },
     });
   }
 
@@ -154,7 +155,7 @@ function traceTwoSum(nums: readonly number[], target: number): Step[] {
     code: { view: 'final', lines: [9] },
     values: { 9: 'return []' },
     metrics: metrics('[]'),
-    scene: { entities: frame(m, { processed: nums.length, extra: [note('none', 220, VARS_Y + 30, 'no pair found → return []', { tone: 'miss' })] }) },
+    scene: { entities: frame(m, { processed: nums.length, extra: [note('none', 200, VARS_Y + 110,'no pair found → return []', { tone: 'miss' })] }) },
   });
   return steps;
 }
@@ -193,6 +194,7 @@ export default defineWalkthrough({
   ],
   legend: [
     { tone: 'active', label: 'current number' },
+    { tone: 'compare', label: 'pair to check' },
     { tone: 'done', label: 'already stored' },
     { tone: 'miss', label: 'lookup missed' },
     { tone: 'found', label: 'pair found' },
@@ -269,7 +271,7 @@ export default defineWalkthrough({
       code: { view: 'reveal', reveal: [1, 2, 3, 4, 5, 6, 7, 8, 9], lines: [7, 8] },
       metrics: { lookups: 1, stored: 1, answer: '—' },
       changes: ['seen[num] = idx', 'return []'],
-      scene: { entities: frame(story, { idx: 0, processed: 1, highlight: { key: 3, tone: 'active' } }) },
+      scene: { entities: frame(story, { idx: 0, processed: 1, highlight: { key: 3, tone: 'active' }, complementTone: 'miss' }) },
     },
     {
       chapter: 'run',
@@ -336,7 +338,7 @@ export default defineWalkthrough({
           processed: 4,
           cellTones: { 3: 'found', 4: 'found' },
           highlight: { key: 6, tone: 'found' },
-          extra: [note('recap', 220, VARS_Y + 30, 'Time   O(n)   one lookup per number\nSpace  O(n)   the seen dict', { tone: 'found' })],
+          extra: [note('recap', 200, VARS_Y + 110, 'Time   O(n)   one pass\nSpace  O(n)   the seen dict', { tone: 'found' })],
         }),
       },
     },
@@ -379,6 +381,7 @@ export default defineWalkthrough({
     presets: [
       { label: 'LeetCode example', values: { nums: '2, 7, 11, 15', target: '9' } },
       { label: 'Duplicates', values: { nums: '3, 3', target: '6' } },
+      { label: 'Not itself', values: { nums: '3, 2, 4', target: '6' } },
       { label: 'Negatives', values: { nums: '-3, 4, 3, 90', target: '0' } },
       { label: 'No answer', values: { nums: '1, 2, 4, 8', target: '100' } },
     ],
