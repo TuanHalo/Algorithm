@@ -2,6 +2,7 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ComplexityBadge from '../../components/ComplexityBadge.astro';
+import VerifiedBadge from '../../components/VerifiedBadge.astro';
 import Walkthrough from '../../components/Walkthrough.astro';
 import { getWalkthrough, problemWalkthroughId } from '../../lib/walkthrough/registry';
 import { withBase } from '../../utils/url';
@@ -58,6 +59,7 @@ const usesTags = hasWalkthrough ? (optimalApproach?.tags ?? []).filter((tag) => 
           {problem.data.dateCompleted && (
             <span class="clay-badge">📅 {problem.data.dateCompleted}</span>
           )}
+          <VerifiedBadge verified={problem.data.verified} />
         </div>
         <a
           href={problem.data.problemUrl}

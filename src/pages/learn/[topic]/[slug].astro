@@ -4,6 +4,7 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ComplexityBadge from '../../../components/ComplexityBadge.astro';
 import AlgoVisualizer from '../../../components/AlgoVisualizer.astro';
 import DiagramEmbed from '../../../components/DiagramEmbed.astro';
+import VerifiedBadge from '../../../components/VerifiedBadge.astro';
 import Walkthrough from '../../../components/Walkthrough.astro';
 import { getWalkthrough, lessonWalkthroughId } from '../../../lib/walkthrough/registry';
 import { getTopicBySlug } from '../../../utils/topics';
@@ -63,6 +64,7 @@ const getSlug = (entry: CollectionEntry<'learn'>): string =>
       <div class="lesson-header__meta">
         <span class="clay-badge">#{lesson.data.order}</span>
         <span class={`clay-badge clay-badge--${lesson.data.difficulty}`}>{lesson.data.difficulty}</span>
+        <VerifiedBadge verified={lesson.data.verified} />
       </div>
       <h1 class="lesson-header__title">{lesson.data.title}</h1>
       <div class="lesson-header__footer">
@@ -151,6 +153,7 @@ const getSlug = (entry: CollectionEntry<'learn'>): string =>
 
   .lesson-header__meta {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-sm);
     margin-bottom: var(--space-sm);
   }

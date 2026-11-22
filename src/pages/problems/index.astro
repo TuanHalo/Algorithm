@@ -52,6 +52,7 @@ const problems = (await getCollection('problems')).sort((a, b) =>
                 dateCompleted={problem.data.dateCompleted}
                 timeComplexity={timeComplexity}
                 spaceComplexity={spaceComplexity}
+                verified={problem.data.verified}
               />
             );
           })}

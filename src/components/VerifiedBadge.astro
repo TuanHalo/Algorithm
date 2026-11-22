@@ -1,0 +1,22 @@
+---
+/**
+ * Shows whether the owner has reviewed and accepted a lesson or problem
+ * (.migration-contract.md §10). Driven by the frontmatter field `verified`.
+ */
+interface Props {
+  /** YYYY-MM-DD the owner verified the page; absent means not verified yet. */
+  verified?: string;
+}
+
+const { verified } = Astro.props;
+---
+
+{verified ? (
+  <span class="clay-badge clay-badge--verified" title={`Reviewed and verified by the author on ${verified}`}>
+    ✓ Verified
+  </span>
+) : (
+  <span class="clay-badge clay-badge--unverified" title="Not reviewed by the author yet">
+    Not verified
+  </span>
+)}

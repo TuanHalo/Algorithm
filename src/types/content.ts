@@ -40,5 +40,7 @@ export interface ProblemData {
   readonly dateCompleted?: string;
   readonly timeComplexity?: string;
   readonly spaceComplexity?: string;
+  /** YYYY-MM-DD the owner verified the page; absent means not verified yet. */
+  readonly verified?: string;
   readonly approaches?: readonly ProblemApproach[];
 }
