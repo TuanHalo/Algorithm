@@ -5,29 +5,8 @@ order: 1
 difficulty: "beginner"
 timeComplexity: "O(n)"
 spaceComplexity: "O(1)"
-visualizer: "/visualizers/searching/linear-search.html"
-diagram: "/diagrams/searching/linear-search-flow.html"
 tags: ["searching", "sequential", "unsorted", "in-place"]
 ---
-
-## What is linear search?
-
-Imagine looking for your favorite mug in a messy drawer: you check items one by one from left to right until you spot it.
-Linear Search works on any list (sorted or unsorted) by scanning each element in order until it finds the target or reaches the end.
-
-## Core idea
-
-Start at index 0, check each element against the target, and return the index on a match or -1 at the end.
-
-## Python code
-
-```python
-def linear_search(arr: list[int], target: int) -> int:
-    for index, value in enumerate(arr):
-        if value == target:
-            return index  # Match found; no need to check the rest
-    return -1  # Reached the end without finding target
-```
 
 ## Complexity
 
@@ -44,4 +23,3 @@ def linear_search(arr: list[int], target: int) -> int:
 | Unsorted lists where sorting first isn't worth the `O(n log n)` cost | Large, frequently queried sorted datasets (use Binary Search instead) |
 | Small arrays or one-off lookups (`n` is tiny) | Real-time lookups across millions of records (use a hash map or index) |
 | Linked lists or streams without random index access | |
-
