@@ -19,6 +19,8 @@ const NOTE_LIFT = 10;
 const PIN_SHIFT = 13;
 /** Room above a table's first row for its label. */
 const CARD_HEAD = 24;
+/** Slightly longer than the 480ms `.wt-node` transform transition in walkthrough.css. */
+const MOVE_MS = 500;
 
 interface Point {
   readonly x: number;
@@ -390,8 +392,21 @@ export class IsoStage extends KeyedStage {
     }
   }
 
-  /** Keeps blocks in painter's order; only touches the DOM when the order is wrong. */
-  protected override afterRender(): void {
+  private reorderTimer: number | undefined;
+
+  /**
+   * Keeps blocks in painter's order. Re-appending a node cancels its running CSS
+   * transition, so after an animated render (e.g. two blocks swapping) the sort
+   * waits until the slide has finished; instant renders sort straight away.
+   */
+  protected override afterRender(skipMotion: boolean): void {
+    window.clearTimeout(this.reorderTimer);
+    if (skipMotion) this.sortByDepth();
+    else this.reorderTimer = window.setTimeout(() => this.sortByDepth(), MOVE_MS);
+  }
+
+  /** Re-appends the main layer in depth order; only touches the DOM when the order is wrong. */
+  private sortByDepth(): void {
     const layer = this.layers.get('main');
     if (!layer) return;
     const children = [...layer.children] as SVGGElement[];

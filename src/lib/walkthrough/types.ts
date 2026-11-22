@@ -32,8 +32,19 @@ export interface ArrayEntity {
   readonly tones?: Readonly<Record<number, Tone>>;
   /** Show the 0-based index under each cell (default true). */
   readonly showIndex?: boolean;
+  /**
+   * Text under each cell instead of its 0-based index, parallel to `values`
+   * (e.g. a heap tree node shows its slot in the array).
+   */
+  readonly indexLabels?: readonly ScalarValue[];
   /** Code identifier this array stands for; links the blocks to its tokens in the code panel. */
   readonly codeVar?: string;
+  /**
+   * Stable identity per cell, parallel to `values` (unique). A cell keeps its key
+   * wherever its value moves, so swaps and shifts animate as blocks sliding to
+   * their new slots. Without it, cells are keyed by index and only their numbers change.
+   */
+  readonly itemKeys?: readonly (string | number)[];
 }
 
 /** A labelled arrow that points at one cell of an array. */
@@ -194,6 +205,8 @@ export interface TraceInput {
   readonly kind: 'numbers' | 'number';
   /** Default text for the input field, e.g. "1, 3, 5". */
   readonly default: string;
+  /** Accept decimals such as 0.42 (default: whole numbers only). */
+  readonly decimals?: boolean;
 }
 
 export interface TracePreset {

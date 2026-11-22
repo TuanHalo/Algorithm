@@ -33,7 +33,9 @@ const entity = z.discriminatedUnion('type', [
       label: z.string().optional(),
       tones: z.record(z.string().regex(/^\d+$/), tone).optional(),
       showIndex: z.boolean().optional(),
+      indexLabels: z.array(scalar).optional(),
       codeVar,
+      itemKeys: z.array(z.union([z.string(), z.number()])).optional(),
     })
     .strict(),
   z
@@ -138,6 +140,7 @@ const traceShape = z
             label: z.string(),
             kind: z.enum(['numbers', 'number']),
             default: z.string(),
+            decimals: z.boolean().optional(),
           })
           .strict(),
       )
@@ -177,6 +180,13 @@ function checkScene(entities: readonly Entity[], where: string): string[] {
     return target?.type === 'array' ? target.values.length : undefined;
   };
   for (const e of entities) {
+    if (e.type === 'array' && e.itemKeys) {
+      if (e.itemKeys.length !== e.values.length) problems.push(`${where}: array "${e.id}" has ${e.itemKeys.length} itemKeys for ${e.values.length} values`);
+      if (new Set(e.itemKeys.map(String)).size !== e.itemKeys.length) problems.push(`${where}: array "${e.id}" has duplicate itemKeys`);
+    }
+    if (e.type === 'array' && e.indexLabels && e.indexLabels.length !== e.values.length) {
+      problems.push(`${where}: array "${e.id}" has ${e.indexLabels.length} indexLabels for ${e.values.length} values`);
+    }
     if (e.type === 'pointer' || e.type === 'range') {
       const len = arrayLength(e.array);
       if (len === undefined) {
@@ -273,7 +283,7 @@ function checkStory(wt: Walkthrough): string[] {
   const problems: string[] = [];
   const steps = wt.steps;
   // Lessons get more room because their run chapter takes one decision per step.
-  const maxSteps = wt.id.startsWith('learn/') ? 24 : 14;
+  const maxSteps = wt.id.startsWith('learn/') ? 48 : 14;
   if (steps.length < 8 || steps.length > maxSteps) problems.push(`story has ${steps.length} steps; expected 8–${maxSteps}`);
 
   // Chapters: in order, none skipped, and the last step is the key decision in "why".

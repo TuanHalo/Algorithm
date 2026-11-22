@@ -29,7 +29,8 @@ export function parseTraceInputs(trace: TraceConfig, raw: Readonly<Record<string
     const parts = (raw[input.name] ?? '').split(/[\s,]+/).filter(Boolean);
     const nums = parts.map(Number);
     if (parts.length === 0) return `${input.label}: please enter a value.`;
-    if (nums.some((n) => !Number.isFinite(n) || !Number.isInteger(n))) return `${input.label}: use whole numbers only.`;
+    if (nums.some((n) => !Number.isFinite(n))) return `${input.label}: use numbers only.`;
+    if (!input.decimals && nums.some((n) => !Number.isInteger(n))) return `${input.label}: use whole numbers only.`;
     if (nums.some((n) => Math.abs(n) > MAX_ABS_VALUE)) return `${input.label}: keep values between -${MAX_ABS_VALUE} and ${MAX_ABS_VALUE}.`;
     if (input.kind === 'number') {
       if (nums.length !== 1) return `${input.label}: enter a single number.`;
@@ -294,6 +295,8 @@ class Player {
       const next = step.metrics?.[key] === undefined ? '—' : String(step.metrics[key]);
       if (el.textContent !== next) {
         el.textContent = next;
+        // The value is cut to one line on narrow screens; the tooltip keeps it readable.
+        el.title = next;
         if (!instant) {
           el.classList.remove('wt-bump');
           void el.offsetWidth;

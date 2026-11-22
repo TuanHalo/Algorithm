@@ -80,8 +80,8 @@ export abstract class KeyedStage implements Renderer {
   protected abstract paint(node: StageNode, prim: Prim, fresh: boolean): void;
   /** Group position, applied as a CSS transform so it can transition. */
   protected abstract position(prim: Prim): { x: number; y: number };
-  /** Hook for renderers that need draw-order sorting (isometric depth). */
-  protected afterRender(): void {}
+  /** Hook for renderers that need draw-order sorting (isometric depth). `skipMotion` is true for instant renders. */
+  protected afterRender(_skipMotion: boolean): void {}
 
   setViewBox(vb: ViewBox): void {
     this.svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
@@ -116,7 +116,7 @@ export abstract class KeyedStage implements Renderer {
         window.setTimeout(() => node.el.remove(), LEAVE_MS);
       }
     }
-    this.afterRender();
+    this.afterRender(skipMotion);
     if (skipMotion) {
       // Flush styles with transitions off, then turn them back on.
       void this.svg.getBoundingClientRect();
