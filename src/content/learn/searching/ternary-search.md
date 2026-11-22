@@ -5,45 +5,8 @@ order: 7
 difficulty: "intermediate"
 timeComplexity: "O(log₃ n)"
 spaceComplexity: "O(1)"
-visualizer: "/visualizers/searching/ternary-search.html"
-diagram: "/diagrams/searching/ternary-search-flow.html"
 tags: ["searching", "divide-and-conquer", "sorted", "three-way"]
 ---
-
-## What is ternary search?
-
-Imagine asking two friends to stand at the 1/3 and 2/3 marks of a sorted bookshelf. One glance tells you which third can hold your book.
-Ternary Search splits a sorted range into three parts per step, shrinking the window faster (`1/3` instead of `1/2`), though checking two dividers takes more comparisons overall than Binary Search.
-
-## Core idea
-
-Compute `mid1` and `mid2`, check both dividers, and keep only the left, middle, or right third.
-
-## Python code
-
-```python
-def ternary_search(arr: list[int], target: int) -> int:
-    low, high = 0, len(arr) - 1
-
-    while low <= high:
-        third = (high - low) // 3
-        mid1 = low + third
-        mid2 = high - third
-
-        if arr[mid1] == target:
-            return mid1
-        if arr[mid2] == target:
-            return mid2
-
-        if target < arr[mid1]:
-            high = mid1 - 1       # Target belongs in the left third
-        elif target > arr[mid2]:
-            low = mid2 + 1        # Target belongs in the right third
-        else:
-            low, high = mid1 + 1, mid2 - 1  # Keep only the middle third
-
-    return -1
-```
 
 ## Complexity
 
@@ -60,4 +23,3 @@ def ternary_search(arr: list[int], target: int) -> int:
 | Finding the maximum or minimum of a unimodal curve (goes up then down) | Plain sorted array lookups (Binary Search uses ~20% fewer comparisons!) |
 | Expensive single-variable convex/concave optimization problems | Unsorted lists where comparing against dividers proves nothing |
 | | Tiny arrays where simpler linear or binary loops win |
-
