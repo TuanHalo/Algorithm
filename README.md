@@ -16,9 +16,8 @@ Interactive algorithm lessons organized by topic, with:
 
 ### Problem journal (`/problems/`)
 Solutions to LeetCode, HackerRank, and other platform problems with:
-- My approach and solution code
-- AI-generated feedback (strengths, improvements, edge cases)
-- Visual walkthroughs of solution logic
+- A 3D story per problem: the problem, the idea, the code growing from it, a dry run, and a "Try your own" mode for custom input
+- AI-generated feedback (strengths, improvements, alternative approaches)
 
 ## Development
 

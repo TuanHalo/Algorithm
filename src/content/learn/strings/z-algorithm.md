@@ -31,7 +31,7 @@ To compute the Z-array in $O(n)$ time:
 
 ### Pattern Matching via Concatenation
 To find pattern $P$ in text $T$, construct string:
-$$S = P + \text{"\$"} + T$$
+$$S = P + \text{"\textdollar"} + T$$
 where `"\"$` is a sentinel character not appearing in $P$ or $T$.
 Compute the Z-array of $S$. Any index $i > |P|$ where $Z[i] == |P|$ indicates an exact match of $P$ starting at index $i - |P| - 1$ in $T$!
 
@@ -109,7 +109,7 @@ def z_search(text: str, pattern: str) -> list[int]:
 | Operation | Time Complexity | Space Complexity | Why? |
 |---|---|---|---|
 | Z-Array Construction | $O(n)$ | $O(n)$ | Right boundary $R$ only advances forward at most $n$ times |
-| Pattern Search | $O(n + m)$ | $O(n + m)$ | Linear on concatenated string $P + \text{"\$"} + T$ |
+| Pattern Search | $O(n + m)$ | $O(n + m)$ | Linear on concatenated string $P + \text{"\textdollar"} + T$ |
 | Prefix Periodicity Query | $O(1)$ | $O(n)$ | Immediate lookup in precomputed Z-array |
 
 ## When to Use and Avoid

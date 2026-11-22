@@ -20,11 +20,13 @@ Instead, a master baker takes one sheet, folds it in half (2 layers), folds it a
 
 The property relies on dividing the exponent $n$ in half at each step:
 
-$$a^n = \begin{cases} 
+$$
+a^n = \begin{cases}
 1 & \text{if } n = 0 \\
 \left(a^{\frac{n}{2}}\right)^2 & \text{if } n \text{ is even} \\
 a \times a^{n - 1} = a \times \left(a^{\frac{n - 1}{2}}\right)^2 & \text{if } n \text{ is odd}
-\end{cases}$$
+\end{cases}
+$$
 
 Because $n$ is halved at every even step (and made even on every odd step), the exponent reaches zero in at most $2 \lfloor \log_2 n \rfloor$ multiplications.
 

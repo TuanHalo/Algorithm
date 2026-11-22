@@ -40,6 +40,5 @@ export interface ProblemData {
   readonly dateCompleted?: string;
   readonly timeComplexity?: string;
   readonly spaceComplexity?: string;
-  readonly diagram?: string;
   readonly approaches?: readonly ProblemApproach[];
 }

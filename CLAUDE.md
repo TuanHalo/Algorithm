@@ -65,7 +65,7 @@ CI (`.github/workflows/deploy.yml`) builds with `withastro/action` and deploys o
 - Topic index pages (`src/pages/learn/[topic]/index.astro`) render per-topic comparison tables from `src/components/*Matrix.astro`. Their data is hard-coded inside each component.
 
 ### The three visual systems
-Lesson and problem pages can embed up to three kinds of visual, in this order: walkthrough, then visualizer, then Archify diagram.
+Lesson pages can embed up to three kinds of visual, in this order: walkthrough, then visualizer, then Archify diagram. Problem pages show only the walkthrough; their markdown holds just the AI feedback.
 
 1. **Walkthroughs** (new; preferred for showing how code executes)
    - **Content:** `src/walkthroughs/problems/<slug>.ts` and `src/walkthroughs/learn/<topic>/<slug>.ts`.
@@ -100,6 +100,11 @@ Lesson and problem pages can embed up to three kinds of visual, in this order: w
 Direction of travel (see `.migration-contract.md`):
 - Walkthroughs are becoming the single 3D story on every page. They replace the legacy visualizers, the duplicated approach and code sections, and the Archify execution diagrams.
 - Archify stays only for "big picture" decision, comparison and structure diagrams.
+
+### Math in markdown
+- `$…$` and `$$…$$` render with KaTeX (`remark-math` + `rehype-katex` in `astro.config.mjs`; the CSS is imported in `BaseLayout.astro`).
+- Keep the `katex` dependency pinned to the **same version `rehype-katex` renders with** (currently 0.16.x). A CSS/HTML version mismatch breaks fractions and superscripts without any build error.
+- Put `$$` fences on their own lines for multi-line display math. Inside `\text{}`, write `\#`, `\textdollar` and `\textasciicircum` instead of `#`, `$` and `^`.
 
 ### Styling
 - Global Claymorphism tokens and classes come from `src/styles/global.css` and `src/styles/clay-theme.css`. They are imported once in `src/layouts/BaseLayout.astro`, and in the embed page.

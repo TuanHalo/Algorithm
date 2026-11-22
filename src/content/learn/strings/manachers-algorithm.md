@@ -21,7 +21,7 @@ Naive palindrome search around each center takes $O(n^2)$ time. **Manacher's Alg
 ### 1. Unified Delimiter Transformation
 Palindromes can be odd-length (centered on a character: `"aba"`) or even-length (centered between characters: `"abba"`).
 Manacher unifies both by inserting special delimiter characters (e.g., `#`) between every character, and adding unique boundary sentinels (`^` and `$`):
-$$\text{"aba"} \implies \text{"^#a#b#a#\$"}$$
+$$\text{"aba"} \implies \text{"\textasciicircum\#a\#b\#a\#\textdollar"}$$
 Every palindrome in the transformed string now has an **odd length** centered on a specific index!
 
 ### 2. The Palindrome Radius Array $P[i]$
