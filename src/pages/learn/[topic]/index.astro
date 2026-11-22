@@ -3,6 +3,7 @@ import type { GetStaticPaths } from 'astro';
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ComplexityBadge from '../../../components/ComplexityBadge.astro';
+import VerifiedBadge from '../../../components/VerifiedBadge.astro';
 import SortingMatrix from '../../../components/SortingMatrix.astro';
 import SearchingMatrix from '../../../components/SearchingMatrix.astro';
 import StackQueueMatrix from '../../../components/StackQueueMatrix.astro';
@@ -59,7 +60,10 @@ const lessons = allLessons
             <a href={withBase(`/learn/${topic.slug}/${lessonSlug}/`)} class="clay-card lesson-card">
               <div class="lesson-card__top">
                 <span class="clay-badge">#{lesson.data.order}</span>
-                <span class={`clay-badge clay-badge--${lesson.data.difficulty}`}>{lesson.data.difficulty}</span>
+                <span class="lesson-card__status">
+                  <span class={`clay-badge clay-badge--${lesson.data.difficulty}`}>{lesson.data.difficulty}</span>
+                  <VerifiedBadge verified={lesson.data.verified} />
+                </span>
               </div>
               <h2 class="lesson-card__title">{lesson.data.title}</h2>
               <ComplexityBadge
@@ -146,6 +150,14 @@ const lessons = allLessons
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--space-xs);
+  }
+
+  .lesson-card__status {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-xs);
   }
 
   .lesson-card__title {

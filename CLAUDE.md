@@ -61,6 +61,7 @@ CI (`.github/workflows/deploy.yml`) builds with `withastro/action` and deploys o
   - the frontmatter `topic`
   - the **last segment** of the file slug (`src/content/learn/<topic>/<slug>.md` → `/learn/<topic>/<slug>/`)
 - Lessons are ordered within a topic by the frontmatter `order` field.
+- The optional frontmatter field `verified: "YYYY-MM-DD"` (lessons and problems) marks a page the owner has reviewed. `VerifiedBadge.astro` shows "✓ Verified" or "Not verified" in the page header and on lesson and problem cards. Only the owner's review sets it (`.migration-contract.md` §10), so never add it yourself.
 - Topic metadata (name, icon, colour, order, preview list) is hard-coded in `TOPICS` in `src/utils/topics.ts`. The per-topic `_meta.json` files are not read by any site code.
 - Topic index pages (`src/pages/learn/[topic]/index.astro`) render per-topic comparison tables from `src/components/*Matrix.astro`. Their data is hard-coded inside each component.
 

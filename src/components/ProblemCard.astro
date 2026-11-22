@@ -1,4 +1,5 @@
 ---
+import VerifiedBadge from './VerifiedBadge.astro';
 import { withBase } from '../utils/url';
 import type { PlatformName, ProblemDifficulty } from '../types/content';
 
@@ -11,6 +12,8 @@ interface Props {
   dateCompleted?: string;
   timeComplexity?: string;
   spaceComplexity?: string;
+  /** YYYY-MM-DD the owner verified the page; absent means not verified yet. */
+  verified?: string;
 }
 
 const {
@@ -22,6 +25,7 @@ const {
   dateCompleted,
   timeComplexity,
   spaceComplexity,
+  verified,
 } = Astro.props;
 
 const platformEmoji: Record<PlatformName, string> = {
@@ -47,7 +51,10 @@ const difficultyLabel: Record<ProblemDifficulty, string> = {
 >
   <div class="problem-card__header">
     <span class="problem-card__platform">{platformEmoji[platform]} {platform}</span>
-    <span class={`clay-badge clay-badge--${difficulty}`}>{difficultyLabel[difficulty]}</span>
+    <span class="problem-card__status">
+      <span class={`clay-badge clay-badge--${difficulty}`}>{difficultyLabel[difficulty]}</span>
+      <VerifiedBadge verified={verified} />
+    </span>
   </div>
   <h3 class="problem-card__title">{title}</h3>
   <div class="problem-card__tags">
@@ -70,7 +77,15 @@ const difficultyLabel: Record<ProblemDifficulty, string> = {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--space-xs);
     margin-bottom: var(--space-sm);
+  }
+
+  .problem-card__status {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-xs);
   }
 
   .problem-card__platform {

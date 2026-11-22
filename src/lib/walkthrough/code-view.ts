@@ -65,6 +65,18 @@ export function nonBlankLines(source: string): number[] {
 }
 
 /**
+ * Lines the `signature` view shows: every non-blank line up to and including
+ * the first `def`, so imports (`import math`) stay above the signature. Code
+ * without a `def` falls back to line 1. Build reveals start from these lines.
+ */
+export function signatureLines(source: string): number[] {
+  const lines = splitLines(source);
+  const def = lines.findIndex((line) => /^\s*(async\s+)?def\s/.test(line));
+  if (def < 0) return [1];
+  return nonBlankLines(source).filter((n) => n <= def + 1);
+}
+
+/**
  * Visible lines for a reveal. Blank lines never need listing: one shows when
  * the nearest non-blank lines above and below it are both visible.
  */
@@ -131,7 +143,7 @@ export function resolveView(sources: CodeSources, view: CodeView): ResolvedView 
       visible: new Set(lines.map((_, i) => i + 1)),
     };
   }
-  const visible = revealVisible(lines, view.view === 'signature' ? [1] : view.reveal);
+  const visible = revealVisible(lines, view.view === 'signature' ? signatureLines(sources.code.source) : view.reveal);
   const rows = revealRows(lines, visible);
   return { key, code: rows.map((r) => r.text).join('\n'), rows, visible };
 }

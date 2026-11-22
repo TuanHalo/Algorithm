@@ -3,7 +3,7 @@
  * (the registry), so Zod never ships to the browser.
  */
 import { z } from 'astro/zod';
-import { nonBlankLines, resolveView, type ResolvedView } from './code-view';
+import { nonBlankLines, resolveView, signatureLines, type ResolvedView } from './code-view';
 import { CHAPTERS, type Entity, type Step, type Walkthrough } from './types';
 
 const tone = z.enum(['default', 'active', 'compare', 'found', 'miss', 'muted', 'done', 'note']);
@@ -255,14 +255,14 @@ export function checkSteps(steps: readonly Step[], wt: Walkthrough, label: strin
 }
 
 /** The set of final-code lines a build step puts on screen, or undefined for a snapshot. */
-function shownByBuildStep(s: Step, all: readonly number[]): Set<number> | undefined {
+function shownByBuildStep(s: Step, all: readonly number[], signature: readonly number[]): Set<number> | undefined {
   switch (s.code.view) {
     case 'final':
       return new Set(all);
     case 'reveal':
       return new Set(s.code.reveal);
     case 'signature':
-      return new Set([1]);
+      return new Set(signature);
     case 'snapshot':
       return undefined;
   }
@@ -272,7 +272,8 @@ function shownByBuildStep(s: Step, all: readonly number[]): Set<number> | undefi
 function checkStory(wt: Walkthrough): string[] {
   const problems: string[] = [];
   const steps = wt.steps;
-  const maxSteps = wt.id.startsWith('learn/') ? 16 : 14;
+  // Lessons get more room because their run chapter takes one decision per step.
+  const maxSteps = wt.id.startsWith('learn/') ? 24 : 14;
   if (steps.length < 8 || steps.length > maxSteps) problems.push(`story has ${steps.length} steps; expected 8–${maxSteps}`);
 
   // Chapters: in order, none skipped, and the last step is the key decision in "why".
@@ -288,11 +289,12 @@ function checkStory(wt: Walkthrough): string[] {
 
   // Build chapter: reveals only grow, add at most 3 lines per step, and end with the whole solution.
   const all = nonBlankLines(wt.code.source);
-  let shown = new Set<number>([1]);
+  const signature = signatureLines(wt.code.source);
+  let shown = new Set<number>(signature);
   const build = steps.map((s, i) => ({ s, i })).filter(({ s }) => s.chapter === 'build');
   for (const { s, i } of build) {
     const where = `story step ${i + 1}`;
-    const next = shownByBuildStep(s, all);
+    const next = shownByBuildStep(s, all, signature);
     if (!next) {
       problems.push(`${where}: build steps show the solution growing ("reveal" or "final"), not a snapshot`);
       continue;

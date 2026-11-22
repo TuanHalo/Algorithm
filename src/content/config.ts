@@ -1,5 +1,14 @@
 import { defineCollection, z } from 'astro:content';
 
+/**
+ * Date (YYYY-MM-DD) the owner reviewed and accepted the page (.migration-contract.md §10).
+ * Absent means "not verified yet". Only the owner's review sets it.
+ */
+const verified = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'verified must be a YYYY-MM-DD date')
+  .optional();
+
 const learnCollection = defineCollection({
   type: 'content',
   schema: z.object({
@@ -12,6 +21,7 @@ const learnCollection = defineCollection({
     visualizer: z.string().optional(),
     diagram: z.string().optional(),
     tags: z.array(z.string()),
+    verified,
   }),
 });
 
@@ -26,6 +36,7 @@ const problemsCollection = defineCollection({
     dateCompleted: z.string().optional().default(''),
     timeComplexity: z.string().optional(),
     spaceComplexity: z.string().optional(),
+    verified,
     approaches: z.array(
       z.object({
         name: z.string(),
