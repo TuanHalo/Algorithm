@@ -13,6 +13,17 @@ const POINTER_STACK = 28;
 const BODY_CHAR = 7.2;
 const MONO_CHAR = 8.2;
 
+/**
+ * Floor x for a table (`map`) placed right of an array that starts at x = 0
+ * (.migration-contract.md §5.1). Upright cards are centred on their footprint,
+ * so each row past the fourth lifts the card half a row pitch toward the
+ * array; shifting the table right by the same amount keeps the gap constant.
+ */
+export function tableBesideArray(cells: number, maxRows: number): number {
+  const lift = (Math.max(0, maxRows - 4) * (ROW_H + ROW_GAP)) / 2;
+  return Math.max(380, cells * PITCH - GAP + 110 + lift);
+}
+
 export type Layer = 'back' | 'main' | 'link' | 'pointer' | 'note';
 
 interface PrimBase {
