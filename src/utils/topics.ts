@@ -86,14 +86,14 @@ export const TOPICS: readonly TopicConfig[] = [
     description: 'Learn how to arrange data in order, from simple swaps to divide-and-conquer.',
     previewAlgorithms: [
       'Bubble Sort',
-      'Selection Sort',
       'Insertion Sort',
+      'Selection Sort',
+      'Bucket Sort',
+      'Counting Sort',
+      'Heap Sort',
       'Merge Sort',
       'Quick Sort',
-      'Heap Sort',
-      'Counting Sort',
       'Radix Sort',
-      'Bucket Sort',
     ],
   },
   {

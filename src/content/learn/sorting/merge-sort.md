@@ -1,53 +1,13 @@
 ---
 title: "Merge Sort"
 topic: "sorting"
-order: 4
+order: 7
 difficulty: "intermediate"
 timeComplexity: "O(n log n)"
 spaceComplexity: "O(n)"
-visualizer: "/visualizers/sorting/merge-sort.html"
-diagram: "/diagrams/sorting/merge-sort-flow.html"
+verified: "2026-11-22"
 tags: ["sorting", "divide-and-conquer", "stable", "recursion"]
 ---
-
-## What is Merge Sort?
-
-Imagine splitting a messy stack of test papers in half, sorting each half, and then zipping them together by repeatedly picking the smaller top paper.
-Merge Sort breaks an array down into single items, then merges those sorted pieces back together in order.
-
-## Core idea
-
-Divide the array in half, recursively sort both halves, and merge the sorted halves back together.
-
-## Python code
-
-```python
-def merge_sort(arr: list[int]) -> list[int]:
-    # Base case: 0 or 1 item is already sorted
-    if len(arr) <= 1:
-        return arr
-
-    # Divide: split array down the middle
-    mid = len(arr) // 2
-    left = merge_sort(arr[:mid])
-    right = merge_sort(arr[mid:])
-
-    # Conquer: merge two sorted halves
-    merged: list[int] = []
-    i = j = 0
-    while i < len(left) and j < len(right):
-        if left[i] <= right[j]:
-            merged.append(left[i])
-            i += 1
-        else:
-            merged.append(right[j])
-            j += 1
-
-    # Append remaining items from either half
-    merged.extend(left[i:])
-    merged.extend(right[j:])
-    return merged
-```
 
 ## Complexity
 
@@ -64,4 +24,3 @@ def merge_sort(arr: list[int]) -> list[int]:
 | Large datasets (`n > 10,000`, guaranteed `O(n log n)` speed with no worst-case drop) | Memory-constrained systems (requires `O(n)` extra memory buffer) |
 | Stable sorting needs (preserves relative order of equal elements) | Tiny arrays (`n < 20`, where Insertion Sort overhead is lower) |
 | Sorting linked lists or external disk files (streaming sequential merges) | When in-place sorting (`O(1)` extra space) is strictly required |
-

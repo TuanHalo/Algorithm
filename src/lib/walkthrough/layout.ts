@@ -205,13 +205,14 @@ export function layoutScene(scene: Scene): Prim[] {
         e.values.forEach((value, i) => {
           prims.push({
             kind: 'cell',
-            key: `${e.id}:${i}`,
+            // With itemKeys a value keeps its block as it moves, so swaps slide instead of relabelling.
+            key: e.itemKeys ? `${e.id}:item:${String(e.itemKeys[i])}` : `${e.id}:${i}`,
             layer: 'main',
             x: e.x + i * PITCH,
             y: e.y,
             tone: e.tones?.[i] ?? 'default',
             text: String(value),
-            sub: e.showIndex === false ? undefined : String(i),
+            sub: e.showIndex === false ? undefined : String(e.indexLabels?.[i] ?? i),
             codeVar: e.codeVar,
           });
         });

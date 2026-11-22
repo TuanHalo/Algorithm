@@ -76,8 +76,8 @@ Lesson pages can embed up to three kinds of visual, in this order: walkthrough, 
      - `types.ts`: the data model. A walkthrough is a list of steps, and each step holds a complete `Scene` of entities.
      - `helpers.ts`: authoring helpers such as `arr`, `ptr`, `map`, `vars`, `link` and `note`.
      - `layout.ts`: places entities on a flat floor plane.
-     - `stage.ts`: keyed SVG reconciliation. An entity that keeps its `id` animates between steps instead of being redrawn.
-     - `iso-stage.ts`: the only renderer, which projects that floor into isometric 3D.
+     - `stage.ts`: keyed SVG reconciliation. An entity that keeps its `id` animates between steps instead of being redrawn. Array cells are keyed by index, unless the array passes `itemKeys` (one stable key per value), in which case a swapped value slides to its new slot. `indexLabels` replaces the index shown under each cell (a heap tree node shows its array slot).
+     - `iso-stage.ts`: the only renderer, which projects that floor into isometric 3D. Its painter's-order depth sort re-appends DOM nodes, which cancels a running CSS transition, so after an animated step it waits until the 480 ms slide has finished (`MOVE_MS`). The in-app browser pane reports `prefers-reduced-motion`, so the player renders instantly there; check motion in a normal browser.
      - `player.ts`: navigation, chapter-grouped step rail, metrics, `#step-N` deep links, scene↔code variable linking, and "Try your own" trace mode.
      - **Code panel (idea → code):**
        - `code-view.ts`, shared by server and browser, turns a step's code view (`signature` / `snapshot` / `reveal` / `final`) into display rows.
