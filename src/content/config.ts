@@ -26,7 +26,6 @@ const problemsCollection = defineCollection({
     dateCompleted: z.string().optional().default(''),
     timeComplexity: z.string().optional(),
     spaceComplexity: z.string().optional(),
-    diagram: z.string().optional(),
     approaches: z.array(
       z.object({
         name: z.string(),

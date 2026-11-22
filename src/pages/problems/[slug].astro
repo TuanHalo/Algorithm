@@ -2,7 +2,6 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ComplexityBadge from '../../components/ComplexityBadge.astro';
-import DiagramEmbed from '../../components/DiagramEmbed.astro';
 import Walkthrough from '../../components/Walkthrough.astro';
 import { getWalkthrough, problemWalkthroughId } from '../../lib/walkthrough/registry';
 import { withBase } from '../../utils/url';
@@ -150,15 +149,6 @@ const usesTags = hasWalkthrough ? (optimalApproach?.tags ?? []).filter((tag) => 
     <article class="clay-section markdown-body">
       <Content />
     </article>
-
-    {!hasWalkthrough && problem.data.diagram && (
-      <section class="problem-diagram">
-        <DiagramEmbed
-          src={problem.data.diagram}
-          title={`${problem.data.title}: visual walkthrough`}
-        />
-      </section>
-    )}
 
     <nav class="problem-nav">
       <a href={withBase('/problems/')} class="clay-btn">
@@ -328,10 +318,6 @@ const usesTags = hasWalkthrough ? (optimalApproach?.tags ?? []).filter((tag) => 
     border-color: rgba(27, 107, 80, 0.3);
     transform: translateY(-1px);
     box-shadow: var(--shadow-clay);
-  }
-
-  .problem-diagram {
-    margin-top: var(--space-xl);
   }
 
   .problem-nav {
