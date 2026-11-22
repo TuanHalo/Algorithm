@@ -97,8 +97,21 @@ interface CardRegion {
  */
 class Projector {
   private readonly cards: readonly CardRegion[];
+  /** Screen boxes of blocks and notes, which link arcs route around. */
+  readonly obstacles: readonly Rect[];
 
   constructor(prims: readonly Prim[]) {
+    this.obstacles = prims.flatMap((p): Rect[] => {
+      if (p.kind === 'cell') {
+        const top = BLOCK_H + lift(p.tone);
+        return [pointsRect([iso(p.x, p.y, top), iso(p.x + CELL, p.y, top), iso(p.x, p.y + CELL), iso(p.x + CELL, p.y + CELL)])];
+      }
+      if (p.kind === 'note') {
+        const o = noteOrigin(p);
+        return [{ x: o.x, y: o.y, w: p.w, h: p.lines.length * 18 + 16 }];
+      }
+      return [];
+    });
     const byOrigin = new Map<string, { ox: number; oy: number; x1: number; y1: number }>();
     for (const p of prims) {
       if (p.kind !== 'pair') continue;
@@ -131,13 +144,46 @@ class Projector {
   }
 }
 
-/** Arc between two anchor points, lifted above the blocks. */
+/** How many points along the curve a→c→b fall inside a box that holds neither end. */
+function arcHits(a: Point, c: Point, b: Point, boxes: readonly Rect[]): number {
+  const inside = (p: Point, r: Rect): boolean => p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h;
+  const clear = boxes.filter((r) => !inside(a, r) && !inside(b, r));
+  let hits = 0;
+  for (let i = 1; i < 20; i += 1) {
+    const t = i / 20;
+    const u = 1 - t;
+    const p = { x: u * u * a.x + 2 * u * t * c.x + t * t * b.x, y: u * u * a.y + 2 * u * t * c.y + t * t * b.y };
+    hits += clear.filter((r) => inside(p, r)).length;
+  }
+  return hits;
+}
+
+/**
+ * Arc between two anchor points. It lifts above the blocks when that path is
+ * clear; otherwise (e.g. a table-to-table lookup under a long array) it sags
+ * or dips below instead, whichever crosses the fewest blocks and notes.
+ */
 function arc(prim: Extract<Prim, { kind: 'path' }>, proj: Projector): { d: string; a: Point; b: Point; c: Point; mid: Point } {
   const [ax = 0, ay = 0, , , , , bx = 0, by = 0] = prim.pts;
   const a = proj.point(ax, ay, BLOCK_H);
   const b = proj.point(bx, by, BLOCK_H);
   const dist = Math.hypot(b.x - a.x, b.y - a.y);
-  const c = { x: (a.x + b.x) / 2, y: Math.min(a.y, b.y) - 30 - dist * 0.16 };
+  const cx = (a.x + b.x) / 2;
+  const candidates: readonly Point[] = [
+    { x: cx, y: Math.min(a.y, b.y) - 30 - dist * 0.16 },
+    { x: cx, y: Math.max(a.y, b.y) + 10 },
+    { x: cx, y: Math.max(a.y, b.y) + 30 + dist * 0.16 },
+  ];
+  let c = candidates[0] ?? { x: cx, y: a.y };
+  let best = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    const hits = arcHits(a, candidate, b, proj.obstacles);
+    if (hits < best) {
+      best = hits;
+      c = candidate;
+    }
+    if (hits === 0) break;
+  }
   const mid = { x: 0.25 * a.x + 0.5 * c.x + 0.25 * b.x, y: 0.25 * a.y + 0.5 * c.y + 0.25 * b.y };
   return { d: `M${a.x.toFixed(1)},${a.y.toFixed(1)} Q${c.x.toFixed(1)},${c.y.toFixed(1)} ${b.x.toFixed(1)},${b.y.toFixed(1)}`, a, b, c, mid };
 }
