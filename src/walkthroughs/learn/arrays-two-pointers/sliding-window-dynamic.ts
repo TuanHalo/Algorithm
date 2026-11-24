@@ -272,7 +272,7 @@ export default defineWalkthrough({
           arr('nums', 0, 0, NUMS, { label: 'nums', tones: { 1: 'miss', 2: 'miss', 3: 'miss' }, codeVar: 'nums' }),
           range('window', 'nums', 1, 4, 'compare'),
           vars('vals', 0, VARS_Y, [{ name: 'target', value: TARGET }], { label: 'variables', width: 180 }),
-          note('note', NOTE_X, VARS_Y, 'start 0: 2 + 3 + 1 + 2 = 8\nstart 1: 3 + 1 + 2 + 4 = 10   (3, 1, 2 again)\nup to n adds per start → O(n²)', { tone: 'miss' }),
+          note('note', NOTE_X, VARS_Y, 'start 0: 2 + 3 + 1 + 2 = 8\nstart 1: 3 + 1 + 2 + 4 = 10\n3, 1, 2 added twice → O(n²)', { tone: 'miss' }),
         ],
       },
     },

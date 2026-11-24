@@ -509,7 +509,7 @@ class DifferenceArray:
       body: '`PrefixSum` costs `n` additions once, then every query is **`O(1)`**: `Q` queries in `O(n + Q)` instead of `O(Q·n)`. `DifferenceArray` is the mirror: **`O(1)`** per update, then one **`O(n)`** build. Both keep `n + 1` numbers: `O(n)` space.\n\nSwitch to **🧪 Try your own** to run prefix sums on any numbers you like.',
       code: { view: 'final', lines: [5, 8, 16, 17, 23] },
       metrics: FINAL_METRICS,
-      scene: { entities: diffScene({ diff: [0, 3, 2, 0, -3, -2], result: [0, 3, 5, 5, 2], phase: 'done', current: 2, note: 'prefix: n adds once, then 1 subtraction per query\ndiff: 2 writes per update, then n adds once\nQ calls: O(n + Q) instead of O(Q·n)', noteTone: 'found' }) },
+      scene: { entities: diffScene({ diff: [0, 3, 2, 0, -3, -2], result: [0, 3, 5, 5, 2], phase: 'done', current: 2, note: 'prefix: n adds, then O(1) per query\ndiff: O(1) per update, then n adds\nQ calls: O(n + Q), not O(Q·n)', noteTone: 'found' }) },
     },
     {
       chapter: 'why',
