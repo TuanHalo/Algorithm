@@ -5,55 +5,20 @@ order: 4
 difficulty: "beginner"
 timeComplexity: "O(V + E)"
 spaceComplexity: "O(V)"
-visualizer: "/visualizers/graph/connected-components.html"
-diagram: "/diagrams/graph/connected-components-flow.html"
 tags: ["graph", "connected-components", "dfs", "islands"]
 ---
-
-## What are connected components?
-
-Picture a map of islands linked by footbridges: you can walk between any two towns on the same island, while towns on separate islands never meet.
-
-In an undirected graph, each maximal group of mutually reachable vertices is a connected component.
-
-## Core idea
-
-Loop through every vertex in the graph; whenever you meet an unvisited node, launch a DFS or BFS to collect its entire component into one group.
-
-## Python code
-
-```python
-def count_components(
-    nodes: list[str],
-    adj: dict[str, list[str]],
-) -> list[list[str]]:
-    visited: set[str] = set()
-    groups: list[list[str]] = []
-    for start in nodes:
-        if start in visited:
-            continue
-        comp, stack = [], [start]
-        visited.add(start)
-        while stack:
-            u = stack.pop()
-            comp.append(u)
-            for v in adj[u]:
-                if v not in visited:
-                    visited.add(v)
-                    stack.append(v)
-        groups.append(comp)
-    return groups
-```
 
 ## Complexity
 
 | Case | Time | Space | Why? |
 |---|---|---|---|
-| Best / Average / Worst | `O(V + E)` | `O(V)` | Sharing one `visited` set across the outer loop guarantees every vertex and edge runs once |
+| Best | `O(V + E)` | `O(V)` | Even all-isolated vertices are each tried once by the outer loop |
+| Average | `O(V + E)` | `O(V)` | One shared `visited` set: every vertex is pushed and popped once, every edge checked from both ends |
+| Worst | `O(V + E)` | `O(V)` | One big island: the stack and `comp` can hold all `V` vertices |
 
 ## When to use
 
 | Great for | Avoid for |
 |---|---|
-| Counting islands on a grid, friend circles, and disconnected network clusters | Directed reachability (use Kosaraju's or Tarjan's SCC instead) |
-| Checking if all nodes are connected in a single static snapshot | Graphs where new edges stream in dynamically (use Union-Find for faster updates) |
+| Counting islands on a grid, friend circles, and clusters in a network | Directed reachability: use Kosaraju's or Tarjan's strongly connected components |
+| "Is the whole graph connected?" on one fixed snapshot (one group means yes) | Edges that keep arriving: Union-Find merges groups without re-flooding |
