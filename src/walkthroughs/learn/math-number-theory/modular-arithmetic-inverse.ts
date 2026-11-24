@@ -46,8 +46,8 @@ function scene(s: InverseState): Entity[] {
   if (s.arc && s.turn < s.bits.length) {
     entities.push(
       link('use', { entity: 'bits', index: s.turn, side: 'bottom' }, { entity: 'vals', key: 'result' }, s.arc === 'multiply'
-        ? { label: 'bit 1: result × base', tone: 'found', flow: true }
-        : { label: 'bit 0: skip', tone: 'miss', dashed: true }),
+        ? { tone: 'found', flow: true }
+        : { tone: 'miss', dashed: true }),
     );
   }
   entities.push(

@@ -12,9 +12,9 @@ tags: ["math", "combinatorics", "catalan-numbers", "n-choose-k", "permutations",
 
 | Case | Time | Space | Why? |
 |------|------|-------|------|
-| Best (`n = 0`) | `O(1)` | `O(1)` | The loop is empty and the table is `[1]` |
-| Average | `O(n²)` | `O(n)` | Cell `i` adds `i` products, `n(n+1)/2` in all; one list of `n + 1` counts |
-| Worst | `O(n²)` | `O(n)` | The work depends only on `n`, not on the values |
+| Best (n is 0) | `O(1)` | `O(1)` | Empty loop, table is `[1]` |
+| Average | `O(n²)` | `O(n)` | About n²/2 products; one list |
+| Worst | `O(n²)` | `O(n)` | Depends only on `n` |
 
 ## When to use
 

@@ -12,9 +12,9 @@ tags: ["math", "number-theory", "gcd", "lcm", "euclidean", "bezout"]
 
 | Case | Time | Space | Why? |
 |------|------|-------|------|
-| Best (`b = 0`) | `O(1)` | `O(1)` | The loop never runs and `a` is returned |
-| Average | `O(log(min(a, b)))` | `O(1)` | The pair at least halves every two turns |
-| Worst (consecutive Fibonacci numbers) | `O(log(min(a, b)))` | `O(1)` | Every quotient is 1, so the numbers shrink as slowly as possible (Lamé's theorem) |
+| Best (b is 0) | `O(1)` | `O(1)` | No loop turns; `a` is returned |
+| Average | `O(log n)` | `O(1)` | Halves every 2 turns |
+| Worst (Fibonacci pair) | `O(log n)` | `O(1)` | Every quotient is 1 (Lamé) |
 
 ## When to use
 

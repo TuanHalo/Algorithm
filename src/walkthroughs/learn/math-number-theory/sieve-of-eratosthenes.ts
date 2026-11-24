@@ -4,6 +4,7 @@ import type { Entity, Step, Tone } from '../../../lib/walkthrough/types';
 
 const ROW = 10;
 const ROW_Y = 130;
+const NOTE_DROP = 80;
 const VARS_X = tableBesideArray(ROW, 4);
 
 interface SieveState {
@@ -74,7 +75,7 @@ function scene(s: SieveState): Entity[] {
       { label: 'variables', width: 180 },
     ),
   );
-  if (s.note) entities.push(note('note', 0, rows * ROW_Y, s.note, { tone: s.noteTone ?? 'note' }));
+  if (s.note) entities.push(note('note', 0, rows * ROW_Y + NOTE_DROP, s.note, { tone: s.noteTone ?? 'note' }));
   return entities;
 }
 
@@ -233,7 +234,7 @@ const byShort = (short: string): number => RUN.findIndex((s) => s.short === shor
 const at = (short: string): Step['scene'] => RUN[byShort(short)]?.scene ?? { entities: [] };
 /** The same scene plus a callout below the rows. */
 const withNote = (base: Step['scene'], text: string, tone: Tone = 'note'): Step['scene'] => ({
-  entities: [...base.entities.filter((e) => e.id !== 'note'), note('note', 0, 2 * ROW_Y, text, { tone })],
+  entities: [...base.entities.filter((e) => e.id !== 'note'), note('note', 0, 2 * ROW_Y + NOTE_DROP, text, { tone })],
 });
 const startMetrics = { crossings: 0, result: '—' } as const;
 const FINAL_METRICS = RUN.at(-1)?.metrics ?? startMetrics;

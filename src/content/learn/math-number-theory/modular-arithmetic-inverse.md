@@ -12,9 +12,9 @@ tags: ["math", "modular-arithmetic", "fermat-little-theorem", "inverse", "combin
 
 | Case | Time | Space | Why? |
 |------|------|-------|------|
-| Best (`b` is a multiple of `M`, or `M = 2`) | `O(1)` | `O(1)` | The guard raises at once, or the exponent `M − 2` is 0 and the loop never runs |
-| Average | `O(log M)` | `O(1)` | One turn per bit of `M − 2`, with one or two modular multiplications each |
-| Worst (every bit of `M − 2` is 1) | `O(log M)` | `O(1)` | Two multiplications per turn, about `2 · log₂ M` in all |
+| Best (no inverse, or `M = 2`) | `O(1)` | `O(1)` | Guard raises, or exponent is 0 |
+| Average | `O(log M)` | `O(1)` | One turn per bit of `M − 2` |
+| Worst (all bits 1) | `O(log M)` | `O(1)` | Two multiplies per turn |
 
 ## When to use
 

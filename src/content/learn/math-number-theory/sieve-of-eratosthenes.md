@@ -12,7 +12,7 @@ tags: ["math", "number-theory", "primes", "sieve", "factorization", "spf"]
 
 | Case | Time | Space | Why? |
 |------|------|-------|------|
-| Best (`n < 2`) | `O(1)` | `O(1)` | The guard returns an empty list before any flag is made |
+| Best (n below 2) | `O(1)` | `O(1)` | The guard returns an empty list before any flag is made |
 | Average | `O(n log log n)` | `O(n)` | A prime `p` crosses out about `n / p` cells, and the sum of `1 / p` over primes grows like `log log n` |
 | Worst | `O(n log log n)` | `O(n)` | The work does not depend on the values, only on `n`; one flag per number is stored |
 
