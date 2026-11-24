@@ -3,8 +3,8 @@ title: "Bitmask Dynamic Programming & Subset Iteration"
 topic: "bit-manipulation"
 order: 4
 difficulty: "intermediate"
-timeComplexity: "O(n * 2^n) subsets, O(3^n) submask iteration"
-spaceComplexity: "O(2^n) or O(1)"
+timeComplexity: "O(n * 2^n)"
+spaceComplexity: "O(n)"
 tags: ["bitmask", "subsets", "combinatorics", "state-compression", "traveling-salesperson"]
 ---
 
