@@ -5,56 +5,21 @@ order: 1
 difficulty: "beginner"
 timeComplexity: "O(1)"
 spaceComplexity: "O(n)"
-visualizer: "/visualizers/stack-queue/stack-operations.html"
-diagram: "/diagrams/stack-queue/stack-operations-flow.html"
 tags: ["stack-queue", "stack", "lifo", "fundamentals"]
 ---
 
-## What is a stack?
-
-Imagine a spring-loaded stack of cafeteria trays. You only ever place a new tray on top and lift the top tray off first.
-A Stack follows the Last-In, First-Out (LIFO) rule, so the newest item waiting on top is always the first one to leave.
-
-## Core idea
-
-Push, peek, and pop only at the top, never reaching into the middle.
-
-## Python code
-
-```python
-class Stack:
-    def __init__(self) -> None:
-        # Python lists append and pop at the tail in O(1) amortized time
-        self._items: list[int] = []
-
-    def push(self, value: int) -> None:
-        self._items.append(value)
-
-    def pop(self) -> int | None:
-        if not self._items:
-            return None  # Guard against popping from an empty stack
-        return self._items.pop()
-
-    def peek(self) -> int | None:
-        return self._items[-1] if self._items else None
-
-    def is_empty(self) -> bool:
-        return len(self._items) == 0
-```
-
 ## Complexity
 
-| Operation / Case | Time | Space | Why? |
-|---|---|---|---|
-| Push (`append`) | `O(1)` amortized | `O(1)` extra | Writes directly to the end slot; occasional array resize averages out |
-| Pop (`pop`) | `O(1)` | `O(1)` | Removes the top element without shifting earlier items |
-| Peek / Empty | `O(1)` | `O(1)` | Reads `self._items[-1]` or checks length in one step |
-| Total Memory | — | `O(n)` | Stores `n` currently active items in the backing list |
+| Case | Time | Space | Why? |
+|------|------|-------|------|
+| Best (`pop`, `peek`, or `push` with spare room) | `O(1)` | `O(1)` | Each touches only the last slot of the list; nothing else moves |
+| Average (`push`, amortized) | `O(1)` | `O(1)` | A full list grows by a factor, so the copying averages out to a constant per push |
+| Worst (a `push` that grows the list) | `O(n)` | `O(n)` | Growing copies every item into a bigger block; the stack itself holds `n` items |
 
 ## When to use
 
 | Great for | Avoid for |
 |---|---|
-| Undo/redo history, browser back buttons, and DFS traversal | Serving items strictly in arrival order (use a Queue instead) |
-| Tracking nested state like function calls and balanced brackets | Random access or searching for values buried in the middle (`O(n)`) |
-| Reversing a sequence naturally without manual index swaps | Fixed-order task scheduling where older requests must not starve |
+| Undo / redo history, a browser’s Back button, depth-first search | Serving items in arrival order (use a queue) |
+| Nested structure: function calls, or Valid Parentheses (push each opener, pop it on the matching closer) | Searching for a value or reaching into the middle (`O(n)`) |
+| Reversing a sequence: push everything, then pop it all | Scheduling where the oldest request must not wait forever behind newer ones |
