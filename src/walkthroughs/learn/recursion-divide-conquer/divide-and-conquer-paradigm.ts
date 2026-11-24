@@ -288,7 +288,7 @@ export default defineWalkthrough({
         entities: scene({
           tree: TREE,
           nodes: allCalls,
-          note: 'divide:   [3, 8, 2, 5] → [3, 8] [2, 5] → singles\nconquer:  a single item is its own max\ncombine:  max(3, 8) = 8,  max(2, 5) = 5,  max(8, 5) = 8',
+          note: 'divide:  split in halves down to singles\nconquer: a single item is its own max\ncombine: max(3,8)=8, max(2,5)=5 → 8',
         }),
       },
     },

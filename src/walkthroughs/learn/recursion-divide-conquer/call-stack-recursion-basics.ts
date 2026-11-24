@@ -50,7 +50,7 @@ function scene(s: StackState): Entity[] {
     tone: value === undefined ? 'muted' : 'default',
   });
   entities.push(vars('vals', SIDE_X, 0, [row('n', s.n), row('came back', s.back)], { label: 'this call', width: 200 }));
-  if (s.note) entities.push(note('note', SIDE_X, 110, s.note, { tone: s.noteTone ?? 'note' }));
+  if (s.note) entities.push(note('note', SIDE_X, 180, s.note, { tone: s.noteTone ?? 'note' }));
   return entities;
 }
 
@@ -240,7 +240,7 @@ export default defineWalkthrough({
       body: `Every call does one multiplication and makes one more call, so \`n\` calls take **\`O(n)\` time**. All \`n\` frames are on the stack at the deepest moment, so it also uses **\`O(n)\` space**.\n\nPython stops at about 1,000 frames with a \`RecursionError\`; a plain loop would need only \`O(1)\` space.`,
       code: { view: 'final', lines: [3, 7] },
       metrics: FINAL_METRICS,
-      scene: { entities: [...(RUN.at(-1)?.scene.entities.filter((e) => e.id !== 'note') ?? []), note('note', SIDE_X, 110, 'n = 4     →  4 frames\nn = 1,000 →  RecursionError', { tone: 'found' })] },
+      scene: { entities: [...(RUN.at(-1)?.scene.entities.filter((e) => e.id !== 'note') ?? []), note('note', SIDE_X, 180, 'n = 4     →  4 frames\nn = 1,000 →  RecursionError', { tone: 'found' })] },
     },
     {
       chapter: 'why',

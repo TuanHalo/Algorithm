@@ -8,7 +8,7 @@ import type { Entity, ScalarValue, Step, Tone } from '../../../lib/walkthrough/t
  */
 const LEVELS = 4;
 const SIDE_X = 460;
-const NOTE_Y = 230;
+const NOTE_Y = 390;
 const EPS = 1e-9;
 
 /** Prints a float without noise: 1, 1.585, 2.807. */
@@ -72,7 +72,7 @@ function scene(s: MasterState): Entity[] {
     tone: value === undefined ? 'muted' : 'default',
   });
   entities.push(vars('vals', s.table ? SIDE_X : 0, 0, [row('a', s.a), row('b', s.b), row('c', s.c), row('crit', s.crit)], { label: 'T(n) = a·T(n/b) + n^c', width: 230 }));
-  if (s.note) entities.push(note('note', 0, s.table ? NOTE_Y : 190, s.note, { tone: s.noteTone ?? 'note' }));
+  if (s.note) entities.push(note('note', 0, s.table ? NOTE_Y : 260, s.note, { tone: s.noteTone ?? 'note' }));
   return entities;
 }
 
@@ -323,7 +323,7 @@ def solve_master_theorem(a: int, b: int, c: int) -> str:
             { width: 400 },
           ),
           vars('vals', SIDE_X, 0, [{ name: 'a', value: A }, { name: 'b', value: B }, { name: 'c', value: C }, { name: 'crit', value: '1' }], { label: 'T(n) = a·T(n/b) + n^c', width: 230 }),
-          note('note', 0, 150, 'merge sort: c = crit = 1\n→ Case 2, n · log n', { tone: 'found' }),
+          note('note', 0, 260, 'merge sort: c = crit = 1\n→ Case 2, n · log n', { tone: 'found' }),
         ],
       },
     },

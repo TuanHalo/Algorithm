@@ -54,7 +54,7 @@ function scene(s: PowerState): Entity[] {
     tone: value === undefined ? 'muted' : 'default',
   });
   entities.push(vars('vals', SIDE_X, 0, [row('base', s.base), row('exp', s.exp), row('half', s.half)], { label: 'this call', width: 200 }));
-  if (s.note) entities.push(note('note', SIDE_X, 150, s.note, { tone: s.noteTone ?? 'note' }));
+  if (s.note) entities.push(note('note', SIDE_X, 230, s.note, { tone: s.noteTone ?? 'note' }));
   return entities;
 }
 
@@ -292,7 +292,7 @@ export default defineWalkthrough({
       scene: {
         entities: [
           ...(RUN.at(-1)?.scene.entities.filter((e) => e.id !== 'note') ?? []),
-          note('note', SIDE_X, 150, 'exp = 13       →  5 calls\nexp = 10^18   →  ~60 calls\nnaive: 10^18 multiplications', { tone: 'found' }),
+          note('note', SIDE_X, 230, 'exp = 13       →  5 calls\nexp = 10^18   →  ~60 calls\nnaive: 10^18 multiplications', { tone: 'found' }),
         ],
       },
     },

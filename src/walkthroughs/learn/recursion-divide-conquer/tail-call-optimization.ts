@@ -51,7 +51,7 @@ function scene(s: StackState): Entity[] {
     tone: value === undefined ? 'muted' : 'default',
   });
   entities.push(vars('vals', SIDE_X, 0, [row('n', s.n), row('accumulator', s.acc)], { label: 'this call', width: 210 }));
-  if (s.note) entities.push(note('note', SIDE_X, 110, s.note, { tone: s.noteTone ?? 'note' }));
+  if (s.note) entities.push(note('note', SIDE_X, 180, s.note, { tone: s.noteTone ?? 'note' }));
   return entities;
 }
 
@@ -284,7 +284,7 @@ export default defineWalkthrough({
         entities: [
           map('stack', 0, 0, 'call stack with TCO', [{ key: 'factorial_tail(n, accumulator)', value: 'one frame, reused', tone: 'found' }], { width: 340 }),
           vars('vals', SIDE_X, 0, [{ name: 'n', value: '4 → 1' }, { name: 'accumulator', value: '1 → 24' }], { label: 'this call', width: 210 }),
-          note('note', SIDE_X, 110, 'CPython: 4 frames, O(n)\nTCO runtime: 1 frame, O(1)', { tone: 'found' }),
+          note('note', SIDE_X, 180, 'CPython: 4 frames, O(n)\nTCO runtime: 1 frame, O(1)', { tone: 'found' }),
         ],
       },
     },
