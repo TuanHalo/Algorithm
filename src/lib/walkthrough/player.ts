@@ -259,6 +259,25 @@ class Player {
     rail.replaceChildren(...groups);
   }
 
+  /**
+   * Scroll the rail (and only the rail) so the active dot is visible.
+   * `scrollIntoView` would also scroll clipped ancestors such as the card,
+   * which moves the Back / Play / Next buttons sideways.
+   */
+  private revealActiveDot(): void {
+    const rail = this.q('[data-wt-rail]');
+    const dot = rail?.querySelector<HTMLElement>('.wt-rail__dot.is-active');
+    if (!rail || !dot) return;
+    const railBox = rail.getBoundingClientRect();
+    const dotBox = dot.getBoundingClientRect();
+    const margin = 8;
+    if (dotBox.left < railBox.left + margin) {
+      rail.scrollTo({ left: rail.scrollLeft + dotBox.left - railBox.left - margin });
+    } else if (dotBox.right > railBox.right - margin) {
+      rail.scrollTo({ left: rail.scrollLeft + dotBox.right - railBox.right + margin });
+    }
+  }
+
   private go(target: number, instant = false): void {
     if (this.steps.length === 0) return;
     const index = Math.min(Math.max(target, 0), this.steps.length - 1);
@@ -324,9 +343,7 @@ class Player {
       if (i === index) dot.setAttribute('aria-current', 'step');
       else dot.removeAttribute('aria-current');
     });
-    if (changed && !instant) {
-      this.root.querySelector('.wt-rail__dot.is-active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    }
+    if (changed && !instant) this.revealActiveDot();
 
     const prev = this.q<HTMLButtonElement>('[data-wt-prev]');
     const next = this.q<HTMLButtonElement>('[data-wt-next]');

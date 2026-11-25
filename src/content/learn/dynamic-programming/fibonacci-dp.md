@@ -5,44 +5,21 @@ order: 2
 difficulty: "beginner"
 timeComplexity: "O(n)"
 spaceComplexity: "O(1)"
-visualizer: "/visualizers/dynamic-programming/fibonacci-dp.html"
-diagram: "/diagrams/dynamic-programming/fibonacci-dp-flow.html"
 tags: ["dynamic-programming", "memoization", "tabulation", "1d-dp"]
 ---
 
-## What is Fibonacci DP?
-
-Imagine solving a math riddle where someone keeps asking you what `5 + 8` equals every two minutes. Instead of counting on your fingers every time, you jot `13` on a sticky note and read it back instantly.
-
-Plain recursive Fibonacci repeats the same subproblems exponentially (`O(2ⁿ)`), while Dynamic Programming saves each `F(i)` once—either top-down in a cache (memoization) or bottom-up in a loop (tabulation).
-
-## Core idea
-
-Compute each `F(i)` only once by caching recursive answers (`memo[n]`) or rolling two variables (`prev2, prev1 = prev1, prev2 + prev1`) from `2` up to `n`.
-
-## Python code
-
-```python
-def fib_dp(n: int) -> int:
-    if n <= 1:
-        return n
-    prev2, prev1 = 0, 1  # Only last two values are needed to roll forward
-    for _ in range(2, n + 1):
-        prev2, prev1 = prev1, prev2 + prev1
-    return prev1
-```
-
 ## Complexity
 
-| Approach | Time | Space | Why? |
-|---|---|---|---|
-| Naive recursion | `O(2ⁿ)` | `O(n)` | Recomputes the same `F(k)` branches exponentially many times |
-| Top-down memoization | `O(n)` | `O(n)` | Each state `0..n` computes once; recursion stack + `memo` store `n` entries |
-| Bottom-up rolling vars | `O(n)` | `O(1)` | Single loop keeps only `prev2` and `prev1` in memory |
+| Case | Time | Space | Why? |
+|------|------|-------|------|
+| Best | `O(1)` | `O(1)` | `n` is 0 or 1: line 3 returns it with no loop |
+| Average | `O(n)` | `O(1)` | One addition per value from F(2) to F(n), holding only the last two |
+| Worst | `O(n)` | `O(1)` | Never more than `n − 1` additions; plain recursion makes about `2·F(n)` calls (`O(2ⁿ)`), a memo dictionary needs `O(n)` space |
 
 ## When to use
 
 | Great for | Avoid for |
 |---|---|
-| Spotting overlapping subproblems and choosing memoization vs. tabulation | Huge indices (`n > 10⁷`) where matrix exponentiation runs in `O(log n)` |
-| Teaching how state compression shrinks an `O(n)` table down to `O(1)` | Problems whose subproblems never overlap (plain divide-and-conquer works) |
+| Any recurrence that only looks a fixed number of steps back: Climbing Stairs, Tribonacci, House Robber (`max(prev1, prev2 + x)`) | Huge `n` (`> 10⁷`) or `F(n) mod m`: matrix exponentiation or fast doubling runs in `O(log n)` |
+| Top-down memoization (`@cache` on the recursive version) when only a few of the states are ever reached, or the order is hard to plan | Problems whose subproblems never repeat: plain divide and conquer already does each one once |
+| Learning to shrink a table: keep a full `dp` list when you need to read old values back, roll two variables when you don’t | Needing every F(i) afterwards: keep the whole list instead of rolling two variables |
