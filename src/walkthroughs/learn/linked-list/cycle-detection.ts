@@ -91,7 +91,6 @@ function scene(s: CycleState): Entity[] {
 
 /** Runs detect_cycle on any list and records one step per decision (chapter "run", final code). */
 function traceCycle(values: readonly number[], pos: number): Step[] {
-  const n = values.length;
   const steps: Step[] = [];
   let turns = 0;
   let walks = 0;
