@@ -160,7 +160,7 @@ function traceCycle(values: readonly number[], pos: number): Step[] {
       title: `slow steps to ${name(slow)}`,
       body: `Line 11 only reassures the type checker. Line 12: \`slow = slow.next\`, one node.`,
       code: { view: 'final', lines: [11, 12] },
-      values: { 12: `slow = ${name(slow)}` },
+      values: { 11: 'slow is a node → ok', 12: `slow = ${name(slow)}` },
       metrics: metrics(),
       scene: { entities: scene({ ...base, slow, fast, moved: 'slow', hot: [slowFrom], hotTone: 'active' }) },
     });
@@ -225,7 +225,7 @@ function traceCycle(values: readonly number[], pos: number): Step[] {
     title: `finder starts at the head, slow stays at node ${values[meet]}`,
     body: `Line 16: \`finder = head\`, node ${values[0]}. Both now walk one node at a time; the comment on line 15 says why they meet at the entry.`,
     code: { view: 'final', lines: [15, 16] },
-    values: { 16: `finder = ${name(0)}` },
+    values: { 15: 'a = k × L − b', 16: `finder = ${name(0)}` },
     metrics: metrics(),
     scene: { entities: scene({ ...base, slow: s2, fast, finder, phase2: true }) },
   });
@@ -262,7 +262,7 @@ function traceCycle(values: readonly number[], pos: number): Step[] {
       title: `finder steps to node ${values[finder]}`,
       body: 'Line 18 is for the type checker. Line 19: `finder = finder.next`.',
       code: { view: 'final', lines: [18, 19] },
-      values: { 19: `finder = ${name(finder)}` },
+      values: { 18: 'both are nodes → ok', 19: `finder = ${name(finder)}` },
       metrics: metrics(),
       scene: { entities: scene({ ...base, slow: s2, fast, finder, phase2: true, moved: 'finder', hot: [ff], hotTone: 'active' }) },
     });
