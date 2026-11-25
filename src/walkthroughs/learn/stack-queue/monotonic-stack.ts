@@ -145,7 +145,7 @@ function traceNextGreater(nums: readonly number[]): Step[] {
       result[top] = val;
       steps.push({
         chapter: 'run',
-        short: `result[${top}] = ${val}`.slice(0, 14),
+        short: `result[${top}] = ${val}`.length <= 14 ? `result[${top}] = ${val}` : `pop ${top}`,
         title: `Pop index ${top}: result[${top}] = ${val}`,
         body: `Line 8 pops index ${top} off the stack; it has its answer and never waits again. Line 9 writes \`result[${top}] = ${val}\`.`,
         code: { view: 'final', lines: [8, 9] },

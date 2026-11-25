@@ -104,7 +104,7 @@ function traceRing(capacity: number, ops: readonly Op[]): Step[] {
       const full = size === capacity;
       steps.push({
         chapter: 'run',
-        short: `enqueue(${value})`.slice(0, 14),
+        short: `enqueue(${value})`.length <= 14 ? `enqueue(${value})` : `enq ${value}`,
         title: full ? `enqueue(${value}): the ring is full` : `enqueue(${value}): is there a free slot?`,
         body: full
           ? `Line 9: \`_size == _cap\` (${size} == ${capacity}) is true. Every slot holds a value nobody has read yet.`

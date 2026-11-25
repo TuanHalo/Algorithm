@@ -3,7 +3,7 @@ title: "Deque Operations"
 topic: "stack-queue"
 order: 4
 difficulty: "beginner"
-timeComplexity: "O(1)"
+timeComplexity: "O(n)"
 spaceComplexity: "O(n)"
 tags: ["stack-queue", "deque", "double-ended", "fundamentals"]
 ---

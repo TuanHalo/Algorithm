@@ -182,7 +182,7 @@ function traceMinMax(ops: readonly Op[]): Step[] {
       const newMin = Math.min(val, currMin);
       steps.push({
         chapter: 'run',
-        short: `new_min = ${newMin}`,
+        short: `new_min = ${newMin}`.length <= 14 ? `new_min = ${newMin}` : `min ${newMin}`,
         title: val < currMin ? `${val} < ${currMin}: a new minimum` : `${val} ≥ ${currMin}: the minimum stays ${currMin}`,
         body: `Line 11: \`min(${val}, ${currMin}) = ${newMin}\`. ${val < currMin ? `${val} is smaller than everything below it.` : `Something below is already ${currMin}, so ${val} doesn’t change the minimum.`}`,
         code: { view: 'final', lines: [11] },
@@ -193,7 +193,7 @@ function traceMinMax(ops: readonly Op[]): Step[] {
       const newMax = Math.max(val, currMax);
       steps.push({
         chapter: 'run',
-        short: `new_max = ${newMax}`,
+        short: `new_max = ${newMax}`.length <= 14 ? `new_max = ${newMax}` : `max ${newMax}`,
         title: val > currMax ? `${val} > ${currMax}: a new maximum` : `${val} ≤ ${currMax}: the maximum stays ${currMax}`,
         body: `Line 12: \`max(${val}, ${currMax}) = ${newMax}\`. ${val > currMax ? `${val} is larger than everything below it.` : `Something below is already ${currMax}.`}`,
         code: { view: 'final', lines: [12] },

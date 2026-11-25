@@ -102,7 +102,7 @@ function traceQueue(ops: readonly Op[]): Step[] {
       arrived += 1;
       steps.push({
         chapter: 'run',
-        short: `enqueue(${op.value})`.slice(0, 14),
+        short: `enqueue(${op.value})`.length <= 14 ? `enqueue(${op.value})` : `enq ${op.value}`,
         title: `enqueue(${op.value}): ${op.value} joins the back`,
         body: `Line 10 appends ${op.value} on the right. ${items.length === 1 ? 'It is the only value, so it is also the front.' : `It waits behind the ${items.length - 1} value${items.length === 2 ? '' : 's'} already in line.`} The queue is now ${show(items)}.`,
         code: { view: 'final', lines: [9, 10] },

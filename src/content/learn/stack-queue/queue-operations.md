@@ -14,7 +14,7 @@ tags: ["stack-queue", "queue", "fifo", "deque"]
 |------|------|-------|------|
 | Best (`dequeue`, `front`, or `enqueue` with spare room) | `O(1)` | `O(1)` | A deque changes or reads one end without moving anything else |
 | Average | `O(1)` | `O(1)` | Every operation touches only the front or the back |
-| Worst (on a list with `pop(0)` instead of a deque) | `O(n)` | `O(n)` | Removing index 0 shifts the `n − 1` values behind it; the queue itself holds `n` values |
+| Worst (an `enqueue` that starts a new block) | `O(1)` | `O(n)` | A deque grows one fixed-size block at a time, so it never copies the values it holds; the queue itself holds `n` values |
 
 ## When to use
 
