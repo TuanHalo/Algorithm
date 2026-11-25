@@ -4,57 +4,21 @@ topic: "graph"
 order: 10
 difficulty: "intermediate"
 timeComplexity: "O((V + E) log V)"
-spaceComplexity: "O(V)"
-visualizer: "/visualizers/graph/dijkstra.html"
-diagram: "/diagrams/graph/dijkstra-flow.html"
+spaceComplexity: "O(V + E)"
 tags: ["graph", "dijkstra", "shortest-path", "heap"]
 ---
-
-## What is Dijkstra's shortest path?
-
-Think of driving between cities with highway tolls: a two-hop detour with cheap tolls can beat a direct highway with a steep fee.
-
-Dijkstra's algorithm finds the cheapest path from one starting vertex to every reachable vertex in a graph with non-negative edge weights.
-
-## Core idea
-
-Pop the unvisited vertex with the smallest tentative distance from a min-heap, lock in its distance, and push any shorter path found through its outgoing edges.
-
-## Python code
-
-```python
-import heapq
-
-
-def dijkstra(
-    nodes: list[str],
-    adj: dict[str, list[tuple[str, int]]],
-    start: str,
-) -> dict[str, float]:
-    dist: dict[str, float] = {u: float("inf") for u in nodes}
-    dist[start] = 0
-    heap: list[tuple[float, str]] = [(0, start)]
-
-    while heap:
-        d, u = heapq.heappop(heap)
-        if d > dist[u]:
-            continue  # Discard outdated entry superseded by a shorter path
-        for v, w in adj[u]:
-            if d + w < dist[v]:
-                dist[v] = d + w
-                heapq.heappush(heap, (dist[v], v))
-    return dist
-```
 
 ## Complexity
 
 | Case | Time | Space | Why? |
 |---|---|---|---|
-| Average / Worst | `O((V + E) log V)` | `O(V + E)` | Each edge relaxation pushes at most one tuple onto the heap; popping takes `O(log V)` |
+| Best | `O((V + E) log V)` | `O(V)` | Every reachable vertex still goes through the heap once |
+| Average | `O((V + E) log V)` | `O(V + E)` | Each improvement pushes one entry; each push and pop costs `O(log V)` |
+| Worst | `O((V + E) log V)` | `O(V + E)` | Many improvements leave outdated entries: up to `E` of them wait in the heap |
 
 ## When to use
 
 | Great for | Avoid for |
 |---|---|
-| Road maps, network routing, and weighted graphs where all weights are `>= 0` | Graphs with any negative edge weight, since settled nodes can later drop |
-| Positive weighted networks with changing edge tolls | Unweighted or `{0, 1}` graphs, where BFS or 0-1 BFS runs in linear time without heap overhead |
+| Road maps, network routing, any graph whose weights are all `â‰¥ 0` | Any negative weight: a settled vertex could still get cheaper (use Bellman-Ford) |
+| One start to many targets; stop early when the target pops if you only need one | Unweighted or `{0, 1}` graphs: BFS or 0-1 BFS do it in linear time without a heap |
