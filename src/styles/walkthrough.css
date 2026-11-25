@@ -757,11 +757,22 @@
     padding: var(--space-md);
   }
 
+  /* Three equal columns that may shrink below the desktop min-widths, so the
+     bar never grows wider than the card (the card clips overflow, and the
+     buttons would shift when the rail scrolls the card sideways). */
   .wt-bar {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-areas:
       'rail rail rail'
       'prev play next';
+  }
+
+  .wt-bar__prev,
+  .wt-bar__play,
+  .wt-bar__next {
+    min-width: 0;
+    padding-inline: 0.5rem;
+    white-space: nowrap;
   }
 }
 
