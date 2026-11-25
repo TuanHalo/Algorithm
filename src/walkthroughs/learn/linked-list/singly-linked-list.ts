@@ -7,11 +7,12 @@ import type { Entity, LinkEntity, Step, Tone } from '../../../lib/walkthrough/ty
  * its own slot (`id × NODE_PITCH`) because nodes never move in memory. Every
  * `next` field is a `link` arrow `next-<id>` to the node it points at, or to the
  * `None` block after the last slot. A node that is no longer reachable from
- * `head` is lifted straight up out of the row (floor x and y both shift by
- * `CUT_Y`, which is straight up on screen), muted, with its arrow dashed.
+ * `head` is lifted up out of the row (`CUT_X`, `CUT_Y`), muted, with its arrow dashed.
  */
 const NODE_PITCH = 100;
 const CUT_Y = -100;
+/** A cut node also shifts this far along x: up and a little right on screen, clear of the pins on its left neighbour. */
+const CUT_X = -60;
 const VARS_Y = 150;
 const NOTE_X = 230;
 
@@ -62,7 +63,7 @@ function scene(s: ListState): Entity[] {
   for (const it of s.items) {
     const cut = !reachable.has(it.id);
     entities.push(
-      arr(nodeId(it.id), it.id * NODE_PITCH + (cut ? CUT_Y : 0), cut ? CUT_Y : 0, [it.v], {
+      arr(nodeId(it.id), it.id * NODE_PITCH + (cut ? CUT_X : 0), cut ? CUT_Y : 0, [it.v], {
         tones: { 0: cut ? 'muted' : (s.tones?.[it.id] ?? 'default') },
         showIndex: false,
         itemKeys: [it.id],

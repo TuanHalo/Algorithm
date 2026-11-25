@@ -12,9 +12,9 @@ tags: ["linked-list", "pointers", "nodes", "fundamentals"]
 
 | Case | Time | Space | Why? |
 |------|------|-------|------|
-| Best (`val` is at the head) | `O(1)` | `O(1)` | Line 11 returns `head.next` without walking |
-| Average | `O(n)` | `O(1)` | `curr` hops about half the list before the match; the bypass is one assignment |
-| Worst (`val` at the tail or missing) | `O(n)` | `O(1)` | `curr` walks every arrow to the end; only `curr` is extra memory |
+| Best (`val` at the head) | `O(1)` | `O(1)` | Line 11 returns at once: no walk |
+| Average | `O(n)` | `O(1)` | `curr` hops about half the list; the bypass is one step |
+| Worst (at the end, or absent) | `O(n)` | `O(1)` | `curr` walks every arrow to the end; only `curr` is extra memory |
 
 ## When to use
 
