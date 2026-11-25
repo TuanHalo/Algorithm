@@ -13,7 +13,7 @@ tags: ["linked-list", "in-place", "three-pointers", "reversal"]
 | Case | Time | Space | Why? |
 |------|------|-------|------|
 | Best (empty or one node) | `O(1)` | `O(1)` | The loop runs 0 or 1 times |
-| Average | `O(n)` | `O(1)` | Each node is seen once and flipped once |
+| Average | `O(n)` | `O(1)` | Each node gets one flip, in one pass |
 | Worst | `O(n)` | `O(1)` | One flip per node, and no copy of the list |
 
 ## When to use
