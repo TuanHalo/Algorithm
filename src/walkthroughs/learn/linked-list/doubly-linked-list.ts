@@ -153,7 +153,7 @@ function traceDll(values: readonly number[], unlinkAt: number): Step[] {
     title: 'An empty list is two sentinels',
     body: 'Lines 13–14 make the dummy nodes `head` and `tail`; line 15 points them at each other. The list is empty, yet every real node will always have a node on both sides.',
     code: { view: 'final', lines: [13, 14, 15] },
-    values: { 15: 'head.next = tail, tail.prev = head' },
+    values: { 13: 'head = DNode(0)', 14: 'tail = DNode(0)', 15: 'head.next = tail, tail.prev = head' },
     metrics: metrics(),
     scene: at({ hot: ['next-h', 'prev-t'] }),
   });
